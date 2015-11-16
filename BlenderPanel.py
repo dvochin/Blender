@@ -201,8 +201,8 @@ class gBL_temp1(bpy.types.Operator):
         #Client.CBMeshMorph_GetMorphVerts('Face', 'Face-MouthOpen')
         #oMeshBodyO = gBlender.SelectAndActivate("BodyA_Detach_Breasts")
         #oMeshBodyO = gBlender.SelectAndActivate("WomanA")
-        CBody.CBody_Create('WomanA', 'Woman', 'Vagina-Erotic9-A')
-        #oBody = CBody.CBody('WomanA', 'Shemale', 'PenisW-Erotic9-A-Big')
+        #oBody = CBody.CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big')
+        oBody = CBody.CBody(0, 'WomanA', 'Woman', 'Vagina-Erotic9-A')
         return {"FINISHED"}
 
 class gBL_temp2(bpy.types.Operator):

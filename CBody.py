@@ -40,21 +40,24 @@ import Penis
 class CBody:
     _aBodies = []                      # The global array of bodies.  Unity finds bodies 
 
-    def __init__(self, sMeshSource, sSex, sGenitals):
-        CBody._aBodies.append(self)                          # Append ourselves to global array.  The only way Unity can find our instance is with CBody._aBodies[<OurID>]
-        self.nID                = len(CBody._aBodies) - 1        # Our ID is whatever slot we get when appending in zero-based g_aBodies.  (So equal to lengh of array minus one after our append)
-        self.sMeshSource       = sMeshSource              # The name of the source body mesh (e.g. 'WomanA', 'ManA', etc)
+    def __init__(self, nBodyID, sMeshSource, sSex, sGenitals):
+        CBody._aBodies.append(self)                         # Append ourselves to global array.  The only way Unity can find our instance is through CBody._aBodies[<OurID>]
+        self.nBodyID            = nBodyID                   # Our ID is passed in by Blender and remains the only public way to access this instance (e.g. CBody._aBodies[<OurID>])
+        self.sMeshSource        = sMeshSource               # The name of the source body mesh (e.g. 'WomanA', 'ManA', etc)
         self.sSex               = sSex                      # The body's sex (one of 'Man', 'Woman' or 'Shemale')
         self.sGenitals          = sGenitals                 # The body's genitals (e.g. 'Vagina-Erotic9-A', 'PenisW-Erotic9-A' etc.)
-        self.sMeshPrefix        = "Body" + chr(65 + self.nID) + '-'  # The Blender object name prefix of every submesh (e.g. 'Body0-Detach-Breasts', etc)
+        self.sMeshPrefix        = "Body" + chr(65 + self.nBodyID) + '-'  # The Blender object name prefix of every submesh (e.g. 'BodyA-Detach-Breasts', etc)
         
         self.oMeshSource        = None                      # The 'source body'.  Never modified in any way
         self.oMeshAssembled     = None                      # The 'assembled mesh'.  Fully assembled with proper genitals.  Basis of oMeshMorph                  
         self.oMeshMorph         = None                      # The 'morphing mesh'.   Orinally copied from oMeshAssembled and morphed to the user's preference.  Basis of oMeshBody
+        self.oMeshBody          = None                      # The 'body' skinned mesh.   Orinally copied from oMeshMorph.  Has softbody parts (like breasts and penis) removed. 
+        self.oMeshBreasts       = None                      # The 'breasts' softbody-simulated mesh.   Detached from oMeshBody during creation.  
+        self.oMeshPenis         = None                      # The 'penis'   softbody-simulated mesh.   Detached from oMeshBody during creation.  
         
         self.aMapVertsOrigToMorph   = {}                    # Map of which original vert maps to what morph/assembled mesh verts.  Used to traverse morphs intended for the source body                  
         
-        print("\n=== CBody()  sMeshSource:'{}'  sSex:'{}'  sGenitals:'{}' sMeshPrefix:'{}' ===".format(self.sMeshSource, self.sSex, self.sGenitals, self.sMeshPrefix))
+        print("\n=== CBody()  nBodyID:{}  sMeshPrefix:'{}'  sMeshSource:'{}'  sSex:'{}'  sGenitals:'{}' ===".format(self.nBodyID, self.sMeshPrefix, self.sMeshSource, self.sSex, self.sGenitals))
     
         self.oMeshSource = bpy.data.objects[self.sMeshSource]
     
@@ -82,13 +85,19 @@ class CBody:
         self.oMeshAssembled.select = True
         bpy.context.scene.objects.active = self.oMeshAssembled
         bpy.ops.object.join()
-        self.oMeshAssembled.data.uv_textures.active_index = 1       # Join call above selects the uv texture of the genitals leaving most of the body untextured.  Revert to full body texture!   ###IMPROVE: Can merge genitals texture into body's??
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='DESELECT')      # Deselect all verts in assembled mesh
+        bpy.ops.object.mode_set(mode='OBJECT')
+        ####LEARN: Screws up ConvertMesh royally!  self.oMeshAssembled.data.uv_textures.active_index = 1       # Join call above selects the uv texture of the genitals leaving most of the body untextured.  Revert to full body texture!   ###IMPROVE: Can merge genitals texture into body's??
         gBlender.Util_SelectVertGroupVerts(self.oMeshAssembled, sNameVertGroupToCutout)  # Reselect the just-removed genitals area from the original body, as the faces have just been removed this will therefore only select the rim of vertices where the new genitals are inserted (so that we may remove_doubles to merge only it)
         bpy.ops.mesh.remove_doubles(threshold=0.000001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###LEARN: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
         
         #=== Prepare a ready-for-morphing client-side body. This one will be morphed by the user and be the basis for cloth fitting and play mode ===   
         self.oMeshMorph = gBlender.DuplicateAsSingleton(self.oMeshAssembled.name, self.sMeshPrefix + 'BodyMorph', G.C_NodeFolder_Game, True)
         Client.Client_ConvertMesh(self.oMeshMorph, True)  # Client requires a tri-based mesh and verts that only have one UV. (e.g. no polys accross different seams/materials sharing the same vert)
+        ####DEV: BODY only gets converted!
+
+
      
         #=== Assemble the 'aMapVertsOrigToMorph' map of mesh verts so we know which source vert goes to what assembled vert ===
         bpy.ops.object.mode_set(mode='EDIT')
@@ -290,6 +299,8 @@ class CBody:
 #             #=== Do the important conversion of the chunk mesh to be renderable by the Client... we're done processing that mesh. ===
 #             Client_ConvertMesh(oMeshPartChunkO, True)
 
-def CBody_Create(sMeshSource, sSex, sGenitals):
-    oBody = CBody(sMeshSource, sSex, sGenitals)
-    return oBody.nID
+
+def CBody_Create(nBodyID, sMeshSource, sSex, sGenitals):
+    "Proxy for CBody ctor as we can only return primitives back to Unity"
+    oBody = CBody(nBodyID, sMeshSource, sSex, sGenitals)
+    return str(oBody.nBodyID)           # Strings is one of the only things we can return to Unity

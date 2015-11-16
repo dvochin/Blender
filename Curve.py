@@ -105,4 +105,4 @@ def gBL_Curve_GetCutterAsMesh(sNameCutterAsMesh):         # Called by Client to 
     oCutterAsMeshO.data.name = oCutterAsMeshO.name    # Set the name of the just-created mesh to the name of the object.
     oCutterAsMeshO.parent = bpy.data.objects[G.C_NamePrefix_CutterAsMesh]     # Set parent to its utility node folder to get it out of the way and to facilitate mass cleanup
     gBlender.Util_ConvertToTriangles()      # Convert to triangles Client needs
-    return Client.gBL_GetMesh(oCutterAsMeshO.name, 'NoSkinInfo')
+    return Client.gBL_GetMesh(oCutterAsMeshO.name)

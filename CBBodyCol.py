@@ -55,7 +55,7 @@ def CBBodyColCloth_GetMesh(sNameMesh):          ###DESIGN!! ###OPT!!!: Can prepr
 
     #=== Construct the beginning of the outgoing bytearray that will be sent to client so it can receive our mesh ===
     bpy.ops.object.mode_set(mode='OBJECT')
-    oBA = Client.gBL_GetMesh(oMeshBodyColClothO.name, 'SkinInfo')         # Return skinning info
+    oBA = Client.gBL_GetMesh(oMeshBodyColClothO.name)
 
     #=== Send the additional definition arrays we created above ===
     gBlender.Stream_SerializeArray(oBA, aEdges.tobytes())
@@ -282,7 +282,7 @@ def CBBodyCol_GetMesh(sNameMesh):       # Called by the client to send a  decima
     oMeshBodyColO = bpy.data.objects[sNameMesh]
 
     #=== Construct the beginning of the outgoing bytearray that will be sent to client so it can receive our mesh ===
-    oBA = Client.gBL_GetMesh(oMeshBodyColO.name, 'SkinInfo')
+    oBA = Client.gBL_GetMesh(oMeshBodyColO.name)
 
     #=== Send the additional definition arrays we created in Generate call ===
     gBlender.Stream_SerializeArray(oBA, oMeshBodyColO['aEdges'])

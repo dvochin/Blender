@@ -32,6 +32,8 @@ import bmesh
 import struct
 import array
 import CBBodyCol
+import CBody
+
 from math import *
 from mathutils import *
 
@@ -626,18 +628,11 @@ def Client_ConvertMesh(oMeshO, bSplitVertsAtUvSeams):  # Convert a Blender mesh 
 #---------------------------------------------------------------------------    SUPER PUBLIC -> Global top-level functions exported to Client
 #---------------------------------------------------------------------------    
 
-def gBL_GetMesh(sNameMesh, sSendSkinningInfo):  # Called in the constructor of Client's important CBMesh constructor to return the mesh (possibly skinned depending on mesh anme) + meta info the class needs to run.
-    if (sNameMesh not in bpy.data.objects):
-        return G.DumpStr("ERROR: gBL_GetMesh() cannot find object '" + sNameMesh + "'")
-
-    bSendSkinningInfo = (sSendSkinningInfo == "SkinInfo")
-    #bSendSkinningInfo = sNameMesh.endswith(G.C_NameSuffix_BodySkin) or sNameMesh.endswith(G.C_NameSuffix_BodySkin) or sNameMesh.endswith(G.C_NameSuffix_BodyRim) or sNameMesh.endswith(G.C_NameSuffix_BodyCol) or sNameMesh.endswith(G.C_NameSuffix_BodyColCloth) or sNameMesh.endswith(G.C_NameSuffix_ClothSkinned) or (sNameMesh.find(G.C_NameSuffix_CBBodyColSpheres) != -1)
-
-    print("=== gBL_GetMesh() sending mesh '{}' with skinning {} ===".format(sNameMesh, bSendSkinningInfo))
+def gBL_GetMesh(sNameMesh):  # Called in the constructor of Unity's important CBMesh constructor to return the mesh (possibly skinned depending on mesh anme) + meta info the class needs to run.
+    print("=== gBL_GetMesh() sending mesh '{}' ===".format(sNameMesh))
 
     oMeshO = gBlender.SelectAndActivate(sNameMesh)
     oMesh = oMeshO.data
-
     aVerts = oMesh.vertices
     nVerts = len(aVerts)
     # nEdges = len(oMesh.edges)
@@ -665,48 +660,66 @@ def gBL_GetMesh(sNameMesh, sSendSkinningInfo):  # Called in the constructor of C
                     # aSplitImgFilepath = oTextureSlot.texture.image.filepath.rsplit(sep='\\', maxsplit=1)    # Returns a two element list with last being the 'filename.ext' of the image and the first being the path to get there.  We only send Client filename.ext
         gBlender.Stream_SendStringPascal(oBA, sImgFilepathEnc)
 
-    #=== Send vertex groups with names so Client can map blender bones -> existing Client bones ===
-    oBA += struct.pack('b', bSendSkinningInfo)
-    if bSendSkinningInfo:
-        oBA += struct.pack('B', len(oMeshO.vertex_groups))
-        for oVertGrp in oMeshO.vertex_groups:
-            gBlender.Stream_SendStringPascal(oBA, oVertGrp.name)        
-     
-        #=== Iterate through each vert to send skinning data.  These should have been trimmed down to four in prepare but Client will decipher and keep the best 4 nonetheless ===
-        nErrorsBoneGroups = 0     
-        for nVert in range(nVerts):
-            aVertGroups = aVerts[nVert].groups
-            nVertGroups = len(aVertGroups)
-            oBA += struct.pack('B', nVertGroups)
-            for oVertGroup in aVertGroups:
-                nGrp = oVertGroup.group
-                if (nGrp < 0 or nGrp > 255):  ###IMPROVE ###CHECK: Why the heck do we see bones with high numbers?  Blender file corruption it seems...
-                    G.DumpStr("\n***ERROR: Bones at vert {} with vertgroup {} and weight {}\n".format(nVert, nGrp, oVertGroup.weight))
-                    oBA += struct.pack('B', 0)  ###CHECK: What to do???
-                    oBA += struct.pack('f', 0)
-                    nErrorsBoneGroups = nErrorsBoneGroups + 1
-                else:  
-                    oBA += struct.pack('B', oVertGroup.group)
-                    oBA += struct.pack('f', oVertGroup.weight)
-        oBA += struct.pack('i', nErrorsBoneGroups)
-
-    #=== Send to client the 'serialized bytearray' containing shared normals so that it can render verts split at seams seamlessly ===
-    aMapSharedNormals_Serialized = oMeshO.get(G.C_PropArray_MapSharedNormals)  ###DESIGN: Keep pushing these into object???
-    gBlender.Stream_SerializeArray(oBA, aMapSharedNormals_Serialized)
-
-    #=== Send the 'serialized bytearray' containing serialized twin vert definitions (e.g. it is a 'separated chunk' meant for softbody simulation, pass in that array that Client's CBSoft needs to attach to skinned mesh ===
-    aMapTwinVerts_Serialized = oMeshO.get(G.C_PropArray_MapTwinVerts)
-    gBlender.Stream_SerializeArray(oBA, aMapTwinVerts_Serialized)
     oBA += Stream_GetEndMagicNo()  # Append a 'magic number' to help catch deserialization errors quickly
 
     #=== Now pass processing to our C Blender code to internally copy the vert & tris of this mesh to shared memory Client can access directly ===
-    oMesh.tag = True  ###IMPORTANT: Setting 'tag' on the mesh object and causes the next update to invoke our C-code modification of Blender share/unshare mesh memory to Client
-    oMesh.use_fake_user = False  ###NOTE: We use this mesh flag in our modified Blender C code to indicate 'load verts from client'.  Make sure this is off in this context
-    oMesh.update(True, True)  ###IMPORTANT: Our modified Blender C code traps the above flags to update its shared data structures with client...        
-    
     print("--- gBL_GetMesh() sharing mesh '{}' of {} verts, {} tris and {} mats with bytearray of size {} ---".format(sNameMesh, nVerts, nTris, nMats, len(oBA)))
+    oMesh.tag = True                    ###IMPORTANT: Setting 'tag' on the mesh object and causes the next update to invoke our C-code modification of Blender share/unshare mesh memory to Client
+    oMesh.use_fake_user = False         ###NOTE: We use this mesh flag in our modified Blender C code to indicate 'load verts from client'.  Make sure this is off in this context
+    oMesh.update(True, True)            ###IMPORTANT: Our modified Blender C code traps the above flags to update its shared data structures with client...        
 
-    return oBA  # Return the beginning part of the bytearray intended for client deserialization. 
+    return oBA          # Return the bytearray intended for Unity deserialization. 
+
+
+def gBL_GetMesh_SkinnedInfo(sNameMesh):          #=== Send skinning info to Unity's CBSkin objects  (vertex groups with names so Unity can map blender bones -> existing Client bones)
+    print("=== gBL_GetMesh_SkinnedInfo() sending mesh '{}' ===".format(sNameMesh))
+
+    #=== Select mesh and obtain reference to needed mesh members ===
+    oMeshO = gBlender.SelectAndActivate(sNameMesh)
+    oMesh = oMeshO.data
+    aVerts = oMesh.vertices
+    nVerts = len(aVerts)
+    
+    #=== Construct outgoing bytearray Unity can read back ===
+    oBA = bytearray()
+    oBA += struct.pack('H', G.C_MagicNo_TranBegin)  ###LEARN: Struct.Pack args: b=char B=ubyte h=short H=ushort, i=int I=uint, q=int64, Q=uint64, f=float, d=double, s=char[] ,p=PascalString[], P=void*
+    oBA += struct.pack('B', len(oMeshO.vertex_groups))
+    for oVertGrp in oMeshO.vertex_groups:
+        gBlender.Stream_SendStringPascal(oBA, oVertGrp.name)        
+ 
+    #=== Iterate through each vert to send skinning data.  These should have been trimmed down to four in prepare but Client will decipher and keep the best 4 nonetheless ===
+    nErrorsBoneGroups = 0     
+    for nVert in range(nVerts):
+        aVertGroups = aVerts[nVert].groups
+        nVertGroups = len(aVertGroups)
+        oBA += struct.pack('B', nVertGroups)
+        for oVertGroup in aVertGroups:
+            nGrp = oVertGroup.group
+            if (nGrp < 0 or nGrp > 255):  ###IMPROVE ###CHECK: Why the heck do we see bones with high numbers?  Blender file corruption it seems...
+                G.DumpStr("\n***ERROR: Bones at vert {} with vertgroup {} and weight {}\n".format(nVert, nGrp, oVertGroup.weight))
+                oBA += struct.pack('B', 0)  ###CHECK: What to do???
+                oBA += struct.pack('f', 0)
+                nErrorsBoneGroups = nErrorsBoneGroups + 1
+            else:  
+                oBA += struct.pack('B', oVertGroup.group)
+                oBA += struct.pack('f', oVertGroup.weight)
+    oBA += struct.pack('i', nErrorsBoneGroups)
+    oBA += Stream_GetEndMagicNo()  # Append a 'magic number' to help catch deserialization errors quickly
+
+    return oBA          # Return the bytearray intended for Unity deserialization. 
+    
+
+def gBL_GetMesh_Array(sNameMesh, sNameArray):        #=== Send Unity the requested serialized bytearray of the previously-calculated custom property of mesh 'sNameMesh'
+    oBA = bytearray()
+    oBA += struct.pack('H', G.C_MagicNo_TranBegin)  ###LEARN: Struct.Pack args: b=char B=ubyte h=short H=ushort, i=int I=uint, q=int64, Q=uint64, f=float, d=double, s=char[] ,p=PascalString[], P=void*
+
+    oMeshO = gBlender.SelectAndActivate(sNameMesh)
+    aArray = oMeshO.get(sNameArray)
+    gBlender.Stream_SerializeArray(oBA, aArray)
+    oBA += Stream_GetEndMagicNo()                   # Append a 'magic number' to help catch deserialization errors quickly
+
+    return oBA
+    
 
 def gBL_GetBones(sNameMesh):  # Called by the CBodeEd (Unity's run-in-edit-mode code for CBody) to update the position of the bones for the selected Unity template.  Non destructive call that assumes existing bones are already there with much extra information such as ragdoll colliders, components on bones, etc.)
     # This call only updates bones position and creates bones if they are missing.  Rotation isn't touched and extraneous bones have to be deleted in Unity if needed.
