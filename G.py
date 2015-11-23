@@ -49,19 +49,19 @@ from mathutils import *
 
 #---------------------------------------------------------------------------    NODE NAME SUFFIX CONSTANTS        ###TODO: Fan out through the code!
 ###TODO!!!!  Update / redo these and sync with Unity!
-C_NameSuffix_BodyMorph      = "_BodyMorph"          # Suffix applied to the mesh used as the source skinned mesh of the character.  It remains untouched
-C_NameSuffix_BodySkin       = "_BodySkin"           # Suffix applied to the mesh used as the skinned body during normal gameplay
-C_NameSuffix_BodyCol        = "_BodyCol"            ###BUG! Suffix applied to the coarsely-decimated body meshes that form the basis of collider speres for the creation of capsules used by PhysX to repel cloth and fluid
-C_NameSuffix_BodyColCloth   = "_BodyColCloth"       # Suffix applied to the coarsely-decimated body meshes that form the basis of collider speres for the creation of capsules used by PhysX to repel cloth and fluid
-C_NameSuffix_BodyRim     = "_BodyRim"         ###OBS?? Suffix applied to the 'reduced skinned mesh' that only have the 'rim polygons' to service fast skinning in Client with 'BakeMesh()'
-C_NameSuffix_ClothBase      = "_ClothBase"          # Suffix applied to the mesh currently used as base for all clothing (e.g. Client-prepared copy of the bodysuit)
-C_NameSuffix_ClothCut       = "_ClothCut"           # Suffix applied to the temporary cloth mesh object currently being processed for display by the game ClothCut mode ####OBS??
-C_NameSuffix_ClothFit       = "_ClothFit"           # Suffix applied to the mesh currently used for PhysX fitting in Cloth Fit game mode (has no border)  ####OBS??
-C_NameSuffix_ClothSkinned   = "_ClothSkinned"       # Suffix applied to part of a cloth that is skinned to its owning body (e.g. is not PhysX cloth-simulated)
-C_NameSuffix_ClothSimulated = "_ClothSimulated"     # Suffix applied to part of a cloth that is PhysX simulated (e.g. is not skinned to its owning body)
-C_NameSuffix_PenisShaftCollider = "_PenisShaftCollider"# Suffix applied to capsule mesh created by Penis_CalcTipPosAndRadius() to provide visual feedback to penis designer what colliders will be created as well as providing runtime data during construction of penis colliders
-C_NameSuffix_CBBodyColSpheres = "_CBBodyColSpheres" # Suffix applied to CBBodyColSpheres mesh providing source mesh for creation of spheres & capsules used to repel clothing around breasts in PhysX.
-C_NameSuffix_Face           = "_Face"               # Suffix for character face
+C_NameSuffix_BodyMorph      = "-BodyMorph"          # Suffix applied to the mesh used as the source skinned mesh of the character.  It remains untouched
+C_NameSuffix_BodySkin       = "-BodySkin"           # Suffix applied to the mesh used as the skinned body during normal gameplay
+C_NameSuffix_BodyCol        = "-BodyCol"            ###BUG! Suffix applied to the coarsely-decimated body meshes that form the basis of collider speres for the creation of capsules used by PhysX to repel cloth and fluid
+C_NameSuffix_BodyColCloth   = "-BodyColCloth"       # Suffix applied to the coarsely-decimated body meshes that form the basis of collider speres for the creation of capsules used by PhysX to repel cloth and fluid
+C_NameSuffix_BodyRim        = "-BodyRim"         ###OBS?? Suffix applied to the 'reduced skinned mesh' that only have the 'rim polygons' to service fast skinning in Client with 'BakeMesh()'
+C_NameSuffix_ClothBase      = "-ClothBase"          # Suffix applied to the mesh currently used as base for all clothing (e.g. Client-prepared copy of the bodysuit)
+C_NameSuffix_ClothCut       = "-ClothCut"           # Suffix applied to the temporary cloth mesh object currently being processed for display by the game ClothCut mode ####OBS??
+C_NameSuffix_ClothFit       = "-ClothFit"           # Suffix applied to the mesh currently used for PhysX fitting in Cloth Fit game mode (has no border)  ####OBS??
+C_NameSuffix_ClothSkinned   = "-ClothSkinned"       # Suffix applied to part of a cloth that is skinned to its owning body (e.g. is not PhysX cloth-simulated)
+C_NameSuffix_ClothSimulated = "-ClothSimulated"     # Suffix applied to part of a cloth that is PhysX simulated (e.g. is not skinned to its owning body)
+C_NameSuffix_PenisShaftCollider = "-PenisShaftCollider"# Suffix applied to capsule mesh created by Penis_CalcTipPosAndRadius() to provide visual feedback to penis designer what colliders will be created as well as providing runtime data during construction of penis colliders
+C_NameSuffix_CBBodyColSpheres = "-CBBodyColSpheres" # Suffix applied to CBBodyColSpheres mesh providing source mesh for creation of spheres & capsules used to repel clothing around breasts in PhysX.
+C_NameSuffix_Face           = "-Face"               # Suffix for character face
 C_NameSuffix_BreastCol      = "-BreastCol"        # Suffix applied to the breast collider mesh
 
 #---------------------------------------------------------------------------    NODE NAME PREFIX CONSTANTS
@@ -99,9 +99,10 @@ C_PropArray_MapSharedNormals    = "aMapSharedNormals"       # Property array sto
 C_PropArray_ClothSkinToSim      = "aMapClothSkinToSim"      # Property array that maps what verts in the skinned-part of a cloth maps to what (identically positioned) vert of the simulated-part of the same cloth.
 
 #---------------------------------------------------------------------------    CUSTOM DATA LAYERS
-C_DataLayer_TwinVert        = "DataLayer_TwinVert"          # Temporary data layer to store twin-vert ID as mesh is split into parts (Used to reconnect verts at the same location from different meshes)
+C_DataLayer_TwinVert        = "DataLayer_TwinVert"          # Temporary data layer to store twin-vert ID as mesh is split into parts (Used to reconnect verts at the same location from different meshes)  ####CHECK: Names can't be too long to be unique???
 C_DataLayer_SharedNormals   = "DataLayer_SharedNormals"     # Temporary data layer used while preparing a mesh for Client to construct what just-separated verts should share the same normal (because of Client's need to have one vert per UV)
 C_DataLayer_OrigVertIDs     = "DataLayer_OrigVertIDs"       # Data layer storing the 'original vert IDs' of a mesh.  Used to enable vert-to-vert traversion when a mesh has its vert collection modified
+C_DataLayer_TetraVerts      = "DataLayer_TetraVerts"        # Data layer storing the mapping between tetra verts close to their rim and original tetra verts
 
 #---------------------------------------------------------------------------    'MAGIC NUMBERS': Arbitrary constants that have special meanings in arrays
 C_MagicNo_TranBegin = 0x0B16  # Magic numbers stored as unsigned shorts at the head & tail of every serialization to help sanity checks...         (MUST MATCH Client SIDE!)

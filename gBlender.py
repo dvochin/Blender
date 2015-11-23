@@ -349,10 +349,10 @@ def gBL_Util_HideGameMeshes():
 	oNodeFolderGame = bpy.data.objects[G.C_NodeFolder_Game]
 	for oNodeO in oNodeFolderGame.children:
 		oNodeO.hide = oNodeO.hide_render = True
-	bpy.data.objects["WomanA" + G.C_NameSuffix_Face].hide = True			###HACK
-	bpy.data.objects["ManA" + G.C_NameSuffix_Face].hide = True
+	bpy.data.objects["WomanA" + G.C_NameSuffix_Face].hide = False			###HACK
+	###BROKEN bpy.data.objects["ManA" + G.C_NameSuffix_Face].hide = False
 	bpy.data.objects["WomanA" + G.C_NameSuffix_BodyCol].hide = True
-	bpy.data.objects["ManA" + G.C_NameSuffix_BodyCol].hide = True
+	###BROKEN bpy.data.objects["ManA" + G.C_NameSuffix_BodyCol].hide = True
 					
 def Util_RemoveProperty(o, sNameProp):		# Safely removes a property from an object.
     if sNameProp in o:

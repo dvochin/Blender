@@ -45,7 +45,7 @@ import G
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    BODY CREATION
 #---------------------------------------------------------------------------    
-
+####OBS
 def gBL_Body_CreateForMorph(sNameSrcBody, sNameGameBody, sNameGameBodyMorph):     # Ultra-simple vesion of CBody's call to obtain body for morphing
     #===== Begin the complex task of assembling the requested body by first creating a simple copy of source body for morphing =====    
 
@@ -102,7 +102,7 @@ def gBL_Body_Create(sNameGameBody, sNameSrcBody, sSex, sNameSrcGenitals, aCloths
     oMeshGenitalsO = gBlender.DuplicateAsSingleton(sNameSrcGenitals, "TEMP_Genitals", G.C_NodeFolder_Game, True)  ###TEMP!! Commit to file-based import soon!
 #     bpy.ops.import_scene.obj(filepath="D:/Src/E9/Unity/Assets/Resources/Textures/Woman/A/Vagina/Erotic9/A/Mesh.obj")        ###HACK!!!: Path & construction of full filename!
 #     oMeshGenitalsO = bpy.context.selected_objects[0]        ###LEARN: object importer will deactivate everything and select only the newly imported object
-    bpy.context.scene.objects.active = oMeshGenitalsO
+    ###CHECK: Not needed? bpy.context.scene.objects.active = oMeshGenitalsO
     bpy.ops.object.shade_smooth()  ###IMPROVE: Fix the diffuse_intensity to 100 and the specular_intensity to 0 so in Blender the genital texture blends in with all our other textures at these settings
 
     #=== Join the genitals  with the output main body mesh and weld vertices together to form a truly contiguous mesh that will be lated separated by later segments of code into various 'detachable parts' ===           
@@ -568,6 +568,9 @@ def Client_ConvertMesh(oMeshO, bSplitVertsAtUvSeams):  # Convert a Blender mesh 
     bpy.ops.mesh.select_all(action='DESELECT')
     bm = bmesh.from_edit_mesh(oMeshO.data)          
 
+    if (len(oMeshO.data.edges) == 0):                           # Prevent split of UV if no edges.  (Prevents an error in seams_from_islands() for vert-only meshes (e.g. softbody pinning temp meshes)
+        bSplitVertsAtUvSeams = False;
+
     #=== Iterate through all edges to select only the non-sharp seams (The sharp edges have been marked as sharp deliberately by border creation code).  We need to split these edges so Client-bound mesh can meet its (very inconvenient) one-normal-per-vertex requirement ===
     if (bSplitVertsAtUvSeams == True):
         bpy.ops.uv.seams_from_islands()  # Update the edge flags so all seams are flagged
@@ -586,7 +589,7 @@ def Client_ConvertMesh(oMeshO, bSplitVertsAtUvSeams):  # Convert a Blender mesh 
     ###NOTE: An common/important example is Blender taking the morphed body that was client-ready, and appends clothing & separates parts to have result be client-ready again.   
     if G.C_DataLayer_SharedNormals in bm.verts.layers.int:
         oLayVertSharedNormalID = bm.verts.layers.int[G.C_DataLayer_SharedNormals]
-        nNextSharedNormalID = oMeshO["nNextSharedNormalID"]  # If mesh had existing data layer it also had 'nNextSharedNormalID' stored so we know what next unique ID to assign
+        ###BROKEN nNextSharedNormalID = oMeshO["nNextSharedNormalID"]  # If mesh had existing data layer it also had 'nNextSharedNormalID' stored so we know what next unique ID to assign
     else:
         oLayVertSharedNormalID = bm.verts.layers.int.new(G.C_DataLayer_SharedNormals)
         nNextSharedNormalID = 1
@@ -622,7 +625,7 @@ def Client_ConvertMesh(oMeshO, bSplitVertsAtUvSeams):  # Convert a Blender mesh 
     oMeshO[G.C_PropArray_MapSharedNormals] = aMapSharedNormals.tobytes()  # Store this 'ready-to-serialize' array that is sent with all meshes sent to Client so it can fix normals for seamless display 
     bpy.ops.mesh.select_all(action='DESELECT')
     bpy.ops.object.mode_set(mode='OBJECT')
-    oMeshO["nNextSharedNormalID"] = nNextSharedNormalID  # Store the last ID used in case this function runs on this mesh again.
+    ###BROKEN oMeshO["nNextSharedNormalID"] = nNextSharedNormalID  # Store the last ID used in case this function runs on this mesh again.
 
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    SUPER PUBLIC -> Global top-level functions exported to Client
@@ -632,6 +635,9 @@ def gBL_GetMesh(sNameMesh):  # Called in the constructor of Unity's important CB
     print("=== gBL_GetMesh() sending mesh '{}' ===".format(sNameMesh))
 
     oMeshO = gBlender.SelectAndActivate(sNameMesh)
+    gBlender.Cleanup_VertGrp_RemoveNonBones(oMeshO)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
+    Client_ConvertMesh(oMeshO, True)  # Client requires a tri-based mesh and verts that only have one UV. (e.g. no polys accross different seams/materials sharing the same vert)
+
     oMesh = oMeshO.data
     aVerts = oMesh.vertices
     nVerts = len(aVerts)
@@ -754,7 +760,7 @@ def gBL_ReleaseMesh(sNameMesh):  # Release the python-side and blender-c-side st
         oMeshO.data.use_fake_user = False  ###NOTE: We use this mesh flag in our modified Blender C code to indicate 'load verts from client'.  Make sure this is off in this context
         oMeshO.data.update(True, True)  ###IMPORTANT: Causes our related Blender C code to kick in by reading the name of our mesh and acting upon the shared and unshared strings to share/unshare mesh memory to Client
         return G.DumpStr("OK: gBL_ReleaseMesh() on mesh '{}' succeeded.".format(sNameMesh))
-    #else:
+    else:
         return G.DumpStr("ERROR: gBL_ReleaseMesh() could not find '{}' in scene!".format(sNameMesh))
 
 
@@ -772,9 +778,9 @@ def gBL_UpdateBlenderVerts(sNameMesh):  # Update the Blender verts from the Clie
     if (sNameMesh not in bpy.data.objects):
         return G.DumpStr("ERROR: gBL_UpdateBlenderVerts() cannot find object '" + sNameMesh + "'")
     oMeshO = gBlender.SelectAndActivate(sNameMesh)
-    oMeshO.data.use_fake_user = True  ###IMPORTANT: We turn on this flag to indicate to our Blender C code that we LOAD the verts from client (instead of sending arrays to client)  NOTE: We use this mesh flag in our modified Blender C code to indicate 'load verts from client'.
-    oMeshO.data.update(True, True)  ###IMPORTANT: Our modified Blender C code traps the above flags to update its shared data structures with client...        
-    oMeshO.data.use_fake_user = False  # Turn off the 'update Blender verts from Client' flag right away as it's created only for this call.
+    oMeshO.data.use_fake_user = True        ###IMPORTANT: We turn on this flag to indicate to our Blender C code that we LOAD the verts from client (instead of sending arrays to client)  NOTE: We use this mesh flag in our modified Blender C code to indicate 'load verts from client'.
+    oMeshO.data.update(True, True)          ###IMPORTANT: Our modified Blender C code traps the above flags to update its shared data structures with client...        
+    oMeshO.data.use_fake_user = False       # Turn off the 'update Blender verts from Client' flag right away as it's created only for this call.
     return G.DumpStr("OK: gBL_UpdateBlenderVerts() has updated Blender mesh verts on mesh '{}'".format(sNameMesh))
 
 
