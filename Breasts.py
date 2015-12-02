@@ -23,11 +23,11 @@ C_BreastMorphPivotPt = "BreastMorphPivotPt"                                   # 
 
 def Breasts_CreateCutoffBreastFromBody(sNameBodySrc):      # Separates the left-breast from source mesh and create the important 'blend group' to protect breast border during morph operations as well as the mapping between breast verts to body verts for left&right breasts
     ####IMPROVE: One of the 'prepare functions' that only needs to run when source body changes
-    oMeshBodyO = gBlender.SelectAndActivate(sNameBodySrc)
-    sNameBreast = oMeshBodyO.name + "-Breast"
+    sNameBreast = sNameBodySrc + "-Breast"
     gBlender.DeleteObject(sNameBreast)
-    gBlender.Cleanup_RemoveCustomDataLayers(oMeshBodyO.name)           # Remove previous custom data layers just to make sure we refer to the right one  ####CHECK!  Can delete something we need???
+    #gBlender.Cleanup_RemoveCustomDataLayers(oMeshBodyO.name)           # Remove previous custom data layers just to make sure we refer to the right one  ####CHECK!  Can delete something we need???
     
+    oMeshBodyO = gBlender.SelectAndActivate(sNameBodySrc)
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='DESELECT')
     bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
@@ -201,7 +201,7 @@ def Breasts_CreateCutoffBreastFromBody(sNameBodySrc):      # Separates the left-
 
 
 
-def Breast_ApplyOntoSourceBody(oMeshBodyO, sNameGameBody):     # Iterate through all verts of the cutoff breast, find the left and right vertex into its source body and apply the current form of the breast onto the original body mesh (for symmetrical application)
+def Breast_ApplyOntoSourceBody(nBodyID, oMeshBodyO, sNameGameBody): ####DEV: Revisit args!    # Iterate through all verts of the cutoff breast, find the left and right vertex into its source body and apply the current form of the breast onto the original body mesh (for symmetrical application)
     aVertsBody = oMeshBodyO.data.vertices
     sNameBreast = sNameGameBody + "-Breast"
     oMeshBreastO = gBlender.SelectAndActivate(sNameBreast)
@@ -219,17 +219,15 @@ def Breast_ApplyOntoSourceBody(oMeshBodyO, sNameGameBody):     # Iterate through
     ###bmBreast.verts.index_update()
 
     #=== Iterate through the breast verts, extract the source verts from body from custom data layer, and set the corresponding verts in body ===
-    oBody = CBody.CBody._aBodies[0]
+    oBody = CBody.CBody._aBodies[nBodyID]
     for oVertBreast in bmBreast.verts:
         nVertsEncoded = oVertBreast[oLayBodyVerts]          ####DEV ####HACK!!!
-        nVertBodyBreastL = oBody.aMapVertsOrigToAssembled[(nVertsEncoded & 65535)]  
-        nVertBodyBreastR = oBody.aMapVertsOrigToAssembled[nVertsEncoded >> 16]
-        #vecVert = oVertBreast.co.copy()
+        nVertBodyBreastL = oBody.aMapVertsOrigToMorph[(nVertsEncoded & 65535)]          # Breast has been defined from original body.  Map our verts to the requested morphing body  
+        nVertBodyBreastR = oBody.aMapVertsOrigToMorph[nVertsEncoded >> 16]
         vecVert = aVertsBakedKeys[oVertBreast.index].co.copy()
         aVertsBody[nVertBodyBreastL].co = vecVert
         vecVert.x = -vecVert.x
         aVertsBody[nVertBodyBreastR].co = vecVert
-    #print("Breast_ApplyOntoSourceBody() done")
     bpy.ops.object.mode_set(mode='OBJECT')
     
     #=== Delete the 'baked' shape key we created above ===
@@ -241,7 +239,7 @@ def Breast_ApplyOntoSourceBody(oMeshBodyO, sNameGameBody):     # Iterate through
 
 
 
-def Breasts_ApplyOp(sNameGameBody, sNameSrcBody, sOpMode, sOpArea, sOpPivot, sOpRange, vecOpValue, vecOpAxis):
+def Breasts_ApplyOp(nBodyID, sNameGameBody, sNameSrcBody, sOpMode, sOpArea, sOpPivot, sOpRange, vecOpValue, vecOpAxis):
     ###DESIGN: Design decisions needed on what to do in Client and what in Blender as considerable shift is possible...
     
     sOpName = sOpMode + "_" + sOpArea + "_" + sOpPivot + "_" + sOpRange     ####PROBLEM!!!!  Not specialized enough for all cases (add extra params)
@@ -311,7 +309,7 @@ def Breasts_ApplyOp(sNameGameBody, sNameSrcBody, sOpMode, sOpArea, sOpPivot, sOp
 
     sResult = "OK: Breasts_ApplyOp() applying op '{}' on area '{}' with pivot '{}' and range '{}' with {}".format(sOpMode, sOpArea, sOpPivot, sOpRange, vecOpValue)
 
-    Breast_ApplyOntoSourceBody(bpy.data.objects[sNameGameBody], sNameSrcBody)        # Apply the breasts onto the current body morph character... ####IMPROVE? Pass in name in arg?
+    Breast_ApplyOntoSourceBody(nBodyID, bpy.data.objects[sNameGameBody], sNameSrcBody)        # Apply the breasts onto the current body morph character... ####IMPROVE? Pass in name in arg?
     
     print(sResult)
 

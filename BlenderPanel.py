@@ -214,11 +214,11 @@ class gBL_temp2(bpy.types.Operator):
         #Client.IsolateHead()
         #print(Client.gBL_GetBones('WomanA'))
         #Client.Client_ConvertMesh(bpy.data.objects["BodyA_BodyCol"], True)
-        #Breasts.Breasts_CreateCutoffBreastFromBody("WomanA")
-        #CBBodyCol.PairMesh_DoPairing("BodyA-BreastCol-ToBody", "BodyA_BodyMorph", 0.000001)
+        #CBBodyCol.PairMesh_DoPairing("BodyA-BreastCol-ToBody", "BodyA_Morph", 0.000001)
         #CBodyColBreasts_GetColliderInfo("")
         ##CBody.CBody._aBodies[0].SeparateSoftBodyPart("Breasts")
-        CBody.CBody._aBodies[0].CreateTempMesh(100)
+        #CBody.CBody._aBodies[0].CreateTempMesh(100)
+        Breasts.Breasts_CreateCutoffBreastFromBody("WomanA")
         return {"FINISHED"}
 
 class gBL_temp3(bpy.types.Operator):
@@ -235,9 +235,9 @@ class gBL_temp3(bpy.types.Operator):
         #CBBodyCol.CBSoftBreasts_GetColliderSourceMeshInfo("BodyA")
         #CBBodyCol.CBBodyCol_Generate("ManA", 1000)
         ##Client.gBL_Cloth_SplitIntoSkinnedAndSimulated("BodySuit-Top_ClothSimulated", "BodySuit-Top", "WomanA", "_ClothSkinnedArea_Top")
-        ##Client.Client_ConvertMesh(gBlender.SelectAndActivate("WomanA_BodyMorph"), True)
+        ##Client.Client_ConvertMesh(gBlender.SelectAndActivate("WomanA_Morph"), True)
         #CBBodyCol.PairMesh_DoPairing("BodyA-BreastCol-ToBreasts", "BodyA_Detach_Breasts", 0.000001)
-        Breasts.Breasts_ApplyOp('BodyA-Assembled', 'WomanA', 'RESIZE', 'Nipple', 'Center', 'Wide', (1.6,1.6,1.6,0), None)
+        Breasts.Breasts_ApplyOp(0, 'BodyA-Morph', 'WomanA', 'RESIZE', 'Nipple', 'Center', 'Wide', (1.6,1.6,1.6,0), None)
         #Breasts.Breasts_ApplyOp('WomanA', 'WomanA', 'RESIZE', 'Nipple', 'Center', 'Wide', (1.6,1.6,1.6,0), None)
         return {"FINISHED"}
 
@@ -257,17 +257,17 @@ class gBL_temp5(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        #CBBodyCol.PairMesh_Apply("BodyA-BreastCol-ToBody", "BodyA_BodyMorph")
+        #CBBodyCol.PairMesh_Apply("BodyA-BreastCol-ToBody", "BodyA_Morph")
         Client.gBL_Body_Create("BodyA", "WomanA", "Woman", "Vagina-Erotic9-A", [])
         return {"FINISHED"}
 
 class gBL_temp6(bpy.types.Operator):
     bl_idname = "gbl.temp6"
-    bl_label = "6:BodyMorph"
+    bl_label = "6:Morph"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        Client.gBL_Body_CreateForMorph("WomanA", "BodyA", "BodyA_BodyMorph")
+        Client.gBL_Body_CreateForMorph("WomanA", "BodyA", "BodyA_Morph")
         return {"FINISHED"}
 
 
@@ -279,7 +279,7 @@ class gBL_apply_morphs(bpy.types.Operator):
 
     def call(self, oOp, nVal):
         nVal = nVal / 100
-        Breasts.Breasts_ApplyOp('BodyA_BodyMorph', 'WomanA', oOp.sOp, oOp.sVertGrp, oOp.sFrom, oOp.sInfluence, (nVal*oOp.nRatioX, nVal*oOp.nRatioY, nVal*oOp.nRatioZ, 0), None)
+        Breasts.Breasts_ApplyOp('BodyA_Morph', 'WomanA', oOp.sOp, oOp.sVertGrp, oOp.sFrom, oOp.sInfluence, (nVal*oOp.nRatioX, nVal*oOp.nRatioY, nVal*oOp.nRatioZ, 0), None)
     
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
@@ -345,7 +345,7 @@ bpy.utils.register_module(__name__)
 #     bl_options = {'REGISTER', 'UNDO'}
 #     def invoke(self, context, event):
 #         self.report({"INFO"}, "GBOP: " + self.bl_label)
-#         ###oMeshBodyO = gBlender.SelectAndActivate(G.C_NameBaseCharacter + G.C_NameSuffix_BodyMorph)        ###IMPROVE?
+#         ###oMeshBodyO = gBlender.SelectAndActivate(G.C_NameBaseCharacter + G.C_NameSuffix_Morph)        ###IMPROVE?
 #         ###Breasts.Breasts_CreateCutoffBreastFromBody(oMeshBodyO)
 #         return {"FINISHED"}
 # 
@@ -366,7 +366,7 @@ bpy.utils.register_module(__name__)
 #     bl_options = {'REGISTER', 'UNDO'}
 #     def invoke(self, context, event):
 #         self.report({"INFO"}, "GBOP: " + self.bl_label)
-#         ###oMeshBodyO = bpy.data.objects[G.C_NameBaseCharacter + G.C_NameSuffix_BodyMorph]
+#         ###oMeshBodyO = bpy.data.objects[G.C_NameBaseCharacter + G.C_NameSuffix_Morph]
 #         ###Breasts.Breast_ApplyOntoSourceBody(oMeshBodyO)
 #         return {"FINISHED"}
 #===============================================================================

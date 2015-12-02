@@ -49,7 +49,7 @@ from mathutils import *
 
 #---------------------------------------------------------------------------    NODE NAME SUFFIX CONSTANTS        ###TODO: Fan out through the code!
 ###TODO!!!!  Update / redo these and sync with Unity!
-C_NameSuffix_BodyMorph      = "-BodyMorph"          # Suffix applied to the mesh used as the source skinned mesh of the character.  It remains untouched
+C_NameSuffix_Morph      = "-Morph"          # Suffix applied to the mesh used as the source skinned mesh of the character.  It remains untouched
 C_NameSuffix_BodySkin       = "-BodySkin"           # Suffix applied to the mesh used as the skinned body during normal gameplay
 C_NameSuffix_BodyCol        = "-BodyCol"            ###BUG! Suffix applied to the coarsely-decimated body meshes that form the basis of collider speres for the creation of capsules used by PhysX to repel cloth and fluid
 C_NameSuffix_BodyColCloth   = "-BodyColCloth"       # Suffix applied to the coarsely-decimated body meshes that form the basis of collider speres for the creation of capsules used by PhysX to repel cloth and fluid
@@ -99,6 +99,7 @@ C_PropArray_MapSharedNormals    = "aMapSharedNormals"       # Property array sto
 C_PropArray_ClothSkinToSim      = "aMapClothSkinToSim"      # Property array that maps what verts in the skinned-part of a cloth maps to what (identically positioned) vert of the simulated-part of the same cloth.
 
 #---------------------------------------------------------------------------    CUSTOM DATA LAYERS
+C_DataLayer_VertsOrig       = "DataLayer_VertsOrig"         # Original vertex indices in untouched original mesh.
 C_DataLayer_TwinVert        = "DataLayer_TwinVert"          # Temporary data layer to store twin-vert ID as mesh is split into parts (Used to reconnect verts at the same location from different meshes)  ####CHECK: Names can't be too long to be unique???
 C_DataLayer_SharedNormals   = "DataLayer_SharedNormals"     # Temporary data layer used while preparing a mesh for Client to construct what just-separated verts should share the same normal (because of Client's need to have one vert per UV)
 C_DataLayer_OrigVertIDs     = "DataLayer_OrigVertIDs"       # Data layer storing the 'original vert IDs' of a mesh.  Used to enable vert-to-vert traversion when a mesh has its vert collection modified
@@ -123,6 +124,7 @@ C_VectorUp      = Vector((0,0,1))                    # The 'up vector' in blende
 C_VectorForward = Vector((0,-1,0))                    # The 'up vector' in blender is Z+.  This is used to obtain quaternions to rotate this default vector to another vector (e.g. the normal of a cloth polygon)
 C_SymmetrySuffixNames = ['L', 'R']               # Suffix given to symmetrical cuts like arms & legs.  Given to vertex groups and node names...  (Left is 'master' and right the 'slave')  
 
+C_OffsetVertIDs = 1000000                       # Offset applied to all vert IDs pushed into mesh.  Used to separate 'real IDs' from new verts which would have zero ID
 
 #---------------------------------------------------------------------------    COORDINATE CONVERSION    
 #---------------------------------------------------------------------------    Converts from Blender 3D space to Client 3D space.  (Blender is right-handed like OpenGL while most Clients (like Unity and DirectX) are left-handed)

@@ -1,33 +1,29 @@
 ###RESUME:
-# Now fucking pos & normal working!!  Trim out the map creation in separation... refactor the map creation in rimming  Cleanup Unity!
-# Work on the rim normals and rim pos
+## Now have half-baked init destroy with some bug on 2nd init... still temp mesh a problem!
+# Now  implement system for all detached parts to update their verts when morph body changed!  (Same with body)
+# Create different hotspot for softbodies based on type and game mode (e.g. morph ops there??)
+
+### Razor line between breasts and body now??? WTF went wrong??
+
+# Can now apply breast morphs to morph body...
+    # Must now have mecanism to update all body parts (& collider!) once morph body changed
+    # Blender pushing into Unity or Unity pulling from Blender?
+    # Central mechanism needed once above decision made to 'trickle down'
+        # Will have to revisit with colliders!
+            # Collider have same ID even with different verts? (e.g. not one-to-one during remap??)
+
+# Implement character editing... with all the normal entities in place?  (softbody, actors, etc) but just 'paused'
 # Mesh temp still there!
-# Start cleaning up!!!
+# Refactor 'chunk'?
+# Broke breast collider for cloth. fix it!
+# Broke cloth body collider?
 
-### Had to disabled stupid normal counter in get mesh... fucking thing obsolete??
-# Can now serialzie map!  Change Unity class to the one that bakes and pin tetraverts!
-# clean up!!!!!!!
-
-###DEVNOW: CAN FINALLY FUCKING JOIN AND IDENTIFY NEIGHBOR VERTS!  Now delete, map to orig verts, make sure layers ok (no conflict with body layer), the rest of the shit!
-### One breast or both??
-### Detach twin verts for normals only??
-### Store twin verts... rename perhaps??
-### Problem with UV maps?  Can remove one?  What about penis / vagina?
-
-#### Can now get skinned breast back to Unity again... Feed tetra verts back to Blender, skin and send new matching skinned mesh (new class!!)
-
-# Feed breasts back to Unity
-# Fix softbody serialize
-# Feed to PhysX and obtain Tetra mesh
-# Feed tetramesh to Blender
-# Isolate pinned tetraverts (close to body and ribcage)
-# Skin pinned tetraverts (one mesh per softbody (no combination for simplicity)
-# Send mesh to Unity with arrays that connect pinned tetraverts to softbody tetraverts
-# Ger rid of old pin implementation!
-     
+# One breast or both??
+# Problem with UV maps?  Can remove one?  What about penis / vagina?
 
 
 #=== Problems ===
+# Temp mesh and deletion!
 # Large vagina cutout means we can't morph body!
 #   Find a way to subdivide vanilla mesh?
 #   Or... Re-import from DAZ a body with a top-quality vagina mesh?
@@ -39,12 +35,6 @@
 # Comments for functions using standard """
 # user assert!
 
-#=== Strategy ===
-# Revisit how meshes and data arrays are sent.  Unity makes call to go to a game mode and pulls what it needs from various classes
-# Unify getting arrays from meshes
-# Trim out clothing merged with softbody and vagina soft body
-# BACKUP THE FUCKING CODE
-# Have Unity make calls like (get softbody parts?) and it branches out?
 
 import bpy
 import sys
@@ -123,16 +113,23 @@ class CBody:
         bpy.ops.mesh.remove_doubles(threshold=0.000001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###LEARN: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
         
         #=== Prepare a ready-for-morphing body for Unity.  Also create the 'body' mesh that will have parts detached from it where softbodies are ===   
-        self.oMeshMorph = gBlender.DuplicateAsSingleton(self.oMeshAssembled.name, self.sMeshPrefix + 'BodyMorph',   G.C_NodeFolder_Game, True)
-        self.oMeshBody  = gBlender.DuplicateAsSingleton(self.oMeshAssembled.name, self.sMeshPrefix + 'Body',        G.C_NodeFolder_Game, True)
+        self.oMeshMorph = gBlender.DuplicateAsSingleton(self.oMeshAssembled.name, self.sMeshPrefix + 'Morph',   G.C_NodeFolder_Game, True)
+        self.oMeshBody  = gBlender.DuplicateAsSingleton(self.oMeshAssembled.name, self.sMeshPrefix + 'Body',    G.C_NodeFolder_Game, True)
 
+        #=== Create map of orig verts to morph verts ===  (Enables some morphs such as Breast morphs to be applied to morphing mesh)
+        gBlender.SelectAndActivate(self.oMeshMorph.name)
+        bpy.ops.object.mode_set(mode='EDIT')
+        bm = bmesh.from_edit_mesh(self.oMeshMorph.data)
+        oLayVertsOrig = bm.verts.layers.int[G.C_DataLayer_VertsOrig]
+        for oVert in bm.verts:
+            nVertOrig = oVert[oLayVertsOrig] - G.C_OffsetVertIDs        # Remove the offset pushed in during creation
+            self.aMapVertsOrigToMorph[nVertOrig] = oVert.index       
+        bpy.ops.object.mode_set(mode='OBJECT')
 
 
     
-    def SeparateSoftBodyPart(self, sNameChunk):
-        print("CBody.SeparateSoftBodyPart()  chunk = " + sNameChunk)
-     
-        nBodyMats = len(self.oMeshBody.data.materials)  ####OBS??? ###DEV Before we join additional clothing meshes with to body remember the number of materials so we can easily spot the vertices of clothing in big loop below
+    def SoftBody_SeparateFromBody(self, sNameChunk):
+        print("CBody.SoftBody_SeparateFromBody()  chunk = " + sNameChunk)
      
         #=== Prepare the composite mesh for 'twin vert' mapping: The map that tells Client what vert from this detached chunk match what vert from the main skinned body ===
         sNamePartChunk = self.sMeshPrefix + "Detach-" + sNameChunk         # Create name for to-be-created detach mesh and open the body mesh
@@ -181,7 +178,7 @@ class CBody:
      
         #=== If chunk mesh has no geometry then we don't generate it as client has nothing to render / process for this chunk ===
         if bChunkMeshHasGeometry == False:      ####OBS?
-            raise Exception("###ERROR: SeparateSoftBodyPart() skips creation of chunk mesh '{}' from body '{}' because it has no geometry <<<".format(sNameChunk, self.sMeshPrefix))
+            raise Exception("###ERROR: SoftBody_SeparateFromBody() skips creation of chunk mesh '{}' from body '{}' because it has no geometry <<<".format(sNameChunk, self.sMeshPrefix))
      
         #=== Split and separate the chunk from the composite mesh ===
         bpy.ops.mesh.split()        # 'Split' the selected polygons so both 'sides' have verts at the border and form two submesh
@@ -196,22 +193,10 @@ class CBody:
         oMeshChunkO.name = oMeshChunkO.data.name = sNamePartChunk
         self.aMeshSoftBodies[sNameChunk] = oMeshChunkO          # Store the requested chunk in our collection of softbody meshes so client can easily access 
         
-        #=== Iterate through the verts of the newly separated chunk to access the freshly-created custom data layer to obtain ID information that enables us to match the chunk mesh vertices to the main skinned mesh for pinning ===
+        #=== Cap the body part that is part of the chunk (edge verts from only that body part are now selected)  If this chunk has no body verts (e.g. PenisClothing) then no capping will occur) ===
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
         bmPartChunk = bmesh.from_edit_mesh(oMeshChunkO.data)
-        oLayVertTwinID = bmPartChunk.verts.layers.int[G.C_DataLayer_TwinVert]
-        aMapTwinId2VertChunk = {}
-        for oVert in bmPartChunk.verts:  ###LEARN: Interestingly, both the set and retrieve list their verts in the same order... with different topology!
-            nTwinID = oVert[oLayVertTwinID]
-            if nTwinID != 0:
-                aMapTwinId2VertChunk[nTwinID] = oVert.index
-                if oVert.link_faces[0].material_index < nBodyMats:  # For capping below, select only the twin verts that are on one of the body's original material
-                    oVert.select_set(True)
-                #print("TwinVert {:3d} = PartVert {:5d} mat {:} at {:}".format(nTwinID, oVert.index, oVert.link_faces[0].material_index, oVert.co))
-        ###DEV aaMapTwinId2VertChunk[sNameChunk] = aMapTwinId2VertChunk  # Store our result in top-level map so loop near end of this function can finish the work once whole rim has been created.
-         
-        #=== Cap the body part that is part of the chunk (edge verts from only that body part are now selected)  If this chunk has no body verts (e.g. PenisClothing) then no capping will occur) ===
         bpy.ops.mesh.select_mode(use_extend=True, use_expand=False, type='EDGE')  ###BUG?? ###CHECK: Possible that edge collapse could fail depending on View3D mode...
         bpy.ops.mesh.extrude_edges_indiv()      ###LEARN: This is the function we need to really extrude!
         bpy.ops.mesh.edge_collapse()            ###DESIGN ###IMPROVE Do we always cap whatever body part is ripped out?
@@ -252,49 +237,20 @@ class CBody:
         oMeshChunkRimO.name = oMeshChunkRimO.data.name = sNamePartChunkRim  ###NOTE: Do it twice to ensure name really sticks  ###WEAK: Wish this was easier to do!
         oMeshChunkRimO.name = oMeshChunkRimO.data.name = sNamePartChunkRim
         self.aMeshSoftBodiesRim[sNameChunk] = oMeshChunkRimO         # Store the requested chunk rim in our collection of softbody rim meshes so client can easily access 
-        ####DEV??? del(oMeshChunkRimO[G.C_PropArray_MapSharedNormals])  # Source skinned body has the shared normal array which is not appropriate for rim.  (Serialization would choke)
     
         #=== Cleanup the rim mesh by removing all materials ===
         while len(oMeshChunkRimO.material_slots) > 0:  ###IMPROVE: Find a way to remove doubles while preventing key-not-found errors in twin hunt below??
             bpy.ops.object.material_slot_remove()
         bpy.ops.object.material_slot_add()  # Add a single default material (captures all the polygons of rim) so we can properly send the mesh over (crashes if zero material)
-        
-        #=== Iterate over the rim vertices, and find the rim vert for every 'twin verts' so next loop can map chunk part verts to rim verts for pinning === 
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.select_all(action='DESELECT')
-        bmSkinColSrc = bmesh.from_edit_mesh(oMeshChunkRimO.data)
-        oLayVertTwinID = bmSkinColSrc.verts.layers.int[G.C_DataLayer_TwinVert]
-        aMapTwinId2VertRim = {}
-        for oVert in bmSkinColSrc.verts:
-            nTwinID = oVert[oLayVertTwinID]
-            if nTwinID != 0:
-                aMapTwinId2VertRim[nTwinID] = oVert.index
-                # print("TwinVert {:3d} = RimVert {:5d} at {:}".format(nTwinID, oVert.index, oVert.co))
         bpy.ops.object.mode_set(mode='OBJECT')
         gBlender.Cleanup_VertGrp_RemoveNonBones(oMeshChunkRimO)  # Remove the extra vertex groups that are not skinning related
-
-
-        #===== Now that rim is fully formed and the aMapTwinId2VertRim fully populated for to find real rim verts for any TwinID we can finally construct the aMapTwinVerts flat array for each detached part.  (each detached part (no matter if its softbody or cloth simulated) will thereby be able to fix its edge verts to the rim correctly during gameplay) (With both the main skinned mesh and the chunk part with the same set of 'twin ID' in their mesh vertices, we can finally match vertex ID of part to vertex ID of skinned main mesh)
-        ###NOTE: This flattened is sent with 1) vertex ID on the separated chunk part, 2) Vertex ID of the 'twin vert' at the same location on the main skinned mesh and 3) an adjacent vert on the skinned mesh to #2 for normal Z-orientation
-        aMapTwinVerts = array.array('H')  # The final flattened map of what verts from the 'detached chunk part' maps to what vert in the 'skinned main body'  Client needs this to pin the edges of the softbody-simulated part to the main body skinned mesh
-        print("--- Mapping twinned verts on mesh chunk " + sNameChunk)  # + str(aMapTwinId2VertChunk))
-        for nTwinID in aMapTwinId2VertChunk:
-            nVertTwinChunk = aMapTwinId2VertChunk[nTwinID]
-            if nTwinID in aMapTwinId2VertRim:
-                nVertTwinRim = aMapTwinId2VertRim[nTwinID]
-                aMapTwinVerts.append(nVertTwinChunk)
-                aMapTwinVerts.append(nVertTwinRim)
-                print("TwinVert {:3d} = PartVert {:5d} = RimVert {:5d}".format(nTwinID, nVertTwinChunk, nVertTwinRim))
-            else:
-                G.DumpStr("###ERROR in CBody.SeparateSoftBodyPart(): Mapping of twin verts from TwinID to RimVert Could not find TwinID {} while processing chunk '{}' on mesh '{}' (Obscure corner-case algorithm error that rest of code can probably recover from...)".format(nTwinID, sNameChunk, oMeshChunkO.name))  # Obscure corner case that appears with Vagina L/R... Perhaps because split-point verts are in same position??  Check if this influences the game... 
-        oMeshChunkO[G.C_PropArray_MapTwinVerts] = aMapTwinVerts.tobytes()  # Store the output map as an object property for later access when Client requests this part.  (We store as byte array to save memory as its only for future serialization to Client and Blender has no use for this info)
      
         return "OK"         ####IMPROVE: Error return through string??
 
 
 
 
-    def CreateTempMesh(self, nVerts):           ###DEV Rename, make sure temp mesh destroyed in Client and released
+    def SoftBody_CreateTempMesh(self, nVerts):           ###DEV Rename, make sure temp mesh destroyed in Client and released
         "Create a temporary oMesh with 'nVerts' vertices.  Used by Unity to pass Blender a tetramesh for softbody pinning"
         #=== Create the necessary number of verts for the new temp mesh.  (Unity will pass in its verts for us to process) ===
         aVerts = []
@@ -313,13 +269,13 @@ class CBody:
         return "OK"     ###TEMP
     
     
-    def SoftBody_CreateSoftBodyRimMesh(self, sMeshRim, nDistTetraVertsFromRim):
-        "Create the softbody rim mesh from the tetraverts Unity just pushed into our self.oMeshTemp.  Updates rim mesh 'sMeshRim' currently containing only rim.  This mesh will be responsible to 'pin' some softbody tetraverts to the skinned body so softbody doesn't 'fly out'"
-        print("-- SoftBody_CreateSoftBodyRimMesh({}) --".format(sMeshRim));
+    def SoftBody_ProcessTetraVerts(self, sMeshRim, nDistTetraVertsFromRim):
+        "Create the softbody rim mesh from the tetraverts Unity just pushed into the mesh created in SoftBody_CreateTempMesh().  Updates rim mesh 'sMeshRim' currently containing only rim.  This mesh will be responsible to 'pin' some softbody tetraverts to the skinned body so softbody doesn't 'fly out'"
+        print("-- SoftBody_ProcessTetraVerts({}) --".format(sMeshRim));
 
         oMeshChunkO = self.aMeshSoftBodies   [sMeshRim]           # Obtain reference to requested mesh chunk 
         oMeshRimO   = self.aMeshSoftBodiesRim[sMeshRim]           # Obtain reference to requested rim mesh.  (Previous created in CBody.SeparateSoftBodyPart() 
-        oMeshRimCopyO = gBlender.DuplicateAsSingleton(oMeshRimO.name, "TEMP_CreateSoftBodyRimMesh", G.C_NodeFolder_Temp, False)     # Create a temp copy of rim mesh so we can transfer weights efficiently from it to new mesh including tetraverts
+        oMeshRimCopyO = gBlender.DuplicateAsSingleton(oMeshRimO.name, "TEMP_DetachSoftBody", G.C_NodeFolder_Temp, False)     # Create a temp copy of rim mesh so we can transfer weights efficiently from it to new mesh including tetraverts
 
         #=== Open the temp mesh Unity requested in CreateTempMesh() and push in a data layer with vert index.  This will prevent us from losing access to Unity's tetraverts as we process this mesh toward the softbody rim ===        
         gBlender.SelectAndActivate(self.oMeshTemp.name)
@@ -331,10 +287,10 @@ class CBody:
  
         #=== Create the custom data layer and store vert indices into it === 
         oLayTetraVerts = bm.verts.layers.int.new(G.C_DataLayer_TetraVerts)        ###DEV!!! Old collection!!!!!!!
-        C_OffsetTetraVertIndex = 1000000                # Offset given to IDs pushed into tetravert layer.  To avoid considering 0 as a valid index
         for oVert in bm.verts:
-            oVert[oLayTetraVerts] = oVert.index + C_OffsetTetraVertIndex    # Apply offset to easily tell real IDs in later loop
+            oVert[oLayTetraVerts] = oVert.index + G.C_OffsetVertIDs    # Apply offset to easily tell real IDs in later loop
         bpy.ops.object.mode_set(mode='OBJECT')
+
         
         #===== Combine the tetravert-mesh with the rim mesh of that softbody.  We need to isolate the tetraverts close to the rim verts to 'pin' them =====
         ###LEARN: Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh)
@@ -353,23 +309,19 @@ class CBody:
         for oVert in bm.verts:
             if (oVert.index > nVertsTetra):
                 oVert.select_set(True)                      # Select only the verts with no OrigVertID = tetraverts
-        
         #=== Move the rim verts with the close tetraverts some distance so we can quickly separate the tetraverts close to rim verts ===        
         C_TempMove = 10
         bpy.ops.transform.transform(mode='TRANSLATION', value=(0, C_TempMove, 0, 0), proportional='ENABLED', proportional_size=nDistTetraVertsFromRim, proportional_edit_falloff='CONSTANT')  # Move the rim verts with propportional editing so the tetraverts near rim are moved too.  This is how we separate them
-
         #=== Delete all tetraverts that are too far from rim ===
         bpy.ops.mesh.select_all(action='DESELECT')
         for oVert in bm.verts:  # Select all body verts far from clothing (Separated by translation operation above)                                  
             if oVert.co.z > -C_TempMove / 2:  ###WEAK!! Stupid 90 degree rotation rearing its ugly head again...
                 oVert.select_set(True)
         bpy.ops.mesh.delete(type='VERT')  # Delete all tetraverts that were too far from rim.  (These will be softbody-simulated and the others pinned)
-     
         #=== Move back the remaining rim and 'close tetraverts to their original position.  At this point only tetraverts near rim remain ===
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.transform.transform(mode='TRANSLATION', value=(0, -C_TempMove, 0, 0))  # Move the clothing verts with proportional enabled with a constant curve.  This will also move the body verts near any clothing ###TUNE    
         bpy.ops.object.mode_set(mode='OBJECT')
-
         #=== Skin the rim+tetraverts mesh from original rim mesh.  (So tetraverts are skinned too!)
         oMeshRimCopyO.select = True                             # Select the original rim mesh (keeping rim+tetraverts mesh activated)
         bpy.ops.object.vertex_group_transfer_weight()
@@ -384,33 +336,28 @@ class CBody:
         aMapRimTetravert2Tetravert = array.array('H')               # This array stores pairs of <#RimTetravert, #Tetravert> so Unity can pin the softbody tetraverts from the rim tetravert skinned mesh
 
         #=== Iterate through tetraverts to fill in its map traversal ===
-        #print("\n=== CreateSoftBodyRimMesh mapping ===");
         for oVert in bm.verts:                                                                        
             nTetraVertID = oVert[oLayTetraVerts]
-            if (nTetraVertID >= C_OffsetTetraVertIndex):            # The real tetraverts are over this offset (as created above)
-                nTetraVertID -= C_OffsetTetraVertIndex              # Retrieve the non-offsetted tetravert
+            if (nTetraVertID >= G.C_OffsetVertIDs):            # The real tetraverts are over this offset (as created above)
+                nTetraVertID -= G.C_OffsetVertIDs              # Retrieve the non-offsetted tetravert
                 aMapRimTetravert2Tetravert.append(oVert.index)
                 aMapRimTetravert2Tetravert.append(nTetraVertID)
                 #print("RimTetravert {:4d} = Tetravert {:4d}". format(oVert.index, nTetraVertID))
         oMeshRimO['aMapRimTetravert2Tetravert'] = aMapRimTetravert2Tetravert.tobytes()        # Store our map into mesh so Unity can retrieve
 
 
-
-
-
-        #=== Iterate over the rim vertices, and find the rim vert for every 'twin verts' so next loop can map chunk part verts to rim verts for pinning === 
-        oLayVertTwinID = bm.verts.layers.int[G.C_DataLayer_TwinVert]
+        #===== CREATE THE TWIN VERT MAPPING =====
+        #===1. Iterate over the rim vertices, and find the rim vert for every 'twin verts' so next loop can map chunk part verts to rim verts for pinning === 
+        oLayVertTwinID = bm.verts.layers.int.new(G.C_DataLayer_TwinVert)
         aMapTwinId2VertRim = {}
         for oVert in bm.verts:
             nTwinID = oVert[oLayVertTwinID]
             if nTwinID != 0:
                 aMapTwinId2VertRim[nTwinID] = oVert.index
-                print("TwinVert {:3d} = RimVert {:5d} at {:}".format(nTwinID, oVert.index, oVert.co))
+                #print("TwinVert {:3d} = RimVert {:5d} at {:}".format(nTwinID, oVert.index, oVert.co))
         bpy.ops.object.mode_set(mode='OBJECT')
 
-
-
-        #=== Iterate through the verts of the newly separated chunk to access the freshly-created custom data layer to obtain ID information that enables us to match the chunk mesh vertices to the main skinned mesh for pinning ===
+        #===2. Iterate through the verts of the newly separated chunk to access the freshly-created custom data layer to obtain ID information that enables us to match the chunk mesh vertices to the main skinned mesh for pinning ===
         gBlender.SelectAndActivate(oMeshChunkO.name)
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
@@ -421,14 +368,10 @@ class CBody:
             nTwinID = oVert[oLayVertTwinID]
             if nTwinID != 0:
                 aMapTwinId2VertChunk[nTwinID] = oVert.index
-                ####DEV??? if oVert.link_faces[0].material_index < nBodyMats:  # For capping below, select only the twin verts that are on one of the body's original material
-                ####    oVert.select_set(True)
-                print("TwinVert {:3d} = PartVert {:5d} mat {:} at {:}".format(nTwinID, oVert.index, oVert.link_faces[0].material_index, oVert.co))
+                #print("TwinVert {:3d} = PartVert {:5d} mat {:} at {:}".format(nTwinID, oVert.index, oVert.link_faces[0].material_index, oVert.co))
         bpy.ops.object.mode_set(mode='OBJECT')
 
-
-        #===== Now that rim is fully formed and the aMapTwinId2VertRim fully populated for to find real rim verts for any TwinID we can finally construct the aMapTwinVerts flat array for each detached part.  (each detached part (no matter if its softbody or cloth simulated) will thereby be able to fix its edge verts to the rim correctly during gameplay) (With both the main skinned mesh and the chunk part with the same set of 'twin ID' in their mesh vertices, we can finally match vertex ID of part to vertex ID of skinned main mesh)
-        ###NOTE: This flattened is sent with 1) vertex ID on the separated chunk part, 2) Vertex ID of the 'twin vert' at the same location on the main skinned mesh and 3) an adjacent vert on the skinned mesh to #2 for normal Z-orientation
+        #===3. With both maps created, bridge them together to a flattened map from softbody mesh to its rim vert ===
         aMapTwinVerts = array.array('H')  # The final flattened map of what verts from the 'detached chunk part' maps to what vert in the 'skinned main body'  Client needs this to pin the edges of the softbody-simulated part to the main body skinned mesh
         for nTwinID in aMapTwinId2VertChunk:
             nVertTwinChunk = aMapTwinId2VertChunk[nTwinID]
@@ -438,17 +381,13 @@ class CBody:
                 aMapTwinVerts.append(nVertTwinRim)
                 print("TwinVert {:3d} = PartVert {:5d} = RimVert {:5d}".format(nTwinID, nVertTwinChunk, nVertTwinRim))
             else:
-                G.DumpStr("###ERROR in CBody.SeparateSoftBodyPart(): Mapping of twin verts from TwinID to RimVert Could not find TwinID {} while processing chunk '{}' on mesh '{}' (Obscure corner-case algorithm error that rest of code can probably recover from...)".format(nTwinID, sMeshRim, oMeshChunkO.name))  # Obscure corner case that appears with Vagina L/R... Perhaps because split-point verts are in same position??  Check if this influences the game... 
+                G.DumpStr("###ERROR in CBody.SeparateSoftBodyPart()") 
         oMeshRimO[G.C_PropArray_MapTwinVerts] = aMapTwinVerts.tobytes()  # Store the output map as an object property for later access when Client requests this part.  (We store as byte array to save memory as its only for future serialization to Client and Blender has no use for this info)
-
-
-
-
         bpy.ops.object.mode_set(mode='OBJECT')
 
         return "OK"     ###TEMP
     
-    
+   
   
     
 
@@ -462,27 +401,3 @@ def CBody_Create(nBodyID, sMeshSource, sSex, sGenitals):
 def CBody_GetBody(nBodyID):
     "Easy accessor to simplify Unity's access to bodies by ID"
     return CBody._aBodies[nBodyID]
-
-
-
-
-
-
-
-
-
-
-#         #=== Assemble the 'aMapVertsOrigToMorph' map of oMesh verts so we know which source vert goes to what assembled vert ===
-#         bpy.ops.oMeshO.mode_set(mode='EDIT')
-#         bmMorph = bmesh.from_edit_mesh(self.oMeshMorph.data)
-#         oLayOrigVertIDs = bmMorph.verts.layers.int[G.C_DataLayer_OrigVertIDs]  # Create a temp custom data layer to store the IDs of each original vert.  This enables future meshes to find the verts in original oMesh
-#         for oVert in bmMorph.verts:
-#             self.aMapVertsOrigToMorph[oVert[oLayOrigVertIDs]] = oVert.index
-#             #print("Vert Assembled {:5d} = Source {:5d}".format(oVert.index, oVert[oLayOrigVertIDs]))        
-#         bpy.ops.oMesh.select_all(action='DESELECT')
-#         bpy.ops.oMeshO.mode_set(mode='OBJECT')
-#         self.oMeshSource.hide = True
-#         self.oMeshAssembled.hide = True
-#         #self.oMeshMorph.hide = True
-
-

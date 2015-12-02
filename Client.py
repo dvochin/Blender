@@ -46,13 +46,13 @@ import G
 #---------------------------------------------------------------------------    BODY CREATION
 #---------------------------------------------------------------------------    
 ####OBS
-def gBL_Body_CreateForMorph(sNameSrcBody, sNameGameBody, sNameGameBodyMorph):     # Ultra-simple vesion of CBody's call to obtain body for morphing
+def gBL_Body_CreateForMorph(sNameSrcBody, sNameGameBody, sNameGameMorph):     # Ultra-simple vesion of CBody's call to obtain body for morphing
     #===== Begin the complex task of assembling the requested body by first creating a simple copy of source body for morphing =====    
 
-    print("\n=== gBL_Body_CreateForMorph() sNameSrcBody:'{}' sNameGameBody:'{}' sNameGameBodyMorph: '{}' ===".format(sNameSrcBody, sNameGameBody, sNameGameBodyMorph))
+    print("\n=== gBL_Body_CreateForMorph() sNameSrcBody:'{}' sNameGameBody:'{}' sNameGameMorph: '{}' ===".format(sNameSrcBody, sNameGameBody, sNameGameMorph))
 
     #=== Obtain references to all the source meshes needed ===
-    oMeshComboO = gBlender.DuplicateAsSingleton(sNameSrcBody, sNameGameBodyMorph, G.C_NodeFolder_Game, False)  ###TODO!!! Rename to MeshCombo??      ###DESIGN: Base skinned mesh on _BodyMorph or virgin body??            
+    oMeshComboO = gBlender.DuplicateAsSingleton(sNameSrcBody, sNameGameMorph, G.C_NodeFolder_Game, False)  ###TODO!!! Rename to MeshCombo??      ###DESIGN: Base skinned mesh on _Morph or virgin body??            
 
     #=== Cleanup the skinned mesh and ready it for Unity ===
     gBlender.Cleanup_VertGrp_RemoveNonBones(oMeshComboO)  # Remove the extra vertex groups that are not skinning related
@@ -65,7 +65,7 @@ def gBL_Body_CreateForMorph(sNameSrcBody, sNameGameBody, sNameGameBodyMorph):   
     if (sNameSrcBody.startswith('Woman')):    
         sNamePairedMesh = sNameGameBody + G.C_NameSuffix_BreastCol + "-ToBody"
         CBBodyCol.PairMesh_Create(sNameSrcBody + G.C_NameSuffix_BreastCol + "-Source", sNamePairedMesh)      # Create the 'ToBody' collider straight from the source collider...
-        CBBodyCol.PairMesh_DoPairing(sNamePairedMesh, sNameGameBodyMorph, 0.000001)         #... and do the pairing to the morph body so breast verts can follow body verts
+        CBBodyCol.PairMesh_DoPairing(sNamePairedMesh, sNameGameMorph, 0.000001)         #... and do the pairing to the morph body so breast verts can follow body verts
 
     return ""
 
@@ -129,8 +129,8 @@ def gBL_Body_Create(sNameGameBody, sNameSrcBody, sSex, sNameSrcGenitals, aCloths
         oMeshBodyO.vertex_groups["_Detach_Breasts_ORIGINAL"].name = "_Detach_Breasts"        
 
     #=== Prepare a ready-for-morphing client-side body. This one will be morphed by the user and be the basis for cloth fitting and play mode ===   
-    oMeshBodyMorphO = gBlender.DuplicateAsSingleton(oMeshBodyO.name, sNameGameBody + G.C_NameSuffix_BodyMorph, G.C_NodeFolder_Game, True)  ###DESIGN!!! ###SOON!!
-    Client_ConvertMesh(oMeshBodyMorphO, True)  # Client requires a tri-based mesh and verts that only have one UV. (e.g. no polys accross different seams/materials sharing the same vert)
+    oMeshMorphO = gBlender.DuplicateAsSingleton(oMeshBodyO.name, sNameGameBody + G.C_NameSuffix_Morph, G.C_NodeFolder_Game, True)  ###DESIGN!!! ###SOON!!
+    Client_ConvertMesh(oMeshMorphO, True)  # Client requires a tri-based mesh and verts that only have one UV. (e.g. no polys accross different seams/materials sharing the same vert)
     oMeshBodySrcO.hide = True  # Hide back the source body as more realized bodies are now shown.
 
     #return G.DumpStr("OK: gBL_Body_CreateMorphBody() NameBaseID:'{}'  NameSrcBody:'{}'  NameSrcGenitals:'{}'".format(sNameBaseID, sNameSrcBody, sNameSrcGenitals))
@@ -154,10 +154,10 @@ def gBL_Body_Create(sNameGameBody, sNameSrcBody, sSex, sNameSrcGenitals, aCloths
 
     #===== Begin the complex task of assembling the requested body =====    
     #=== Obtain references to all the source meshes needed ===
-    oMeshBodyMorphO = gBlender.SelectAndActivate(sNameGameBody + G.C_NameSuffix_BodyMorph)  # Obtain reference to previously constructed body for morphing
+    oMeshMorphO = gBlender.SelectAndActivate(sNameGameBody + G.C_NameSuffix_Morph)  # Obtain reference to previously constructed body for morphing
     sNameBodyRim = sNameGameBody + G.C_NameSuffix_BodyRim
     gBlender.DeleteObject(sNameBodyRim)
-    oMeshComboO = gBlender.DuplicateAsSingleton(oMeshBodyMorphO.name, sNameGameBody + G.C_NameSuffix_BodySkin, G.C_NodeFolder_Game, False)  ###TODO!!! Rename to MeshCombo??      ###DESIGN: Base skinned mesh on _BodyMorph or virgin body??            
+    oMeshComboO = gBlender.DuplicateAsSingleton(oMeshMorphO.name, sNameGameBody + G.C_NameSuffix_BodySkin, G.C_NodeFolder_Game, False)  ###TODO!!! Rename to MeshCombo??      ###DESIGN: Base skinned mesh on _Morph or virgin body??            
     nBodyMats = len(oMeshComboO.data.materials)  # Before we join additional clothing meshes with to body remember the number of materials so we can easily spot the vertices of clothing in big loop below
 
 
@@ -183,8 +183,8 @@ def gBL_Body_Create(sNameGameBody, sNameSrcBody, sSex, sNameSrcGenitals, aCloths
             
             #=== Transfer the skinning information from the skinned body mesh to the clothing.  Some vert groups are useful to move non-simulated area of cloth as skinned cloth, other _Detach_xxx vert groups are to define areas of the cloth that are simulated ===
             gBlender.SelectAndActivate(oMeshClothO.name)
-            oMeshBodyMorphO.select = True
-            oMeshBodyMorphO.hide = False  ###LEARN: Mesh MUST be visible for weights to transfer!
+            oMeshMorphO.select = True
+            oMeshMorphO.hide = False  ###LEARN: Mesh MUST be visible for weights to transfer!
             bpy.ops.object.vertex_group_transfer_weight()
         
             #=== Join the all-cloth onto the main skinned body to form the composite mesh that currently has all geometry for body and all clothing...  From this composite mesh we separate 'chunks' such as breasts are surrounding clothing, or penis or vagina for non-skinned simulation by the game engine ===
@@ -1047,3 +1047,19 @@ def gBL_Cloth_SplitIntoSkinnedAndSimulated(sNameClothSimulated, sNameClothBase, 
 
 
     return oBA;                                                 # De-serialized by Unity's CCloth.  CCloth will requested the skinned mesh as a standard skinned mesh in later separate call
+
+
+
+
+def BodyPrep_StoreOrigVertIDs(sNameMeshOrig):
+    "Prepare an original untouched mesh for editing by storing its original vert indices in a custom data layer"
+    ####TODO: Merge with other 'prep meshs' calls!
+    gBlender.Cleanup_RemoveCustomDataLayers(sNameMeshOrig)          # Remove all layers for a clean start
+    oMeshOrig = gBlender.SelectAndActivate(sNameMeshOrig)
+    bpy.ops.object.mode_set(mode='EDIT')
+    bm = bmesh.from_edit_mesh(oMeshOrig.data)
+    oLayVertsOrig = bm.verts.layers.int.new(G.C_DataLayer_VertsOrig)
+    for oVert in bm.verts:
+        oVert[oLayVertsOrig] = oVert.index + G.C_OffsetVertIDs          # We apply an offset so we can differentiate between newly added verts 
+    bpy.ops.object.mode_set(mode='OBJECT')
+   
