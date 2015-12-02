@@ -216,9 +216,9 @@ class gBL_temp2(bpy.types.Operator):
         #Client.Client_ConvertMesh(bpy.data.objects["BodyA_BodyCol"], True)
         #CBBodyCol.PairMesh_DoPairing("BodyA-BreastCol-ToBody", "BodyA_Morph", 0.000001)
         #CBodyColBreasts_GetColliderInfo("")
-        ##CBody.CBody._aBodies[0].SeparateSoftBodyPart("Breasts")
+        CBody.CBody._aBodies[0].CreateSoftBody("Breasts")
         #CBody.CBody._aBodies[0].CreateTempMesh(100)
-        Breasts.Breasts_CreateCutoffBreastFromBody("WomanA")
+        #Breasts.Breasts_CreateCutoffBreastFromBody("WomanA")
         return {"FINISHED"}
 
 class gBL_temp3(bpy.types.Operator):

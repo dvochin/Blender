@@ -715,7 +715,7 @@ def gBL_GetMesh_SkinnedInfo(sNameMesh):          #=== Send skinning info to Unit
     return oBA          # Return the bytearray intended for Unity deserialization. 
     
 
-def gBL_GetMesh_Array(sNameMesh, sNameArray):        #=== Send Unity the requested serialized bytearray of the previously-calculated custom property of mesh 'sNameMesh'
+def gBL_GetMesh_Array_OBSOLETE(sNameMesh, sNameArray):        #=== Send Unity the requested serialized bytearray of the previously-calculated custom property of mesh 'sNameMesh'
     oBA = bytearray()
     oBA += struct.pack('H', G.C_MagicNo_TranBegin)  ###LEARN: Struct.Pack args: b=char B=ubyte h=short H=ushort, i=int I=uint, q=int64, Q=uint64, f=float, d=double, s=char[] ,p=PascalString[], P=void*
 
@@ -726,6 +726,8 @@ def gBL_GetMesh_Array(sNameMesh, sNameArray):        #=== Send Unity the request
 
     return oBA
     
+
+
 
 def gBL_GetBones(sNameMesh):  # Called by the CBodeEd (Unity's run-in-edit-mode code for CBody) to update the position of the bones for the selected Unity template.  Non destructive call that assumes existing bones are already there with much extra information such as ragdoll colliders, components on bones, etc.)
     # This call only updates bones position and creates bones if they are missing.  Rotation isn't touched and extraneous bones have to be deleted in Unity if needed.
@@ -750,7 +752,7 @@ def gBL_GetBones(sNameMesh):  # Called by the CBodeEd (Unity's run-in-edit-mode 
      
     return oBA  # Return the beginning part of the bytearray intended for client deserialization. 
 
-def Stream_GetEndMagicNo():  # When function based on gBL_SendMesh() is finished it must send a serialized 'end magic number' which this function returns.  All outgoing streams must have this. ===
+def Stream_GetEndMagicNo(): ####OBS? # When function based on gBL_SendMesh() is finished it must send a serialized 'end magic number' which this function returns.  All outgoing streams must have this. ===
     return struct.pack('H', G.C_MagicNo_TranEnd)  ###DESIGN: A pain in the ass... revisit??
 
 def gBL_ReleaseMesh(sNameMesh):  # Release the python-side and blender-c-side structures for this shared mesh
