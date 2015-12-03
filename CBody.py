@@ -14,7 +14,6 @@
 
 # Implement character editing... with all the normal entities in place?  (softbody, actors, etc) but just 'paused'
 # Mesh temp still there!
-# Refactor 'chunk'?
 # Broke breast collider for cloth. fix it!
 # Broke cloth body collider?
 
@@ -52,10 +51,11 @@ import Border
 import Client
 
 
-class CBody:
-    _aBodies = []                      # The global array of bodies.  Unity finds bodies 
 
-    def __init__(self, nBodyID, sMeshSource, sSex, sGenitals):
+class CBody:
+    _aBodies = []                       # The global array of bodies.  Unity finds bodies
+
+    def __init__(self, nBodyID, sMeshSource, sSex, sGenitals, nUnity2Blender_NumVerts):
         CBody._aBodies.append(self)                         # Append ourselves to global array.  The only way Unity can find our instance is through CBody._aBodies[<OurID>]
         self.nBodyID            = nBodyID                   # Our ID is passed in by Blender and remains the only public way to access this instance (e.g. CBody._aBodies[<OurID>])
         self.sMeshSource        = sMeshSource               # The name of the source body mesh (e.g. 'WomanA', 'ManA', etc)
@@ -68,6 +68,8 @@ class CBody:
         self.oMeshMorph         = None                      # The 'morphing mesh'.   Orinally copied from oMeshAssembled and morphed to the user's preference.  Basis of oMeshBody
         self.oMeshBody          = None                      # The 'body' skinned mesh.   Orinally copied from oMeshMorph.  Has softbody parts (like breasts and penis) removed. 
         self.oMeshFace          = None                      # The 'face mesh'  Simply referenced here to service Unity's request for it  
+        self.oMeshUnity2Blender = None                      # The 'Unity-to-Blender' mesh.  Used by Unity to pass in geometry for Blender processing (e.g. Softbody tetravert skinning and pinning)   
+
         self.aSoftBodies        = {}                        # Dictionary of CSoftBody objects representing softbody-simulated meshes.  (Contains items such as "BreastL", "BreastR", "Penis", "VaginaL", "VaginaR", to point to the object responsible for their meshes)
         
         self.aMapVertsOrigToMorph   = {}                    # Map of which original vert maps to what morph/assembled mesh verts.  Used to traverse morphs intended for the source body                  
@@ -120,12 +122,32 @@ class CBody:
             self.aMapVertsOrigToMorph[nVertOrig] = oVert.index       
         bpy.ops.object.mode_set(mode='OBJECT')
 
+        #=== Create the one-and-only 'Unity2Blender' mesh and assign it to static member of CBody === 
+        self.oMeshUnity2Blender = self.CreateMesh_Unity2Blender(nUnity2Blender_NumVerts)
 
     def CreateSoftBody(self, sSoftBodyPart):
         "Create a softbody by detaching sSoftBodyPart verts from game's skinned main body"
         self.aSoftBodies[sSoftBodyPart] = CSoftBody.CSoftBody(self, sSoftBodyPart)        # This will enable Unity to find this instance by our self.sSoftBodyPart key and the body.
         return "OK"
 
+    def CreateMesh_Unity2Blender(self, nVerts):       ###MOVE: Not really related to CBody but is global
+        "Create a temporary Unity2Blender with 'nVerts' vertices.  Used by Unity to pass Blender temporary mesh geometry for Blender processing (e.g. Softbody tetramesh pinning)"
+        print("== CreateMesh_Unity2Blender({}) ==".format(nVerts));
+        #=== Create the requested number of verts ===
+        aVerts = []
+        for nVert in range(nVerts):
+            aVerts.append((0,0,0))
+        #=== Create the mesh with verts only ===
+        oMeshD = bpy.data.meshes.new(self.sMeshPrefix + "Unity2Blender")
+        oMesh = bpy.data.objects.new(oMeshD.name, oMeshD)
+        oMesh.name = oMeshD.name
+        oMesh.rotation_euler.x = radians(90)          # Rotate temp mesh 90 degrees like every other mesh.  ###IMPROVE: Get rid of 90 rotation EVERYWHERE!!
+        bpy.context.scene.objects.link(oMesh)
+        oMeshD.from_pydata(aVerts,[],[])
+        oMeshD.update(calc_edges=True)
+        gBlender.SetParent(oMesh.name, G.C_NodeFolder_Game)
+        return oMesh
+    
             
    
   
@@ -133,11 +155,12 @@ class CBody:
 
 
 
-def CBody_Create(nBodyID, sMeshSource, sSex, sGenitals):
+def CBody_Create(nBodyID, sMeshSource, sSex, sGenitals, nUnity2Blender_NumVerts):
     "Proxy for CBody ctor as we can only return primitives back to Unity"
-    oBody = CBody(nBodyID, sMeshSource, sSex, sGenitals)
+    oBody = CBody(nBodyID, sMeshSource, sSex, sGenitals, nUnity2Blender_NumVerts)
     return str(oBody.nBodyID)           # Strings is one of the only things we can return to Unity
 
 def CBody_GetBody(nBodyID):
     "Easy accessor to simplify Unity's access to bodies by ID"
     return CBody._aBodies[nBodyID]
+

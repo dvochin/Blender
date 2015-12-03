@@ -143,19 +143,24 @@ def DuplicateAsSingleton(sSourceName, sNewName, sNameParent, bHideSource):
 	oNewO.name = oNewO.data.name = sNewName
 	oNewO.hide = oNewO.hide_render = oNewO.hide_select = False
 	oSrcO.hide = bHideSource		   ###CHECK: oSrcO.hide_render	Do we hide here or in caller if required??
+	SetParent(oNewO.name, sNameParent)
+	return oNewO
+
+def SetParent(sNameObject, sNameParent):
+	SelectAndActivate(sNameObject)
 	if sNameParent is not None:							# 'store' the new object at the provided location in Blender's nodes
 		if sNameParent not in bpy.data.objects:
-			raise Exception("ERROR: DuplicateAsSingleton() could not locate parent node " + sNameParent)
+			raise Exception("ERROR: SetParent() could not locate parent node " + sNameParent)
 		###oNewO.parent = bpy.data.objects[sNameParent]		   ###LEARN: Parenting an object this way would reset the transform applied to object = disaster!  (Client-side meshes lose their 90 deg orientation and become 100x bigger!)
 		oParentO = bpy.data.objects[sNameParent]
 		oParentO.hide = oParentO.hide_select = False
 		oParentO.select = True
 		bpy.context.scene.objects.active = oParentO
 		bpy.ops.object.parent_set(keep_transform=True)		###LEARN: keep_transform=True is critical to prevent reparenting from destroying the previously set transform of object!!
-		bpy.context.scene.objects.active = oNewO
+		bpy.context.scene.objects.active = bpy.data.objects[sNameObject]
 		oParentO.select = False				  
 		oParentO.hide = oParentO.hide_select = True			###WEAK: Show & hide of parent to enable reparenting... (lose previous state of parent but OK for folder nodes made up of 'empty'!)
-	return oNewO
+	
 	 
 def AssertFinished(sResultFromOp):	###IMPROVE: Use this much more!
 	if (sResultFromOp != {'FINISHED'}):
