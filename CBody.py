@@ -72,7 +72,7 @@ class CBody:
 
         self.aSoftBodies        = {}                        # Dictionary of CSoftBody objects representing softbody-simulated meshes.  (Contains items such as "BreastL", "BreastR", "Penis", "VaginaL", "VaginaR", to point to the object responsible for their meshes)
         
-        self.aMapVertsOrigToMorph   = {}                    # Map of which original vert maps to what morph/assembled mesh verts.  Used to traverse morphs intended for the source body                  
+        self.aMapVertsSrcToMorph   = {}                    # Map of which original vert maps to what morph/assembled mesh verts.  Used to traverse morphs intended for the source body                  
         
         print("\n=== CBody()  nBodyID:{}  sMeshPrefix:'{}'  sMeshSource:'{}'  sSex:'{}'  sGenitals:'{}' ===".format(self.nBodyID, self.sMeshPrefix, self.sMeshSource, self.sSex, self.sGenitals))
     
@@ -81,6 +81,7 @@ class CBody:
     
         #=== Duplicate the source body (kept in the most pristine condition possible) as the assembled body. Delete unwanted parts and attach the user-specified genital mesh instead ===    
         self.oMeshAssembled = gBlender.DuplicateAsSingleton(self.oMeshSource.name, self.sMeshPrefix + "Assembled", G.C_NodeFolder_Game, False)  # Creates the top-level body object named like "BodyA", "BodyB", that will accept the various genitals we tack on to the source body.
+        
         sNameVertGroupToCutout = None
         if self.sGenitals.startswith("Vagina"):         # Woman has vagina and breasts
             sNameVertGroupToCutout = "_Cutout_Vagina"
@@ -104,31 +105,38 @@ class CBody:
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action='DESELECT')      # Deselect all verts in assembled mesh
         bpy.ops.object.mode_set(mode='OBJECT')
+
         ####LEARN: Screws up ConvertMesh royally!  self.oMeshAssembled.data.uv_textures.active_index = 1       # Join call above selects the uv texture of the genitals leaving most of the body untextured.  Revert to full body texture!   ###IMPROVE: Can merge genitals texture into body's??
         gBlender.Util_SelectVertGroupVerts(self.oMeshAssembled, sNameVertGroupToCutout)  # Reselect the just-removed genitals area from the original body, as the faces have just been removed this will therefore only select the rim of vertices where the new genitals are inserted (so that we may remove_doubles to merge only it)
         bpy.ops.mesh.remove_doubles(threshold=0.000001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###LEARN: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
+
+        #=== Create the custom data layer storing assembly vert index.  Enables traversal from Assembly / Morph meshes to Softbody parts 
+        gBlender.DataLayer_CreateVertIndex(self.oMeshAssembled.name, G.C_DataLayer_VertsAssy)
         
         #=== Prepare a ready-for-morphing body for Unity.  Also create the 'body' mesh that will have parts detached from it where softbodies are ===   
         self.oMeshMorph = gBlender.DuplicateAsSingleton(self.oMeshAssembled.name, self.sMeshPrefix + 'Morph',   G.C_NodeFolder_Game, True)
         self.oMeshBody  = gBlender.DuplicateAsSingleton(self.oMeshAssembled.name, self.sMeshPrefix + 'Body',    G.C_NodeFolder_Game, True)
 
-        #=== Create map of orig verts to morph verts ===  (Enables some morphs such as Breast morphs to be applied to morphing mesh)
+        #=== Create map of source verts to morph verts ===  (Enables some morphs such as Breast morphs to be applied to morphing mesh)
         gBlender.SelectAndActivate(self.oMeshMorph.name)
         bpy.ops.object.mode_set(mode='EDIT')
         bm = bmesh.from_edit_mesh(self.oMeshMorph.data)
-        oLayVertsOrig = bm.verts.layers.int[G.C_DataLayer_VertsOrig]
+        oLayVertsSrc = bm.verts.layers.int[G.C_DataLayer_VertsSrc]
         for oVert in bm.verts:
-            nVertOrig = oVert[oLayVertsOrig] - G.C_OffsetVertIDs        # Remove the offset pushed in during creation
-            self.aMapVertsOrigToMorph[nVertOrig] = oVert.index       
+            nVertOrig = oVert[oLayVertsSrc] - G.C_OffsetVertIDs        # Remove the offset pushed in during creation
+            self.aMapVertsSrcToMorph[nVertOrig] = oVert.index       
         bpy.ops.object.mode_set(mode='OBJECT')
 
         #=== Create the one-and-only 'Unity2Blender' mesh and assign it to static member of CBody === 
         self.oMeshUnity2Blender = self.CreateMesh_Unity2Blender(nUnity2Blender_NumVerts)
 
+
+
     def CreateSoftBody(self, sSoftBodyPart):
         "Create a softbody by detaching sSoftBodyPart verts from game's skinned main body"
         self.aSoftBodies[sSoftBodyPart] = CSoftBody.CSoftBody(self, sSoftBodyPart)        # This will enable Unity to find this instance by our self.sSoftBodyPart key and the body.
         return "OK"
+
 
     def CreateMesh_Unity2Blender(self, nVerts):       ###MOVE: Not really related to CBody but is global
         "Create a temporary Unity2Blender with 'nVerts' vertices.  Used by Unity to pass Blender temporary mesh geometry for Blender processing (e.g. Softbody tetramesh pinning)"
@@ -163,4 +171,3 @@ def CBody_Create(nBodyID, sMeshSource, sSex, sGenitals, nUnity2Blender_NumVerts)
 def CBody_GetBody(nBodyID):
     "Easy accessor to simplify Unity's access to bodies by ID"
     return CBody._aBodies[nBodyID]
-

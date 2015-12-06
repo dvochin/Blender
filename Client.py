@@ -1049,19 +1049,3 @@ def gBL_Cloth_SplitIntoSkinnedAndSimulated(sNameClothSimulated, sNameClothBase, 
 
 
     return oBA;                                                 # De-serialized by Unity's CCloth.  CCloth will requested the skinned mesh as a standard skinned mesh in later separate call
-
-
-
-
-def BodyPrep_StoreOrigVertIDs(sNameMeshOrig):
-    "Prepare an original untouched mesh for editing by storing its original vert indices in a custom data layer"
-    ####TODO: Merge with other 'prep meshs' calls!
-    gBlender.Cleanup_RemoveCustomDataLayers(sNameMeshOrig)          # Remove all layers for a clean start
-    oMeshOrig = gBlender.SelectAndActivate(sNameMeshOrig)
-    bpy.ops.object.mode_set(mode='EDIT')
-    bm = bmesh.from_edit_mesh(oMeshOrig.data)
-    oLayVertsOrig = bm.verts.layers.int.new(G.C_DataLayer_VertsOrig)
-    for oVert in bm.verts:
-        oVert[oLayVertsOrig] = oVert.index + G.C_OffsetVertIDs          # We apply an offset so we can differentiate between newly added verts 
-    bpy.ops.object.mode_set(mode='OBJECT')
-   

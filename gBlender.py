@@ -442,33 +442,6 @@ def Cleanup_DecimateEdges(oObj, nness, nRatioOfFacesToKeep):  ###OBS? ###IMPROVE
 	bpy.ops.mesh.select_all(action='DESELECT') 
 	bpy.ops.object.mode_set(mode='OBJECT')
 
-def Cleanup_RemoveCustomDataLayers(sNameObject):				  # Debug cleanup function that removes the custom data layers that can pile up on objects as various functions that create them crash.
-	oMeshO = SelectAndActivate(sNameObject)
-	bpy.ops.object.mode_set(mode='EDIT')
-	bm = bmesh.from_edit_mesh(oMeshO.data)
-	while len(bm.verts.layers.int) > 0:
-		oLayer = bm.verts.layers.int[0]
-		print("Cleanup_RemoveCustomDataLayers() removed int layer " + oLayer.name)
-		bm.verts.layers.int.remove(oLayer)
-	while len(bm.verts.layers.float) > 0:
-		oLayer = bm.verts.layers.float[0]
-		print("Cleanup_RemoveCustomDataLayers() removed float layer " + oLayer.name)
-		bm.verts.layers.float.remove(oLayer)
-	bpy.ops.object.mode_set(mode='OBJECT')
-
-def Cleanup_RemoveCustomDataLayerInt(sNameObject, sNameLayer):				  # Debug cleanup function that removes the 'sNameLayer' custom data layers from sNameObject
-	oMeshO = SelectAndActivate(sNameObject)
-	bpy.ops.object.mode_set(mode='EDIT')
-	bm = bmesh.from_edit_mesh(oMeshO.data)
-	if (sNameLayer in bm.verts.layers.int):
-		bm.verts.layers.int.remove(bm.verts.layers.int[sNameLayer])
-# 	for nLayer in range(len(bm.verts.layers.int)):						###IMPROVE? Can select without iteration?
-# 		oLayer = bm.verts.layers.int[nLayer]
-# 		if (oLayer.name == sNameLayer):
-# 			bm.verts.layers.int.remove(oLayer)
-# 			return;
-	bpy.ops.object.mode_set(mode='OBJECT')
-
 def Cleanup_VertGrp_RemoveNonBones(oMeshO):	 # Remove non-bone vertex groups so skinning normalize & fix below will not be corrupted by non-bone vertex groups
 	aVertGrpToRemove = []
 	for oVertGrp in oMeshO.vertex_groups:
@@ -495,7 +468,7 @@ def Stream_SerializeArray(oBA, oArray):				 # Serialize an array to client by fi
 		oBA += oArray
 		###IMPROVE? oBA += G.C_MagicNo_EndOfArray
 	else:		 
-		oBA += struct.pack('i', 0)
+		oBA += struct.pack('L', 0)
 
 def Stream_SendBone(oBA, oBone):				# Recursive function that sends a bone and the tree of bones underneath it in 'breadth first search' order.	 Information sent include bone name, position and number of children.
 	Stream_SendStringPascal(oBA, oBone.name)		# Precise opposite of this function found in Unity's CBodeEd.ReadBone()
@@ -517,10 +490,84 @@ def Event_OnLoad(scene):			 # Runs on scene_update_post when the user has change
 def Event_OnSceneUpdate(scene):				# Runs on scene_update_post when the user has changed the scene and we need to update our state
 	print("Event_OnSceneUpdate???")
 	
+
+
+#---------------------------------------------------------------------------	
+#---------------------------------------------------------------------------		DATA LAYERS	
+#---------------------------------------------------------------------------	
+
+def DataLayer_RemoveLayers(sNameObject):				  # Debug cleanup function that removes the custom data layers that can pile up on objects as various functions that create them crash.
+	"Remove all int and float custom data layer from mesh"
+	oMeshO = SelectAndActivate(sNameObject)
+	bpy.ops.object.mode_set(mode='EDIT')
+	bm = bmesh.from_edit_mesh(oMeshO.data)
+	while len(bm.verts.layers.int) > 0:
+		oLayer = bm.verts.layers.int[0]
+		print("DataLayer: Removing int layer '{}' from mesh '{}'".format(oLayer.name, sNameObject))
+		bm.verts.layers.int.remove(oLayer)
+	while len(bm.verts.layers.float) > 0:
+		oLayer = bm.verts.layers.float[0]
+		print("DataLayer: Removing float layer '{}' from mesh '{}'".format(oLayer.name, sNameObject))
+		bm.verts.layers.float.remove(oLayer)
+	bpy.ops.object.mode_set(mode='OBJECT')
+
+def DataLayer_RemoveLayerInt(sNameObject, sNameLayer):
+	"Remove int custom data layer from mesh"
+	oMeshO = SelectAndActivate(sNameObject)
+	bpy.ops.object.mode_set(mode='EDIT')
+	bm = bmesh.from_edit_mesh(oMeshO.data)
+	if (sNameLayer in bm.verts.layers.int):
+		print("DataLayer: Removing int layer '{}' from mesh '{}'".format(sNameLayer, sNameObject))
+		bm.verts.layers.int.remove(bm.verts.layers.int[sNameLayer])
+# 	for nLayer in range(len(bm.verts.layers.int)):						###IMPROVE? Can select without iteration?
+# 		oLayer = bm.verts.layers.int[nLayer]
+# 		if (oLayer.name == sNameLayer):
+# 			bm.verts.layers.int.remove(oLayer)
+# 			return;
+	bpy.ops.object.mode_set(mode='OBJECT')
+
+def DataLayer_EnumerateInt_DEBUG(sNameObject, sMessage):
+	"Enumerate int custom data layers (for debugging)"
+	print("--- DataLayer_EnumerateInt_TEMP() at '{}' ---".format(sMessage))
+	oMeshO = SelectAndActivate(sNameObject)
+	bpy.ops.object.mode_set(mode='EDIT')
+	bm = bmesh.from_edit_mesh(oMeshO.data)
+	for nLayer in range(len(bm.verts.layers.int)):
+		oLayer = bm.verts.layers.int[nLayer]
+		print("DataLayer:  Mesh '{}'  #{}  Layer '{}'".format(sNameObject, nLayer, oLayer.name))
+	bpy.ops.object.mode_set(mode='OBJECT')
+
+
+def DataLayer_CreateVertIndex(sNameMesh, sNameLayer):
+	"Prepare an original untouched mesh for editing by storing its original vert indices in a custom data layer"
+	DataLayer_RemoveLayerInt(sNameMesh, sNameLayer)
+	oMesh = SelectAndActivate(sNameMesh)
+	bpy.ops.object.mode_set(mode='EDIT')
+	bm = bmesh.from_edit_mesh(oMesh.data)
+	print("DataLayer: Creating int layer '{}' on mesh '{}'".format(sNameLayer, sNameMesh))
+	oLayVertsSrc = bm.verts.layers.int.new(sNameLayer)
+	for oVert in bm.verts:
+		oVert[oLayVertsSrc] = oVert.index + G.C_OffsetVertIDs          # We apply an offset so we can differentiate between newly added verts 
+	bpy.ops.object.mode_set(mode='OBJECT')
+
+#---------------------------------------------------------------------------	
+#---------------------------------------------------------------------------	####MOVE?
+#---------------------------------------------------------------------------	
+
+def Body_InitialPrep(sNameSource):
+	"Intial prep for a freshly-imported body.  (Only needs to run once after import)"
+	DataLayer_EnumerateInt_DEBUG(sNameSource, "Body_InitialPrep() BEGIN")
+	DataLayer_RemoveLayers(sNameSource)							# Remove all custom data layers
+	DataLayer_CreateVertIndex(sNameSource, G.C_DataLayer_VertsSrc)		# Create the VertSrc data layer so we can go from virgin source body to assembled / morph bodies
+	DataLayer_EnumerateInt_DEBUG(sNameSource, "Body_InitialPrep() END")
+	###SOON: Port all the prep stuff to this top-level call!
+
+
 #---------------------------------------------------------------------------	
 #---------------------------------------------------------------------------	APP GLOBAL TOP LEVEL
 #---------------------------------------------------------------------------	
 
+####OBS?
 bpy.app.handlers.load_post.clear()
 bpy.app.handlers.load_post.append(Event_OnLoad)
 bpy.app.handlers.scene_update_post.clear()

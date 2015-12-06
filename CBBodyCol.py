@@ -310,7 +310,7 @@ def PairMesh_Create(sNameMeshSource, sNameMeshOutput):
     print("\n=== PairMesh_Create() sNameMeshSource: '{}', sNameMeshOutput: '{}' ===".format(sNameMeshSource, sNameMeshOutput))
     
     #=== Copy the source mesh to a new mesh that will represent both left & right side of the body ===
-    gBlender.Cleanup_RemoveCustomDataLayers(sNameMeshSource)           # Remove previous custom data layers just to make sure we refer to the right one
+    gBlender.DataLayer_RemoveLayers(sNameMeshSource)           # Remove previous custom data layers just to make sure we refer to the right one
     oMeshO = gBlender.DuplicateAsSingleton(sNameMeshSource, sNameMeshOutput, G.C_NodeFolder_Game, True)       # Create the mirrored mesh.  This is the one that will store the PairMesh info and be used for processing
 
     #=== 'Mirror' the source mesh so it represents both the left and right side of the body.  (Source only has left) ===
@@ -328,7 +328,7 @@ def PairMesh_DoPairing(sNamePairedMesh, sNameMeshTarget, nVertTolerance):
     print("\n=== PairMesh_DoPairing() sNamePairedMesh: '{}', sNameMeshTarget: '{}', nVertTolerance: '{}' ===".format(sNamePairedMesh, sNameMeshTarget, nVertTolerance))
 
     #=== Create mirrored mesh copy and fetch bmesh for editing ===
-    gBlender.Cleanup_RemoveCustomDataLayers(sNamePairedMesh)             # Remove previous custom data layers as a mesh can be re-paired several times
+    gBlender.DataLayer_RemoveLayers(sNamePairedMesh)             # Remove previous custom data layers as a mesh can be re-paired several times
     oMeshCopyO = gBlender.DuplicateAsSingleton(sNamePairedMesh, sNamePairedMesh + "_TEMPCOPY_PairMesh", G.C_NodeFolder_Temp, False)       # Create a temporary copy of mesh to be paired so we can edit as we go
     oMeshTargetO    = gBlender.SelectAndActivate(sNameMeshTarget)
     oMeshPairedO    = gBlender.SelectAndActivate(sNamePairedMesh)

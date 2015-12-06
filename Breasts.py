@@ -21,11 +21,13 @@ C_BreastMorphPivotPt = "BreastMorphPivotPt"                                   # 
 #---------------------------------------------------------------------------    
 
 
-def Breasts_CreateCutoffBreastFromBody(sNameBodySrc):      # Separates the left-breast from source mesh and create the important 'blend group' to protect breast border during morph operations as well as the mapping between breast verts to body verts for left&right breasts
+def Breasts_CreateCutoffBreastFromBody(sNameBodySrc):      
+    "Separates the left-breast from source mesh and create the important 'blend group' to protect breast border during morph operations as well as the mapping between breast verts to body verts for left&right breasts"
+    
     ####IMPROVE: One of the 'prepare functions' that only needs to run when source body changes
     sNameBreast = sNameBodySrc + "-Breast"
     gBlender.DeleteObject(sNameBreast)
-    #gBlender.Cleanup_RemoveCustomDataLayers(oMeshBodyO.name)           # Remove previous custom data layers just to make sure we refer to the right one  ####CHECK!  Can delete something we need???
+    #gBlender.DataLayer_RemoveLayers(oMeshBodyO.name)           # Remove previous custom data layers just to make sure we refer to the right one  ####CHECK!  Can delete something we need???
     
     oMeshBodyO = gBlender.SelectAndActivate(sNameBodySrc)
     bpy.ops.object.mode_set(mode='EDIT')
@@ -104,7 +106,7 @@ def Breasts_CreateCutoffBreastFromBody(sNameBodySrc):      # Separates the left-
     aVertNippleL = [oVertBreastL for oVertBreastL in bmBreast.verts if oVertBreastL.select]
     if len(aVertNippleL) > 1:
         raise Exception("ERROR: Breasts_CreateCutoffBreastFromBody(): Too many verts for nipple!")      ###PROBLEM?: Weird bug when generating bodies is some of our vert groups get more verts!  WTF???
-    print("=== Nipple Vert = ", aVertNippleL)
+    #print("=== Nipple Vert = ", aVertNippleL)
     aMapDistToNipples, aDistToNippleMax = gBlender.Util_CalcSurfDistanceBetweenTwoVertGroups(bmBreast, bmBreast.verts, aVertNippleL)
 
     #=== Remove all vertex groups except those related to breast morphing or collider sub-mesh ===
@@ -175,7 +177,7 @@ def Breasts_CreateCutoffBreastFromBody(sNameBodySrc):      # Separates the left-
         nWeight = 1 - (aMapDistToNipples[nVertBreast] / aDistToNippleMax)       ###TUNE: This curve and mechanism to blend dist to nipple and dist to edge!
         nWeight = nWeight * nDistToEdge
         oGrp.add([nVertBreast], nWeight, 'REPLACE')
-        print("-VertGroup vert {:4d} DistNipple {:7.4f} DistEdge {:7.4f} = {:7.4f}".format(nVertBreast, aMapDistToNipples[nVertBreast], aMapDistToEdges[nVertBreast], nWeight))
+        #print("-VertGroup vert {:4d} DistNipple {:7.4f} DistEdge {:7.4f} = {:7.4f}".format(nVertBreast, aMapDistToNipples[nVertBreast], aMapDistToEdges[nVertBreast], nWeight))
 
 
     #===== Test the mapping between breast verts to body verts... as they just got separated without breast moving, coordinates should still match ===    
@@ -197,10 +199,11 @@ def Breasts_CreateCutoffBreastFromBody(sNameBodySrc):      # Separates the left-
             print("ERROR in breast vertex remapping!  {:5d} != {:5d}".format(oVertBreast.index, nVertBodyBreastL))      ####PROBLEM: Collider verts not matching??  Because of left / right???
     bpy.ops.object.mode_set(mode='OBJECT')
     
+    gBlender.DataLayer_RemoveLayerInt(sNameBodySrc, C_DataLayer_SourceBreastVerts)      # Remove the temporary data layer from source body (no longer needed after breast mesh split)
 
 
 
-
+####DEV Move into CBody?
 def Breast_ApplyOntoSourceBody(nBodyID, oMeshBodyO, sNameGameBody): ####DEV: Revisit args!    # Iterate through all verts of the cutoff breast, find the left and right vertex into its source body and apply the current form of the breast onto the original body mesh (for symmetrical application)
     aVertsBody = oMeshBodyO.data.vertices
     sNameBreast = sNameGameBody + "-Breast"
@@ -222,8 +225,8 @@ def Breast_ApplyOntoSourceBody(nBodyID, oMeshBodyO, sNameGameBody): ####DEV: Rev
     oBody = CBody.CBody._aBodies[nBodyID]
     for oVertBreast in bmBreast.verts:
         nVertsEncoded = oVertBreast[oLayBodyVerts]          ####DEV ####HACK!!!
-        nVertBodyBreastL = oBody.aMapVertsOrigToMorph[(nVertsEncoded & 65535)]          # Breast has been defined from original body.  Map our verts to the requested morphing body  
-        nVertBodyBreastR = oBody.aMapVertsOrigToMorph[nVertsEncoded >> 16]
+        nVertBodyBreastL = oBody.aMapVertsSrcToMorph[(nVertsEncoded & 65535)]          # Breast has been defined from original body.  Map our verts to the requested morphing body  
+        nVertBodyBreastR = oBody.aMapVertsSrcToMorph[nVertsEncoded >> 16]
         vecVert = aVertsBakedKeys[oVertBreast.index].co.copy()
         aVertsBody[nVertBodyBreastL].co = vecVert
         vecVert.x = -vecVert.x

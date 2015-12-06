@@ -202,7 +202,12 @@ class gBL_temp1(bpy.types.Operator):
         #oMeshBodyO = gBlender.SelectAndActivate("BodyA_Detach_Breasts")
         #oMeshBodyO = gBlender.SelectAndActivate("WomanA")
         #oBody = CBody.CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big')
-        oBody = CBody.CBody(0, 'WomanA', 'Woman', 'Vagina-Erotic9-A')
+        oBody = CBody.CBody(0, 'WomanA', 'Woman', 'Vagina-Erotic9-A', 5000)
+        oBody.CreateSoftBody("BreastL")
+        oBody.CreateSoftBody("BreastR")
+        gBlender.DataLayer_EnumerateInt_DEBUG(oBody.oMeshAssembled.name, "Assembled")
+        gBlender.DataLayer_EnumerateInt_DEBUG(oBody.oMeshMorph.name, "Morph")
+        gBlender.DataLayer_EnumerateInt_DEBUG(oBody.oMeshBody.name, "Body")
         return {"FINISHED"}
 
 class gBL_temp2(bpy.types.Operator):
@@ -216,9 +221,8 @@ class gBL_temp2(bpy.types.Operator):
         #Client.Client_ConvertMesh(bpy.data.objects["BodyA_BodyCol"], True)
         #CBBodyCol.PairMesh_DoPairing("BodyA-BreastCol-ToBody", "BodyA_Morph", 0.000001)
         #CBodyColBreasts_GetColliderInfo("")
-        CBody.CBody._aBodies[0].CreateSoftBody("Breasts")
         #CBody.CBody._aBodies[0].CreateTempMesh(100)
-        #Breasts.Breasts_CreateCutoffBreastFromBody("WomanA")
+        Breasts.Breasts_CreateCutoffBreastFromBody("WomanA")
         return {"FINISHED"}
 
 class gBL_temp3(bpy.types.Operator):
@@ -237,8 +241,8 @@ class gBL_temp3(bpy.types.Operator):
         ##Client.gBL_Cloth_SplitIntoSkinnedAndSimulated("BodySuit-Top_ClothSimulated", "BodySuit-Top", "WomanA", "_ClothSkinnedArea_Top")
         ##Client.Client_ConvertMesh(gBlender.SelectAndActivate("WomanA_Morph"), True)
         #CBBodyCol.PairMesh_DoPairing("BodyA-BreastCol-ToBreasts", "BodyA_Detach_Breasts", 0.000001)
-        Breasts.Breasts_ApplyOp(0, 'BodyA-Morph', 'WomanA', 'RESIZE', 'Nipple', 'Center', 'Wide', (1.6,1.6,1.6,0), None)
         #Breasts.Breasts_ApplyOp('WomanA', 'WomanA', 'RESIZE', 'Nipple', 'Center', 'Wide', (1.6,1.6,1.6,0), None)
+        Breasts.Breasts_ApplyOp(0, 'BodyA-Morph', 'WomanA', 'RESIZE', 'Nipple', 'Center', 'Wide', (1.7,1.7,1.7,0), None)
         return {"FINISHED"}
 
 
@@ -248,7 +252,9 @@ class gBL_temp4(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBBodyCol.PairMesh_Create("WomanA-BreastCol-Source", "BodyA-BreastCol-ToBody")
+        #CBBodyCol.PairMesh_Create("WomanA-BreastCol-Source", "BodyA-BreastCol-ToBody")
+        CBody.CBody._aBodies[0].aSoftBodies['BreastL'].UpdateFromMorphBody()
+        CBody.CBody._aBodies[0].aSoftBodies['BreastR'].UpdateFromMorphBody()
         return {"FINISHED"}
 
 class gBL_temp5(bpy.types.Operator):
@@ -378,16 +384,3 @@ bpy.utils.register_module(__name__)
 #---------------------------------------------------------------------------    TEMP CODE
 #---------------------------------------------------------------------------    
 
-def PrepBodySrc(sNameBodySrc):      ####MOVE: One of the 'prepare source mesh' calls
-    "Prepare a source body for future modification"
-    
-    #=== Create the 'OrigVertIDs' custom data layer so other meshes modifying this one can find the source verts ===
-    oBodySrc = gBlender.SelectAndActivate(sNameBodySrc)
-    gBlender.Cleanup_RemoveCustomDataLayerInt(sNameBodySrc, G.C_DataLayer_OrigVertIDs)
-    bpy.ops.object.mode_set(mode='EDIT')
-    bm = bmesh.from_edit_mesh(oBodySrc.data)
-    oLayOrigVertIDs = bm.verts.layers.int.new(G.C_DataLayer_OrigVertIDs)  # Create a temp custom data layer to store the IDs of each original vert.  This enables future meshes to find the verts in original mesh
-    for oVert in bm.verts:
-        oVert[oLayOrigVertIDs] = oVert.index
-    bpy.ops.object.mode_set(mode='OBJECT')
-    

@@ -1,4 +1,6 @@
 #=============================================================================== COMMON COMMANDS
+# CBody.CBody_GetBody(0).aSoftBodies['Breasts'].aMapSavedRimNormals
+# import gBlender; gBlender.DataLayer_EnumerateInt_DEBUG("WomanA", "CmdLine")
 # bpy.ops.object.mode_set(mode='EDIT')
 # bpy.ops.object.mode_set(mode='OBJECT')
 # bpy.ops.mesh.select_all(action='SELECT')
@@ -99,11 +101,11 @@ C_PropArray_MapSharedNormals    = "aMapSharedNormals"       # Property array sto
 C_PropArray_ClothSkinToSim      = "aMapClothSkinToSim"      # Property array that maps what verts in the skinned-part of a cloth maps to what (identically positioned) vert of the simulated-part of the same cloth.
 
 #---------------------------------------------------------------------------    CUSTOM DATA LAYERS
-C_DataLayer_VertsOrig       = "DataLayer_VertsOrig"         # Original vertex indices in untouched original mesh.
+C_DataLayer_VertsSrc        = "DataLayer_VertsSrc"          # Original vertex indices in untouched original mesh.  Enables traversal to assembled / morph meshes
+C_DataLayer_VertsAssy       = "DataLayer_VertsAssy"         # Original vertex indices in assembled body.  Enables traversal of morphs to assembled body to reach detached softbody meshes (e.g. breasts)
+C_DataLayer_TetraVerts      = "DataLayer_TetraVerts"        # Data layer storing the mapping between tetra verts close to their rim and original tetra verts
 C_DataLayer_TwinVert        = "DataLayer_TwinVert"          # Temporary data layer to store twin-vert ID as mesh is split into parts (Used to reconnect verts at the same location from different meshes)  ####CHECK: Names can't be too long to be unique???
 C_DataLayer_SharedNormals   = "DataLayer_SharedNormals"     # Temporary data layer used while preparing a mesh for Client to construct what just-separated verts should share the same normal (because of Client's need to have one vert per UV)
-C_DataLayer_OrigVertIDs     = "DataLayer_OrigVertIDs"       # Data layer storing the 'original vert IDs' of a mesh.  Used to enable vert-to-vert traversion when a mesh has its vert collection modified
-C_DataLayer_TetraVerts      = "DataLayer_TetraVerts"        # Data layer storing the mapping between tetra verts close to their rim and original tetra verts
 
 #---------------------------------------------------------------------------    'MAGIC NUMBERS': Arbitrary constants that have special meanings in arrays
 C_MagicNo_TranBegin = 0x0B16  # Magic numbers stored as unsigned shorts at the head & tail of every serialization to help sanity checks...         (MUST MATCH Client SIDE!)
