@@ -87,6 +87,7 @@ from mathutils import *
 import G
 import Curve
 import SourceReloader
+import Breasts
 
 
 #---------------------------------------------------------------------------	
@@ -129,6 +130,7 @@ def SelectAndActivate(sNameObject):	 #=== Goes to object mode, deselects everyth
 def DeleteObject(sNameObject):
 	#print("DeleteObject: " + sNameObject)
 	SelectAndActivate(sNameObject)
+	print("<<< Deleting object '{}' >>>".format(sNameObject))
 	bpy.ops.object.delete(use_global=True)
 
 def DuplicateAsSingleton(sSourceName, sNewName, sNameParent, bHideSource):
@@ -344,13 +346,13 @@ def Util_GetMapDistToEdges():			# Returns a map of distances of all manifold ver
 	return aMapDistToEdges, nDistMax_AllInnerVerts		###WEAK: Only one consumer of this call now (Breast) -> move back??
 
 def gBL_Util_RemoveGameMeshes():
-	print("gBL_Util_RemoveGameMeshes() removing game meshes...")
+	print("<<<<< gBL_Util_RemoveGameMeshes() removing game meshes...>>>>>")
 	oNodeFolderGame = bpy.data.objects[G.C_NodeFolder_Game]
 	for oNodeO in oNodeFolderGame.children:
 		DeleteObject(oNodeO.name)			 
 
 def gBL_Util_HideGameMeshes():
-	print("gBL_Util_RemoveGameMeshes() removing game meshes...")
+	print("<<< gBL_Util_RemoveGameMeshes() removing game meshes...>>>")
 	oNodeFolderGame = bpy.data.objects[G.C_NodeFolder_Game]
 	for oNodeO in oNodeFolderGame.children:
 		oNodeO.hide = oNodeO.hide_render = True
@@ -556,10 +558,11 @@ def DataLayer_CreateVertIndex(sNameMesh, sNameLayer):
 
 def Body_InitialPrep(sNameSource):
 	"Intial prep for a freshly-imported body.  (Only needs to run once after import)"
-	DataLayer_EnumerateInt_DEBUG(sNameSource, "Body_InitialPrep() BEGIN")
+	#DataLayer_EnumerateInt_DEBUG(sNameSource, "Body_InitialPrep() BEGIN")
 	DataLayer_RemoveLayers(sNameSource)							# Remove all custom data layers
 	DataLayer_CreateVertIndex(sNameSource, G.C_DataLayer_VertsSrc)		# Create the VertSrc data layer so we can go from virgin source body to assembled / morph bodies
-	DataLayer_EnumerateInt_DEBUG(sNameSource, "Body_InitialPrep() END")
+	#DataLayer_EnumerateInt_DEBUG(sNameSource, "Body_InitialPrep() END")
+	Breasts.BodyInit_CreateCutoffBreastFromSourceBody(sNameSource)		# Create the cutoff breast needed for breast morph ops. 
 	###SOON: Port all the prep stuff to this top-level call!
 
 

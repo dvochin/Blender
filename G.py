@@ -64,7 +64,8 @@ C_NameSuffix_ClothSimulated = "-ClothSimulated"     # Suffix applied to part of 
 C_NameSuffix_PenisShaftCollider = "-PenisShaftCollider"# Suffix applied to capsule mesh created by Penis_CalcTipPosAndRadius() to provide visual feedback to penis designer what colliders will be created as well as providing runtime data during construction of penis colliders
 C_NameSuffix_CBBodyColSpheres = "-CBBodyColSpheres" # Suffix applied to CBBodyColSpheres mesh providing source mesh for creation of spheres & capsules used to repel clothing around breasts in PhysX.
 C_NameSuffix_Face           = "-Face"               # Suffix for character face
-C_NameSuffix_BreastCol      = "-BreastCol"        # Suffix applied to the breast collider mesh
+C_NameSuffix_BreastCol      = "-BreastCol"          # Suffix applied to the breast collider mesh
+C_NameSuffix_Breast         = "-Breast"             # Suffix applied to a source body's cutoff breast (for morphing)
 
 #---------------------------------------------------------------------------    NODE NAME PREFIX CONSTANTS
 C_NamePrefix_Body            = "Body"               # Prefix given to a 'body definition' created by gBL_Body_Create() such as "BodyA", "BodyB", etc that represents an abstract man/woman/shemale body that is processed by most of the code.
@@ -93,6 +94,7 @@ C_VertGrp_Morph  = "_Morph_"         # All vertex groups that have identify vert
 C_VertGrp_Detach = "_Detach_"        # All vertex groups that identify part of the skinned body that are to be 'detached' for softbody processing begin with this prefix.  (Ex: Breasts)
 C_VertGrp_Cutout = "_Cutout_"        # All vertex groups that identify vertices that are removed to make way for other mesh parts (such as Vagina mesh area and Penis mesh area) have this prefix.
 C_VertGrp_Area   = "_Area_"          # All vertex groups that contain contiguous areas of the mesh (to be used mostly for mesh seperation) start with this.
+C_VertGrp_Area_BreastMorph = C_VertGrp_Area + "BreastMorph"     # The name of the vertex group that blends the breasts to give zero weight at border, near zero near border and so on...
 C_Area_HeadHandFeet = C_VertGrp_Area + "HeadHandFeet"   # Vertex group of body that contains all verts of head, hands and feet.  (Used to remove unneeded verts for BodyCol that would slow down its algorithm)
 
 #---------------------------------------------------------------------------    PROPERTY ARRAY CONSTANTS
@@ -106,6 +108,7 @@ C_DataLayer_VertsAssy       = "DataLayer_VertsAssy"         # Original vertex in
 C_DataLayer_TetraVerts      = "DataLayer_TetraVerts"        # Data layer storing the mapping between tetra verts close to their rim and original tetra verts
 C_DataLayer_TwinVert        = "DataLayer_TwinVert"          # Temporary data layer to store twin-vert ID as mesh is split into parts (Used to reconnect verts at the same location from different meshes)  ####CHECK: Names can't be too long to be unique???
 C_DataLayer_SharedNormals   = "DataLayer_SharedNormals"     # Temporary data layer used while preparing a mesh for Client to construct what just-separated verts should share the same normal (because of Client's need to have one vert per UV)
+C_DataLayer_SourceBreastVerts = 'DataLayer_SourceBreastVerts'       # Data layer to store the vertIDs of left and right breast verts from cutoff breast
 
 #---------------------------------------------------------------------------    'MAGIC NUMBERS': Arbitrary constants that have special meanings in arrays
 C_MagicNo_TranBegin = 0x0B16  # Magic numbers stored as unsigned shorts at the head & tail of every serialization to help sanity checks...         (MUST MATCH Client SIDE!)
@@ -121,6 +124,7 @@ C_BodyCollider_TrimMargin = 0.03               # Extra space given when trimming
 C_TypicalRatioTrisToEdges = (35034 / (53283-1000))       # Typical ratio of edges to tris for meshes.  Used to estimate how many faces to decimate when we want an approx number of edges (Calculated from Vic42-17K mesh stats)
 C_RatioEstimatedReductionBodyCol = 0.68       # Ratio of reduction body collider edges after it has removed edge triangles, mirrored and deleted the edges-on-edge
 C_MaxSize_BodyColSphere = 0.110             # The maximum radius of body collider spheres (measured by inserting the largest possible sphere inside body without any poke-through 
+C_BreastMorphPivotPt = "BreastMorphPivotPt"                                   # Part of name given to reference points used as pivot points for breast morphing
 
 C_VectorUp      = Vector((0,0,1))                    # The 'up vector' in blender is Z+.  This is used to obtain quaternions to rotate this default vector to another vector (e.g. the normal of a cloth polygon)
 C_VectorForward = Vector((0,-1,0))                    # The 'up vector' in blender is Z+.  This is used to obtain quaternions to rotate this default vector to another vector (e.g. the normal of a cloth polygon)

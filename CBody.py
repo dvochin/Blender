@@ -1,3 +1,21 @@
+###NOW: Finally back and forth!
+# Can now morph from Unity...
+# Need to convert CBSoft modes to transitions instead.
+    # Start with define mode, then game mode (until we have top-level menu)
+# Then start on redoing the bodycol (pair mesh?) to survive morphs
+# Then boobs collider in both mode...
+# Then constant update to cloth in all modes...
+# Then cloth cutting!!
+
+# Morph of breast plate up/down:  Too much effort just for that.  Integrate it a new shape keys when we re-import from DAZ
+
+# Create CMesh class!  Open and close, obtain BMesh, various ops, etc
+# What is wrong with fucking names?
+# Some weird shimmer around rim!
+
+# Two breasts now, have to have entity to manage both (e.g. hotspot, etc)>
+
+
 ###RESUME:
 ## Now have half-baked init destroy with some bug on 2nd init... still temp mesh a problem!
 # Now  implement system for all detached parts to update their verts when morph body changed!  (Same with body)
@@ -47,8 +65,9 @@ import gBlender
 import SourceReloader
 import G
 import CSoftBody
-import Border
 import Client
+
+
 
 
 
@@ -62,13 +81,13 @@ class CBody:
         self.sSex               = sSex                      # The body's sex (one of 'Man', 'Woman' or 'Shemale')
         self.sGenitals          = sGenitals                 # The body's genitals (e.g. 'Vagina-Erotic9-A', 'PenisW-Erotic9-A' etc.)
         self.sMeshPrefix        = "Body" + chr(65 + self.nBodyID) + '-'  # The Blender object name prefix of every submesh (e.g. 'BodyA-Detach-Breasts', etc)
+        self.nUnity2Blender_NumVerts = nUnity2Blender_NumVerts
         
         self.oMeshSource        = None                      # The 'source body'.  Never modified in any way
         self.oMeshAssembled     = None                      # The 'assembled mesh'.  Fully assembled with proper genitals.  Basis of oMeshMorph                  
         self.oMeshMorph         = None                      # The 'morphing mesh'.   Orinally copied from oMeshAssembled and morphed to the user's preference.  Basis of oMeshBody
         self.oMeshBody          = None                      # The 'body' skinned mesh.   Orinally copied from oMeshMorph.  Has softbody parts (like breasts and penis) removed. 
         self.oMeshFace          = None                      # The 'face mesh'  Simply referenced here to service Unity's request for it  
-        self.oMeshUnity2Blender = None                      # The 'Unity-to-Blender' mesh.  Used by Unity to pass in geometry for Blender processing (e.g. Softbody tetravert skinning and pinning)   
 
         self.aSoftBodies        = {}                        # Dictionary of CSoftBody objects representing softbody-simulated meshes.  (Contains items such as "BreastL", "BreastR", "Penis", "VaginaL", "VaginaR", to point to the object responsible for their meshes)
         
@@ -123,12 +142,11 @@ class CBody:
         bm = bmesh.from_edit_mesh(self.oMeshMorph.data)
         oLayVertsSrc = bm.verts.layers.int[G.C_DataLayer_VertsSrc]
         for oVert in bm.verts:
-            nVertOrig = oVert[oLayVertsSrc] - G.C_OffsetVertIDs        # Remove the offset pushed in during creation
-            self.aMapVertsSrcToMorph[nVertOrig] = oVert.index       
+            if (oVert[oLayVertsSrc] >= G.C_OffsetVertIDs):
+                nVertOrig = oVert[oLayVertsSrc] - G.C_OffsetVertIDs        # Remove the offset pushed in during creation
+                self.aMapVertsSrcToMorph[nVertOrig] = oVert.index       
         bpy.ops.object.mode_set(mode='OBJECT')
 
-        #=== Create the one-and-only 'Unity2Blender' mesh and assign it to static member of CBody === 
-        self.oMeshUnity2Blender = self.CreateMesh_Unity2Blender(nUnity2Blender_NumVerts)
 
 
 
@@ -138,27 +156,126 @@ class CBody:
         return "OK"
 
 
-    def CreateMesh_Unity2Blender(self, nVerts):       ###MOVE: Not really related to CBody but is global
-        "Create a temporary Unity2Blender with 'nVerts' vertices.  Used by Unity to pass Blender temporary mesh geometry for Blender processing (e.g. Softbody tetramesh pinning)"
-        print("== CreateMesh_Unity2Blender({}) ==".format(nVerts));
-        #=== Create the requested number of verts ===
-        aVerts = []
-        for nVert in range(nVerts):
-            aVerts.append((0,0,0))
-        #=== Create the mesh with verts only ===
-        oMeshD = bpy.data.meshes.new(self.sMeshPrefix + "Unity2Blender")
-        oMesh = bpy.data.objects.new(oMeshD.name, oMeshD)
-        oMesh.name = oMeshD.name
-        oMesh.rotation_euler.x = radians(90)          # Rotate temp mesh 90 degrees like every other mesh.  ###IMPROVE: Get rid of 90 rotation EVERYWHERE!!
-        bpy.context.scene.objects.link(oMesh)
-        oMeshD.from_pydata(aVerts,[],[])
-        oMeshD.update(calc_edges=True)
-        gBlender.SetParent(oMesh.name, G.C_NodeFolder_Game)
-        return oMesh
     
-            
+    def Morph_UpdateDependentMeshes(self):
+        "Update all the softbodies connected to this body.  Needed after an operation on self.oMeshMorph"
+        for oSoftBody in self.aSoftBodies.values():
+            oSoftBody.Morph_UpdateDependentMeshes();
    
-  
+   
+    
+    def Breasts_ApplyOp(self, sOpMode, sOpArea, sOpPivot, sOpRange, vecOpValue, vecOpAxis):
+        "Apply a breast morph operation onto this body"
+        ###DESIGN: Design decisions needed on what to do in Client and what in Blender as considerable shift is possible...
+        
+        sOpName = sOpMode + "_" + sOpArea + "_" + sOpPivot + "_" + sOpRange     ####PROBLEM!!!!  Not specialized enough for all cases (add extra params)
+        sNameSrcBreast = self.oMeshSource.name + G.C_NameSuffix_Breast
+        oMeshSrcBreastO = gBlender.SelectAndActivate(sNameSrcBreast)                     ###DESIGN: Make generic!
+        bpy.ops.object.mode_set(mode='OBJECT')
+    
+        #=== If a previous shape key for our operation exists we must delete it in order to guarantee that we can undo our previous ops and keep our op from influencing the other ops and keep everything 'undoable' ===
+        if oMeshSrcBreastO.data.shape_keys is None:                   # Add the 'basis' shape key if shape_keys is None
+            bpy.ops.object.shape_key_add(from_mix=False)
+        if sOpName in oMeshSrcBreastO.data.shape_keys.key_blocks:
+            oMeshSrcBreastO.active_shape_key_index = oMeshSrcBreastO.data.shape_keys.key_blocks.find(sOpName)     ###LEARN: How to find a key's index in a collection!
+            bpy.ops.object.shape_key_remove()
+        for oShapeKey in oMeshSrcBreastO.data.shape_keys.key_blocks:       # Disable the other shape keys so our operation doesn't bake in their modifications 
+            oShapeKey.value = 0
+    
+        #=== Create a unique shape key to this operation to keep this transformation orthogonal from the other so we can change it later or remove it regardless of transformations that occur after ===
+        bpy.ops.object.mode_set(mode='EDIT')
+        oShapeKey = oMeshSrcBreastO.shape_key_add(name=sOpName)        ###TODO: Add shape key upon first usage so we remain orthogonal and unable to touch-up our own modifications.
+        oMeshSrcBreastO.active_shape_key_index = oMeshSrcBreastO.data.shape_keys.key_blocks.find(sOpName)     ###LEARN: How to find a key's index in a collection!
+        oMeshSrcBreastO.active_shape_key.vertex_group = G.C_VertGrp_Area_BreastMorph                           ###TODO: Finalize the name of the breast vertex groups 
+        oShapeKey.value = 1
+        
+        #=== Set the cursor to the pivot point requested ===               ###TODO: Set view as cursor and proper axis coordinates!!
+        sBreastMorphPivotPt = G.C_BreastMorphPivotPt + "-" + sOpPivot
+        if sBreastMorphPivotPt not in bpy.data.objects:
+            return "ERROR: Could not find BreastMorphPivotPt = " + sBreastMorphPivotPt 
+        oBreastMorphPivotPt = bpy.data.objects[sBreastMorphPivotPt] 
+        gBlender.SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', False)
+        bpy.context.scene.cursor_location = oBreastMorphPivotPt.location
+    
+        if sOpRange == "Wide":          ###TUNE
+            nOpSize = 0.4
+        elif sOpRange == "Medium":
+            nOpSize = 0.2
+        elif sOpRange == "Narrow":
+            nOpSize = 0.1
+        else:
+            return "ERROR: Breasts_ApplyOp() could not decode sOpRange " + sOpRange
+    
+        #=== Select the verts from predefined vertex groups that is to act as the center of the proportional transformation that is about to be executed ===
+        sVertGrpName = G.C_VertGrp_Morph + sOpArea
+        nVertGrpIndex = oMeshSrcBreastO.vertex_groups.find(sVertGrpName)
+        if (nVertGrpIndex == -1):
+            return "ERROR: Breasts_ApplyOp() could not find point op area (vertex group) '" + sVertGrpName + "'"
+        bpy.ops.mesh.select_all(action='DESELECT')
+        bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')  # Make sure we're in vert mode
+        oMeshSrcBreastO.vertex_groups.active_index = nVertGrpIndex
+        bpy.ops.object.vertex_group_select()
+    
+        ###NOTE: Important coordinate conversion done in Client on a case-by-case for move/rotate/scale...  (Coordinates we receive here a purely Blender global with our z-up)  
+        aContextOverride = gBlender.AssembleOverrideContextForView3dOps()    ###IMPORTANT; For view3d settings to be active when this script code is called from the context of Client we *must* override the context to the one interactive Blender user uses.
+        if sOpMode == 'ROTATION':
+            aResult = bpy.ops.transform.rotate(aContextOverride, value=vecOpValue, axis=vecOpAxis, proportional='ENABLED', proportional_size=nOpSize, proportional_edit_falloff='SMOOTH')  ###SOON?: Why only x works and bad axis??
+        else:        
+            aResult = bpy.ops.transform.transform(aContextOverride, mode=sOpMode, value=vecOpValue, proportional='ENABLED', proportional_size=nOpSize, proportional_edit_falloff='SMOOTH')    
+        bpy.ops.object.mode_set(mode='OBJECT')
+    
+        sResult = aResult.pop()
+        if (sResult != 'FINISHED'):
+            sResult = "ERROR: Breasts_ApplyOp() transform operation did not succeed: " + sResult
+            print(sResult)
+            return sResult
+    
+        for oShapeKey in oMeshSrcBreastO.data.shape_keys.key_blocks:       # Re-enable all modifications now that we've commited our transformation has been isolated to just our shape key 
+            oShapeKey.value = 1
+    
+        sResult = "OK: Breasts_ApplyOp() applying op '{}' on area '{}' with pivot '{}' and range '{}' with {}".format(sOpMode, sOpArea, sOpPivot, sOpRange, vecOpValue)
+        self.Breast_ApplyOntoBody()             ####OPT: Don't need to apply everytime!  Only when batch is done!  # Apply the breasts onto the current body morph character... ####IMPROVE? Pass in name in arg?
+        print(sResult)
+        return sResult
+
+
+    def Breast_ApplyOntoBody(self):
+        "Apply a breast morph operation onto this body's morphing body (and update the dependant softbodies)"
+
+        aVertsBodyMorph = self.oMeshMorph.data.vertices
+        sNameBreast = self.oMeshSource.name + G.C_NameSuffix_Breast
+        oMeshBreast = gBlender.SelectAndActivate(sNameBreast)
+    
+        #=== 'Bake' all the shape keys in their current position into one and extract its verts ===
+        aKeys = oMeshBreast.data.shape_keys.key_blocks
+        bpy.ops.object.shape_key_add(from_mix=True)         ###LEARN: How to 'bake' the current shape key mix into one.  (We delete it at end of this function)
+        nKeys = len(aKeys)
+        aVertsBakedKeys = aKeys[nKeys-1].data               # We obtain the vert positions from the 'baked shape key'
+    
+        #=== Obtain custom data layer containing the vertIDs of our breast verts into body ===
+        bpy.ops.object.mode_set(mode='EDIT')
+        bmBreast = bmesh.from_edit_mesh(oMeshBreast.data)
+        oLayBodyVerts = bmBreast.verts.layers.int[G.C_DataLayer_SourceBreastVerts]      # Each integer in this data layer stores the vertex ID of the left breast in low 16-bits and vert ID of right breast in high 16-bit  ###LEARN: Creating this kills our bmesh references!
+        ###bmBreast.verts.index_update()
+    
+        #=== Iterate through the breast verts, extract the source verts from body from custom data layer, and set the corresponding verts in body ===
+        for oVertBreast in bmBreast.verts:
+            nVertsEncoded = oVertBreast[oLayBodyVerts]          ####DEV ####HACK!!!
+            nVertBodyBreastL = self.aMapVertsSrcToMorph[(nVertsEncoded & 65535)]          # Breast has been defined from original body.  Map our verts to the requested morphing body  
+            nVertBodyBreastR = self.aMapVertsSrcToMorph[nVertsEncoded >> 16]
+            vecVert = aVertsBakedKeys[oVertBreast.index].co.copy()
+            aVertsBodyMorph[nVertBodyBreastL].co = vecVert
+            vecVert.x = -vecVert.x
+            aVertsBodyMorph[nVertBodyBreastR].co = vecVert
+        bpy.ops.object.mode_set(mode='OBJECT')
+        
+        #=== Delete the 'baked' shape key we created above ===
+        oMeshBreast.active_shape_key_index = nKeys - 1
+        bpy.ops.object.shape_key_remove()
+        oMeshBreast.hide = True;
+
+        #=== Make sure the change we just did to the morphing body propagates to all dependent meshes ===
+        self.Morph_UpdateDependentMeshes()
     
 
 

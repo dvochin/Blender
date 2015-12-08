@@ -1,19 +1,3 @@
-###NOW: Finally back and forth!
-# Port tits over to CBody
-# Two breasts now, have to have entity to manage both (e.g. hotspot, etc
-# What is wrong with fucking names?
-# Some weird shimmer around rim!
-# Hide Unity2Blender mesh!
-    ### How come only one???
-# Then... titty morphing!!! :)
-
-
-
-
-
-
-
-
 import bpy
 import sys
 import bmesh
@@ -27,6 +11,7 @@ import gBlender
 import G
 import CBody
 import Client
+import CMesh
 
 
 
@@ -40,6 +25,7 @@ class CSoftBody:
         self.oMeshSoftBody          = None              # The softbody surface mesh itself.  Visible in Unity and moved by PhysX2 softbody simulation via its internal solid tetramesh.
         self.oMeshSoftBodyRim       = None              # The 'softbody rim mesh'  Responsible to pin softbody tetraverts to the skinned body so it moves with the body
         self.oMeshSoftBodyRim_Orig  = None              # The 'original' 'softbody rim mesh'  (Untouched copy and source of oMeshSoftBodyRim)  Done this way to circumvent problems with data layers being destroyed!
+        self.oMeshUnity2Blender     = None              # The 'Unity-to-Blender' mesh.  Used by Unity to pass in geometry for Blender processing (e.g. Softbody tetravert skinning and pinning)   
 
         self.aMapRimTetravert2Tetravert = None          # This array stores pairs of <#RimTetravert, #Tetravert> so Unity can pin the softbody tetraverts from the rim tetravert skinned mesh
         self.aMapRimVerts2Verts         = None          # The final flattened map of what verts from the 'detached softbodypart' maps to what vert in the 'skinned main body'  Client needs this to pin the edges of the softbody-simulated part to the main body skinned mesh
@@ -49,10 +35,10 @@ class CSoftBody:
         print("=== CSoftBody.ctor()  self.oBody = '{}'  self.sSoftBodyPart = '{}' ===".format(self.oBody.sMeshPrefix, self.sSoftBodyPart))
         
         #=== Prepare naming of the meshes we'll create and ensure they are not in Blender ===
-        sNameMeshPart = self.oBody.sMeshPrefix + "CSoftBody-" + self.sSoftBodyPart         # Create name for to-be-created detach mesh and open the body mesh
-        sNameMeshPartRim = sNameMeshPart + "-Rim"                         # The name of the 'softbody rim' mesh (for pinning softbody to skinned body) 
-        gBlender.DeleteObject(sNameMeshPart)
-        gBlender.DeleteObject(sNameMeshPartRim)
+        sNameSoftBody = self.oBody.sMeshPrefix + "CSoftBody-" + self.sSoftBodyPart         # Create name for to-be-created detach mesh and open the body mesh
+        sNameSoftBodyRim = sNameSoftBody + "-Rim"                         # The name of the 'softbody rim' mesh (for pinning softbody to skinned body) 
+        gBlender.DeleteObject(sNameSoftBody)
+        gBlender.DeleteObject(sNameSoftBodyRim)
  
         #=== Obtain the to-be-detached vertex group of name 'self.sSoftBodyPart' from the combo mesh that originally came from the source body ===
         nVertGrpIndex_DetachPart = self.oBody.oMeshBody.vertex_groups.find(G.C_VertGrp_Detach + self.sSoftBodyPart)  # vertex_group_transfer_weight() above added vertex groups for each bone.  Fetch the vertex group for this detach area so we can enhance its definition past the bone transfer (which is much too tight)     ###DESIGN: Make area-type agnostic
@@ -107,8 +93,8 @@ class CSoftBody:
         bpy.context.object.select = False           ###LEARN: Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
         bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')        
         self.oMeshSoftBody = bpy.context.object                                 # The just-split mesh becomes the softbody mesh! 
-        self.oMeshSoftBody.name = self.oMeshSoftBody.data.name = sNameMeshPart  # Name it to our global name scheme
-        self.oMeshSoftBody.name = self.oMeshSoftBody.data.name = sNameMeshPart
+        self.oMeshSoftBody.name = self.oMeshSoftBody.data.name = sNameSoftBody  # Name it to our global name scheme
+        self.oMeshSoftBody.name = self.oMeshSoftBody.data.name = sNameSoftBody
         bpy.ops.object.vertex_group_remove(all=True)        # Remove all vertex groups from detached chunk to save memory
 
 
@@ -124,9 +110,10 @@ class CSoftBody:
         bpy.ops.mesh.select_non_manifold()      ###LEARN: Will select the edge of the detached softbody mesh = what we have to collapse to make a solid for PhysX2!
         for oVert in bmSoftBody.verts:          # Iterate through all selected rim verts so we can store their normals
             if oVert.select == True:
-                nVertSrc = oVert[oLayVertsSrc] - G.C_OffsetVertIDs       # Push original vert (removing the offset) 
-                self.aMapRimVerts2SourceVerts.append(oVert.index)
-                self.aMapRimVerts2SourceVerts.append(nVertSrc)
+                if (oVert[oLayVertsSrc] >= G.C_OffsetVertIDs):
+                    nVertSrc = oVert[oLayVertsSrc] - G.C_OffsetVertIDs       # Push original vert (removing the offset) 
+                    self.aMapRimVerts2SourceVerts.append(oVert.index)
+                    self.aMapRimVerts2SourceVerts.append(nVertSrc)
         
         #=== Before the collapse to cap the softbody we must remove the info in the custom data layer so new collapse vert doesn't corrupt our rim data ===
         bpy.ops.mesh.extrude_edges_indiv()      ###LEARN: This is the function we need to really extrude!
@@ -165,8 +152,8 @@ class CSoftBody:
         bpy.context.object.select = False  # Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
         bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')        
         self.oMeshSoftBodyRim_Orig = bpy.context.object
-        self.oMeshSoftBodyRim_Orig.name = self.oMeshSoftBodyRim_Orig.data.name = sNameMeshPartRim  ###NOTE: Do it twice to ensure name really sticks  ###WEAK: Wish this was easier to do!
-        self.oMeshSoftBodyRim_Orig.name = self.oMeshSoftBodyRim_Orig.data.name = sNameMeshPartRim
+        self.oMeshSoftBodyRim_Orig.name = self.oMeshSoftBodyRim_Orig.data.name = sNameSoftBodyRim  ###NOTE: Do it twice to ensure name really sticks  ###WEAK: Wish this was easier to do!
+        self.oMeshSoftBodyRim_Orig.name = self.oMeshSoftBodyRim_Orig.data.name = sNameSoftBodyRim
     
         #=== Cleanup the rim mesh by removing all materials ===
         while len(self.oMeshSoftBodyRim_Orig.material_slots) > 0:  ###IMPROVE: Find a way to remove doubles while preventing key-not-found errors in twin hunt below??
@@ -175,6 +162,10 @@ class CSoftBody:
         bpy.ops.object.mode_set(mode='OBJECT')
         gBlender.Cleanup_VertGrp_RemoveNonBones(self.oMeshSoftBodyRim_Orig)  # Remove the extra vertex groups that are not skinning related
 
+        #=== Create the 'Unity2Blender' mesh Unity needs to pass us tetraverts geometry === 
+        self.oMeshUnity2Blender = self.CreateMesh_Unity2Blender(oBody.nUnity2Blender_NumVerts)
+
+        self.HideMeshes();
 
 
   
@@ -188,7 +179,7 @@ class CSoftBody:
         oMeshSoftBodyRim_Copy = gBlender.DuplicateAsSingleton(self.oMeshSoftBodyRim_Orig.name, "TEMP_SoftBodyRim_Copy", G.C_NodeFolder_Temp, False)
 
         #=== Create a temporary copy of Unity2Blender mesh so we can trim it to 'nNumVerts_UnityToBlenderMesh' verts ===  
-        oMeshUnityToBlenderCopy = gBlender.DuplicateAsSingleton(self.oBody.oMeshUnity2Blender.name, "TEMP_Unity2Blender", G.C_NodeFolder_Temp, False)
+        oMeshUnityToBlenderCopy = gBlender.DuplicateAsSingleton(self.oMeshUnity2Blender.name, "TEMP_Unity2Blender", G.C_NodeFolder_Temp, False)
         self.aMapRimTetravert2Tetravert = array.array('H')  # Blank out the two arrays that must be created everytime this is called
         self.aMapRimVerts2Verts         = array.array('H')
 
@@ -306,10 +297,31 @@ class CSoftBody:
             else:
                 G.DumpStr("###ERROR in CSoftBody.SeparateSoftBodyPart() finding nTwinID {} in aMapTwinId2VertRim".format(nTwinID)) 
 
+        self.HideMeshes();
+
         return "OK"     ###TEMP
 
 
-    def UpdateFromMorphBody(self):
+    def CreateMesh_Unity2Blender(self, nVerts):       ###MOVE: Not really related to CBody but is global
+        "Create a temporary Unity2Blender with 'nVerts' vertices.  Used by Unity to pass Blender temporary mesh geometry for Blender processing (e.g. Softbody tetramesh pinning)"
+        print("== CreateMesh_Unity2Blender({}) ==".format(nVerts));
+        #=== Create the requested number of verts ===
+        aVerts = []
+        for nVert in range(nVerts):
+            aVerts.append((0,0,0))
+        #=== Create the mesh with verts only ===
+        oMeshD = bpy.data.meshes.new(self.oMeshSoftBody.name + "-Unity2Blender")
+        oMesh = bpy.data.objects.new(oMeshD.name, oMeshD)
+        oMesh.name = oMeshD.name
+        oMeshO.rotation_euler.x = radians(90)          # Rotate temp mesh 90 degrees like every other mesh.  ###IMPROVE: Get rid of 90 rotation EVERYWHERE!!
+        bpy.context.scene.objects.link(oMesh)
+        oMeshD.from_pydata(aVerts,[],[])
+        oMeshD.update(calc_edges=True)
+        gBlender.SetParent(oMesh.name, G.C_NodeFolder_Game)
+        return oMesh
+    
+    
+    def Morph_UpdateDependentMeshes(self):
         "Updates this softbody mesh from its source morph body"
         #=== Iterate through this softbody mesh and update our vert position to our corresponding morph source body ===
         gBlender.SelectAndActivate(self.oMeshSoftBody.name)
@@ -318,8 +330,22 @@ class CSoftBody:
         oLayVertAssy = bmSoftBody.verts.layers.int[G.C_DataLayer_VertsAssy]
         aVertsMorph = self.oBody.oMeshMorph.data.vertices
         for oVert in bmSoftBody.verts:
-            nVertMorph = oVert[oLayVertAssy] - G.C_OffsetVertIDs        # Obtain the vertID from the assembled mesh (removing offset added during creation)
-            oVert.co = aVertsMorph[nVertMorph].co.copy()
+            if (oVert[oLayVertAssy] >= G.C_OffsetVertIDs):
+                nVertMorph = oVert[oLayVertAssy] - G.C_OffsetVertIDs        # Obtain the vertID from the assembled mesh (removing offset added during creation)
+                oVert.co = aVertsMorph[nVertMorph].co.copy()
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+
+    def HideMeshes(self):
+        return      ####BROKEN!  Hiding the meshes causes left breast to be deleted without us asking!  WTF???
+        if (self.oMeshSoftBody != None):
+            self.oMeshSoftBody.hide = True
+        if (self.oMeshSoftBodyRim != None):
+            self.oMeshSoftBodyRim.hide = True
+        if (self.oMeshSoftBodyRim_Orig != None):
+            self.oMeshSoftBodyRim_Orig.hide = True
+        if (self.oMeshUnity2Blender != None):
+            self.oMeshUnity2Blender.hide = True
 
 
     def SerializeCollection(self, aCollection):         ####MOVE?        

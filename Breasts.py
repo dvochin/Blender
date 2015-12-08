@@ -11,21 +11,17 @@ import G
 import Client
 
 
-#---------------------------------------------------------------------------    CONSTANTS
-C_VertGrp_Area_BreastMorph = G.C_VertGrp_Area + "BreastMorph"     # The name of the vertex group that blends the breasts to give zero weight at border, near zero near border and so on...
-C_DataLayer_SourceBreastVerts = 'DataLayer_SourceBreastVerts'       # Data layer to store the vertIDs of left and right breast verts from cutoff breast
-C_BreastMorphPivotPt = "BreastMorphPivotPt"                                   # Part of name given to reference points used as pivot points for breast morphing
 
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    BREAST MORPHING
 #---------------------------------------------------------------------------    
 
 
-def Breasts_CreateCutoffBreastFromBody(sNameBodySrc):      
+def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):      
     "Separates the left-breast from source mesh and create the important 'blend group' to protect breast border during morph operations as well as the mapping between breast verts to body verts for left&right breasts"
     
     ####IMPROVE: One of the 'prepare functions' that only needs to run when source body changes
-    sNameBreast = sNameBodySrc + "-Breast"
+    sNameBreast = sNameBodySrc + G.C_NameSuffix_Breast
     gBlender.DeleteObject(sNameBreast)
     #gBlender.DataLayer_RemoveLayers(oMeshBodyO.name)           # Remove previous custom data layers just to make sure we refer to the right one  ####CHECK!  Can delete something we need???
     
@@ -36,7 +32,7 @@ def Breasts_CreateCutoffBreastFromBody(sNameBodySrc):
 
     #=== Create a new data layer to store (before we separate) the original vertex ID (in body) as well as the vertex ID of the corresponding vert in the right breasts ===
     bmBody = bmesh.from_edit_mesh(oMeshBodyO.data)
-    oLayBodyVerts = bmBody.verts.layers.int.new(C_DataLayer_SourceBreastVerts)      # Each integer in this data layer will store the vertex ID of the left breast in low 16-bits and vert ID of right breast in high 16-bit  ###LEARN: Creating this kills our bmesh references!
+    oLayBodyVerts = bmBody.verts.layers.int.new(G.C_DataLayer_SourceBreastVerts)      # Each integer in this data layer will store the vertex ID of the left breast in low 16-bits and vert ID of right breast in high 16-bit  ###LEARN: Creating this kills our bmesh references!
     bmBody.verts.index_update()
 
     #=== Capture the vertex sets of both left and right breasts in arrays ===
@@ -105,7 +101,7 @@ def Breasts_CreateCutoffBreastFromBody(sNameBodySrc):
     bpy.ops.object.vertex_group_select()
     aVertNippleL = [oVertBreastL for oVertBreastL in bmBreast.verts if oVertBreastL.select]
     if len(aVertNippleL) > 1:
-        raise Exception("ERROR: Breasts_CreateCutoffBreastFromBody(): Too many verts for nipple!")      ###PROBLEM?: Weird bug when generating bodies is some of our vert groups get more verts!  WTF???
+        raise Exception("ERROR: BodyInit_CreateCutoffBreastFromSourceBody(): Too many verts for nipple!")      ###PROBLEM?: Weird bug when generating bodies is some of our vert groups get more verts!  WTF???
     #print("=== Nipple Vert = ", aVertNippleL)
     aMapDistToNipples, aDistToNippleMax = gBlender.Util_CalcSurfDistanceBetweenTwoVertGroups(bmBreast, bmBreast.verts, aVertNippleL)
 
@@ -162,10 +158,10 @@ def Breasts_CreateCutoffBreastFromBody(sNameBodySrc):
 
 
     #===== Create the 'blended group' that calculate a blended value from 0..1 for each breast vert based on how close/far it is to nipple and breast edge =====
-    if C_VertGrp_Area_BreastMorph in oMeshBreastO.vertex_groups:
-        oGrp = oMeshBreastO.vertex_groups[C_VertGrp_Area_BreastMorph]
+    if G.C_VertGrp_Area_BreastMorph in oMeshBreastO.vertex_groups:
+        oGrp = oMeshBreastO.vertex_groups[G.C_VertGrp_Area_BreastMorph]
     else:
-        oGrp = oMeshBreastO.vertex_groups.new(name=C_VertGrp_Area_BreastMorph)
+        oGrp = oMeshBreastO.vertex_groups.new(name=G.C_VertGrp_Area_BreastMorph)
     bpy.ops.object.mode_set(mode='OBJECT')              # Adding verts to vert group (unfortunately) requires object mode
 
     for oVertBreast in oMeshBreastO.data.vertices:                 # Iterate through all verts of the mesh to store their distance to the requested vert
@@ -184,7 +180,7 @@ def Breasts_CreateCutoffBreastFromBody(sNameBodySrc):
     #=== Obtain custom data layer containing the vertIDs of our breast verts into body ===
     bpy.ops.object.mode_set(mode='EDIT')
     bmBreast = bmesh.from_edit_mesh(oMeshBreastO.data)
-    oLayBodyVerts = bmBreast.verts.layers.int[C_DataLayer_SourceBreastVerts]      # Each integer in this data layer will store the vertex ID of the left breast in low 16-bits and vert ID of right breast in high 16-bit  ###LEARN: Creating this kills our bmesh references!
+    oLayBodyVerts = bmBreast.verts.layers.int[G.C_DataLayer_SourceBreastVerts]      # Each integer in this data layer will store the vertex ID of the left breast in low 16-bits and vert ID of right breast in high 16-bit  ###LEARN: Creating this kills our bmesh references!
     bmBreast.verts.index_update()
 
     #=== Iterate through the breast verts, extract the source verts from body from custom data layer, and set the corresponding verts in body ===    
@@ -199,128 +195,7 @@ def Breasts_CreateCutoffBreastFromBody(sNameBodySrc):
             print("ERROR in breast vertex remapping!  {:5d} != {:5d}".format(oVertBreast.index, nVertBodyBreastL))      ####PROBLEM: Collider verts not matching??  Because of left / right???
     bpy.ops.object.mode_set(mode='OBJECT')
     
-    gBlender.DataLayer_RemoveLayerInt(sNameBodySrc, C_DataLayer_SourceBreastVerts)      # Remove the temporary data layer from source body (no longer needed after breast mesh split)
-
-
-
-####DEV Move into CBody?
-def Breast_ApplyOntoSourceBody(nBodyID, oMeshBodyO, sNameGameBody): ####DEV: Revisit args!    # Iterate through all verts of the cutoff breast, find the left and right vertex into its source body and apply the current form of the breast onto the original body mesh (for symmetrical application)
-    aVertsBody = oMeshBodyO.data.vertices
-    sNameBreast = sNameGameBody + "-Breast"
-    oMeshBreastO = gBlender.SelectAndActivate(sNameBreast)
-
-    #=== 'Bake' all the shape keys in their current position into one and extract its verts ===
-    aKeys = oMeshBreastO.data.shape_keys.key_blocks
-    bpy.ops.object.shape_key_add(from_mix=True)         ###LEARN: How to 'bake' the current shape key mix into one.  (We delete it at end of this function)
-    nKeys = len(aKeys)
-    aVertsBakedKeys = aKeys[nKeys-1].data               # We obtain the vert positions from the 'baked shape key'
-
-    #=== Obtain custom data layer containing the vertIDs of our breast verts into body ===
-    bpy.ops.object.mode_set(mode='EDIT')
-    bmBreast = bmesh.from_edit_mesh(oMeshBreastO.data)
-    oLayBodyVerts = bmBreast.verts.layers.int[C_DataLayer_SourceBreastVerts]      # Each integer in this data layer stores the vertex ID of the left breast in low 16-bits and vert ID of right breast in high 16-bit  ###LEARN: Creating this kills our bmesh references!
-    ###bmBreast.verts.index_update()
-
-    #=== Iterate through the breast verts, extract the source verts from body from custom data layer, and set the corresponding verts in body ===
-    oBody = CBody.CBody._aBodies[nBodyID]
-    for oVertBreast in bmBreast.verts:
-        nVertsEncoded = oVertBreast[oLayBodyVerts]          ####DEV ####HACK!!!
-        nVertBodyBreastL = oBody.aMapVertsSrcToMorph[(nVertsEncoded & 65535)]          # Breast has been defined from original body.  Map our verts to the requested morphing body  
-        nVertBodyBreastR = oBody.aMapVertsSrcToMorph[nVertsEncoded >> 16]
-        vecVert = aVertsBakedKeys[oVertBreast.index].co.copy()
-        aVertsBody[nVertBodyBreastL].co = vecVert
-        vecVert.x = -vecVert.x
-        aVertsBody[nVertBodyBreastR].co = vecVert
-    bpy.ops.object.mode_set(mode='OBJECT')
-    
-    #=== Delete the 'baked' shape key we created above ===
-    oMeshBreastO.active_shape_key_index = nKeys - 1
-    bpy.ops.object.shape_key_remove()
-
-    oMeshBreastO.hide = True;
-
-
-
-
-def Breasts_ApplyOp(nBodyID, sNameGameBody, sNameSrcBody, sOpMode, sOpArea, sOpPivot, sOpRange, vecOpValue, vecOpAxis):
-    ###DESIGN: Design decisions needed on what to do in Client and what in Blender as considerable shift is possible...
-    
-    sOpName = sOpMode + "_" + sOpArea + "_" + sOpPivot + "_" + sOpRange     ####PROBLEM!!!!  Not specialized enough for all cases (add extra params)
-    sNameSrcBreast = sNameSrcBody + "-Breast"
-    oMeshSrcBreastO = gBlender.SelectAndActivate(sNameSrcBreast)                     ###DESIGN: Make generic!
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-    #=== If a previous shape key for our operation exists we must delete it in order to guarantee that we can undo our previous ops and keep our op from influencing the other ops and keep everything 'undoable' ===
-    if oMeshSrcBreastO.data.shape_keys is None:                   # Add the 'basis' shape key if shape_keys is None
-        bpy.ops.object.shape_key_add(from_mix=False)
-    if sOpName in oMeshSrcBreastO.data.shape_keys.key_blocks:
-        oMeshSrcBreastO.active_shape_key_index = oMeshSrcBreastO.data.shape_keys.key_blocks.find(sOpName)     ###LEARN: How to find a key's index in a collection!
-        bpy.ops.object.shape_key_remove()
-    for oShapeKey in oMeshSrcBreastO.data.shape_keys.key_blocks:       # Disable the other shape keys so our operation doesn't bake in their modifications 
-        oShapeKey.value = 0
-
-    #=== Create a unique shape key to this operation to keep this transformation orthogonal from the other so we can change it later or remove it regardless of transformations that occur after ===
-    bpy.ops.object.mode_set(mode='EDIT')
-    oShapeKey = oMeshSrcBreastO.shape_key_add(name=sOpName)        ###TODO: Add shape key upon first usage so we remain orthogonal and unable to touch-up our own modifications.
-    oMeshSrcBreastO.active_shape_key_index = oMeshSrcBreastO.data.shape_keys.key_blocks.find(sOpName)     ###LEARN: How to find a key's index in a collection!
-    oMeshSrcBreastO.active_shape_key.vertex_group = C_VertGrp_Area_BreastMorph                           ###TODO: Finalize the name of the breast vertex groups 
-    oShapeKey.value = 1
-    
-    #=== Set the cursor to the pivot point requested ===               ###TODO: Set view as cursor and proper axis coordinates!!
-    sBreastMorphPivotPt = C_BreastMorphPivotPt + "-" + sOpPivot
-    if sBreastMorphPivotPt not in bpy.data.objects:
-        return "ERROR: Could not find BreastMorphPivotPt = " + sBreastMorphPivotPt 
-    oBreastMorphPivotPt = bpy.data.objects[sBreastMorphPivotPt] 
-    gBlender.SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', False)
-    bpy.context.scene.cursor_location = oBreastMorphPivotPt.location
-
-    if sOpRange == "Wide":          ###TUNE
-        nOpSize = 0.4
-    elif sOpRange == "Medium":
-        nOpSize = 0.2
-    elif sOpRange == "Narrow":
-        nOpSize = 0.1
-    else:
-        return "ERROR: Breasts_ApplyOp() could not decode sOpRange " + sOpRange
-
-    #=== Select the verts from predefined vertex groups that is to act as the center of the proportional transformation that is about to be executed ===
-    sVertGrpName = G.C_VertGrp_Morph + sOpArea
-    nVertGrpIndex = oMeshSrcBreastO.vertex_groups.find(sVertGrpName)
-    if (nVertGrpIndex == -1):
-        return "ERROR: Breasts_ApplyOp() could not find point op area (vertex group) '" + sVertGrpName + "'"
-    bpy.ops.mesh.select_all(action='DESELECT')
-    bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')  # Make sure we're in vert mode
-    oMeshSrcBreastO.vertex_groups.active_index = nVertGrpIndex
-    bpy.ops.object.vertex_group_select()
-
-    ###NOTE: Important coordinate conversion done in Client on a case-by-case for move/rotate/scale...  (Coordinates we receive here a purely Blender global with our z-up)  
-    aContextOverride = gBlender.AssembleOverrideContextForView3dOps()    ###IMPORTANT; For view3d settings to be active when this script code is called from the context of Client we *must* override the context to the one interactive Blender user uses.
-    if sOpMode == 'ROTATION':
-        aResult = bpy.ops.transform.rotate(aContextOverride, value=vecOpValue, axis=vecOpAxis, proportional='ENABLED', proportional_size=nOpSize, proportional_edit_falloff='SMOOTH')  ###SOON?: Why only x works and bad axis??
-    else:        
-        aResult = bpy.ops.transform.transform(aContextOverride, mode=sOpMode, value=vecOpValue, proportional='ENABLED', proportional_size=nOpSize, proportional_edit_falloff='SMOOTH')    
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-    sResult = aResult.pop()
-    if (sResult != 'FINISHED'):
-        sResult = "ERROR: Breasts_ApplyOp() transform operation did not succeed: " + sResult
-        print(sResult)
-        return sResult
-
-    for oShapeKey in oMeshSrcBreastO.data.shape_keys.key_blocks:       # Re-enable all modifications now that we've commited our transformation has been isolated to just our shape key 
-        oShapeKey.value = 1
-
-    sResult = "OK: Breasts_ApplyOp() applying op '{}' on area '{}' with pivot '{}' and range '{}' with {}".format(sOpMode, sOpArea, sOpPivot, sOpRange, vecOpValue)
-
-    Breast_ApplyOntoSourceBody(nBodyID, bpy.data.objects[sNameGameBody], sNameSrcBody)        # Apply the breasts onto the current body morph character... ####IMPROVE? Pass in name in arg?
-    
-    print(sResult)
-
-    return sResult
-
-
-
-
+    gBlender.DataLayer_RemoveLayerInt(sNameBodySrc, G.C_DataLayer_SourceBreastVerts)      # Remove the temporary data layer from source body (no longer needed after breast mesh split)
 
 
 
