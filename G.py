@@ -69,7 +69,7 @@ C_NameSuffix_Breast         = "-Breast"             # Suffix applied to a source
 
 #---------------------------------------------------------------------------    NODE NAME PREFIX CONSTANTS
 C_NamePrefix_Body            = "Body"               # Prefix given to a 'body definition' created by gBL_Body_Create() such as "BodyA", "BodyB", etc that represents an abstract man/woman/shemale body that is processed by most of the code.
-C_NamePrefix_CutterAsMesh    = "CutterAsMesh"       # Prefix given to meshes created from curves in gBL_GetCutterAsMesh() that converts a curve into a mesh for Client rendering.  Also has a node folder of the same name to group these up for easy deletion
+C_NamePrefix_CutterAsMesh    = "CutterAsMesh"       # Prefix given to meshes created from curves in gBL_GetCutterAsMesh() that converts a curve into a mesh for Unity rendering.  Also has a node folder of the same name to group these up for easy deletion
 
 #---------------------------------------------------------------------------    NODE NAME CONSTANTS
 C_NodeName_ClothSource      = "BodySuit"            ###DESIGN ###TEMP: The node used as cloth source (e.g. 'bodysuit')       
@@ -109,6 +109,7 @@ C_DataLayer_TetraVerts      = "DataLayer_TetraVerts"        # Data layer storing
 C_DataLayer_TwinVert        = "DataLayer_TwinVert"          # Temporary data layer to store twin-vert ID as mesh is split into parts (Used to reconnect verts at the same location from different meshes)  ####CHECK: Names can't be too long to be unique???
 C_DataLayer_SharedNormals   = "DataLayer_SharedNormals"     # Temporary data layer used while preparing a mesh for Client to construct what just-separated verts should share the same normal (because of Client's need to have one vert per UV)
 C_DataLayer_SourceBreastVerts = 'DataLayer_SourceBreastVerts'       # Data layer to store the vertIDs of left and right breast verts from cutoff breast
+C_DataLayer_SlaveMeshVerts  = 'DataLayer_SlaveMeshVerts'       # Data layer to store the vertIDs of the verts closest to each verts of this mesh
 
 #---------------------------------------------------------------------------    'MAGIC NUMBERS': Arbitrary constants that have special meanings in arrays
 C_MagicNo_TranBegin = 0x0B16  # Magic numbers stored as unsigned shorts at the head & tail of every serialization to help sanity checks...         (MUST MATCH Client SIDE!)

@@ -123,8 +123,14 @@ def Cut_ApplyCut(oMeshO, oCurveO, vecCurveCenter, aBorderLocatorVertPos):
         #=== In order to overcome this boolean destruction of most mesh data, we remember for each border the coordinates of one vertex on that border so that we may later rebuild the list of vert for all borders ===
         #=== Our first step is to start from the center vert, walk the first edge of that vert to find a vertex on the new border, store its position in aBorderLocatorVertPos and delete the (unwanted) mesh cutter central vert ===
         ###LEARN: Applying boolean modifier will destroy the mesh's vertex groups, the IDs of verts and probably edges and polys, vert attribs like bevel_weight, edges attribs like crease and bevel_weight BUT keeps face material!!
+        return      ###HACK!!!! NOW: Cut breaks
+    
+    
+    
+    
         bpy.ops.object.mode_set(mode='EDIT')
         bm = bmesh.from_edit_mesh(oMesh)
+        #####bm.verts.ensure_lookup_table()             ###HACK!!!!!!
         oVertMeshCutterCenter = bm.verts[len(bm.verts) - 1]             # The boolean cut has created an a vert where the cutter center vert was.  We don't need our cloth as solid so we delete the center vert' (still at 3d cursor) and remove it to restore the cloth mesh to non-solid  ###CHECK: We are assuming (so far so good) that the collapsed vert is the last one in the cloth.
         oEdgeFirst = oVertMeshCutterCenter.link_edges[0]                # Select the first edge of that central vert to point the way toward a vert on the border
         oVertLocatorOnBorder = oEdgeFirst.other_vert(oVertMeshCutterCenter) # Obtain reference to the other side of that 'first edge'.  The 3D coordinate of that 'special vert' will act as the key to rebuild the list of verts for this border once all the highly-destructive boolean operations have been done for all borders on this mesh

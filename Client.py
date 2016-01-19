@@ -64,8 +64,8 @@ def gBL_Body_CreateForMorph(sNameSrcBody, sNameGameBody, sNameGameMorph):     # 
     #=== Create the breast collider mapped to morphing body ===
     if (sNameSrcBody.startswith('Woman')):    
         sNamePairedMesh = sNameGameBody + G.C_NameSuffix_BreastCol + "-ToBody"
-        CBBodyCol.PairMesh_Create(sNameSrcBody + G.C_NameSuffix_BreastCol + "-Source", sNamePairedMesh)      # Create the 'ToBody' collider straight from the source collider...
-        CBBodyCol.PairMesh_DoPairing(sNamePairedMesh, sNameGameMorph, 0.000001)         #... and do the pairing to the morph body so breast verts can follow body verts
+        CBBodyCol.SlaveMesh_Create(sNameSrcBody + G.C_NameSuffix_BreastCol + "-Source", sNamePairedMesh)      # Create the 'ToBody' collider straight from the source collider...
+        CBBodyCol.SlaveMesh_DoPairing(sNamePairedMesh, sNameGameMorph, 0.000001)         #... and do the pairing to the morph body so breast verts can follow body verts
 
     return ""
 
@@ -522,10 +522,10 @@ def gBL_Body_Create(sNameGameBody, sNameSrcBody, sSex, sNameSrcGenitals, aCloths
         sNameBreastColToBody    = sNameGameBody + G.C_NameSuffix_BreastCol + "-ToBody"                  # These were generated when morphing body was created and have been moved along morphing body.
         sNameBreastColToBreasts = sNameGameBody + G.C_NameSuffix_BreastCol + "-ToBreasts"               #... so the just-detached breasts are at the exact same position... but we need to 're-pair' to the just-detached breasts so collider can now moving along with softbody breasts
         gBlender.DuplicateAsSingleton(sNameBreastColToBody, sNameBreastColToBreasts, G.C_NodeFolder_Game, True)     # 'ToBody' breast collider already paired to body for static morphing.  Now re-pair a new instance of breast collider onto newly created detached softbody breasts
-        CBBodyCol.PairMesh_DoPairing(sNameBreastColToBreasts, sNameGameBody + "_Detach_Breasts", 0.000001)                     # Redo the pairing to the morph body so breast verts can follow body verts
+        CBBodyCol.SlaveMesh_DoPairing(sNameBreastColToBreasts, sNameGameBody + "_Detach_Breasts", 0.000001)                     # Redo the pairing to the morph body so breast verts can follow body verts
     
-#     CBBodyCol.PairMesh_Define(sNameBreastColToBreasts, sNameGameBody + , sNameMeshOutput, nVertTolerance):
-#     //CBBodyCol.PairMesh_Define(sNameSrcBody + "-BreastCol-Source", sNameGameBody + "_Detach_Breasts", sNameGameBody + G.C_NameSuffix_BreastCol + "-ToBreasts", 0.001)
+#     CBBodyCol.SlaveMesh_Define(sNameBreastColToBreasts, sNameGameBody + , sNameMeshOutput, nVertTolerance):
+#     //CBBodyCol.SlaveMesh_Define(sNameSrcBody + "-BreastCol-Source", sNameGameBody + "_Detach_Breasts", sNameGameBody + G.C_NameSuffix_BreastCol + "-ToBreasts", 0.001)
    
     #gBlender.gBL_Util_HideGameMeshes();     ###KEEP???
 
@@ -568,7 +568,9 @@ def Client_ConvertMesh(oMeshO, bSplitVertsAtUvSeams):  # Convert a Blender mesh 
     bpy.ops.mesh.select_all(action='DESELECT')
     bm = bmesh.from_edit_mesh(oMeshO.data)          
 
-    if (len(oMeshO.data.edges) == 0):                           # Prevent split of UV if no edges.  (Prevents an error in seams_from_islands() for vert-only meshes (e.g. softbody pinning temp meshes)
+    if (len(oMeshO.data.edges) == 0):                   # Prevent split of UV if no edges.  (Prevents an error in seams_from_islands() for vert-only meshes (e.g. softbody pinning temp meshes)
+        bSplitVertsAtUvSeams = False;
+    if (len(oMeshO.material_slots) < 2):                # Prevent split of UV if less than two materials
         bSplitVertsAtUvSeams = False;
 
     #=== Iterate through all edges to select only the non-sharp seams (The sharp edges have been marked as sharp deliberately by border creation code).  We need to split these edges so Client-bound mesh can meet its (very inconvenient) one-normal-per-vertex requirement ===
@@ -577,7 +579,7 @@ def Client_ConvertMesh(oMeshO, bSplitVertsAtUvSeams):  # Convert a Blender mesh 
         for oEdge in bm.edges:
             if oEdge.seam and oEdge.smooth:  ###LEARN: 'smooth' edge = non-sharp edge!
                 oEdge.select_set(True)
-                #bpy.ops.mesh.edge_split()                ###NOTE: Loses the s
+                #bpy.ops.mesh.edge_split()
 
     bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
 
@@ -926,126 +928,3 @@ def Test():
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    ####MOVE
 #---------------------------------------------------------------------------    
-   
-def gBL_Cloth_SplitIntoSkinnedAndSimulated(sNameClothSimulated, sNameClothBase, sNameBody, sVertGrp_ClothSkinArea):
-    # Separate 'sNameClothBase' cloth mesh between skinned and simulated parts, calculating the 'twin verts' that will pin the simulated part to the skinned part at runtime
-
-    #=== Obtain reference to the needed meshes and duplicate cloth mesh ===
-    oMeshBodyO = gBlender.SelectAndActivate(sNameBody)              # Obtain reference to source body for skin info transferred to skinned part of cloth.
-    sNameClothSkinned = sNameClothBase + G.C_NameSuffix_ClothSkinned
-    oMeshClothSimO = gBlender.DuplicateAsSingleton(sNameClothBase, sNameClothSimulated, G.C_NodeFolder_Game, True)  # Duplicate the source cloth into our working mesh (that will become our cloth-simulated part)
-
-    #=== Transfer the skinning information from the skinned body mesh to the clothing.  Some vert groups are useful to move non-simulated area of cloth as skinned cloth, other _ClothSkinArea_xxx vert groups are to define areas of the cloth that are skinned and not simulated ===
-    gBlender.SelectAndActivate(oMeshClothSimO.name)
-    oMeshBodyO.select = True
-    oMeshBodyO.hide = False  ###LEARN: Mesh MUST be visible for weights to transfer!
-    bpy.ops.object.vertex_group_transfer_weight()
-
-    #=== With the body's skinning info transfered to the cloth, select the the requested vertices contained in the 'skinned verts' vertex group.  These will 'pin' the cloth on the body while the other verts are simulated ===
-    bpy.ops.object.mode_set(mode='EDIT')
-    nVertGrpIndex_Pin = oMeshClothSimO.vertex_groups.find(sVertGrp_ClothSkinArea)       
-    if nVertGrpIndex_Pin == -1:
-        raise Exception("ERROR: gBL_Cloth_Create() could not find in skinned body pin vertex group " + sVertGrp_ClothSkinArea)
-    oVertGroup_Pin = oMeshClothSimO.vertex_groups[nVertGrpIndex_Pin]
-    oMeshClothSimO.vertex_groups.active_index = oVertGroup_Pin.index
-    bpy.ops.mesh.select_all(action='DESELECT')
-    bpy.ops.object.vertex_group_select()                # To-be-skinned cloth verts are now selected
-
-    #=== Prepare the to-be-split cloth mesh for 'twin vert' mapping: This vert-to-vert map between the skinned part of cloth mesh to simulated-part of cloth mesh is needed by Unity at runtime to 'pin' the edges of the simulated mesh to 'follow' the skinned part 
-    bmClothSim = bmesh.from_edit_mesh(oMeshClothSimO.data)          # Create a 'custom data layer' to store unique IDs into mesh vertices so we can find what vert maps to what verts in the two separted meshes
-    oLayVertTwinID = bmClothSim.verts.layers.int.new(G.C_PropArray_ClothSkinToSim)  # Create a temp custom data layer to store IDs of split verts so we can find twins easily.    ###LEARN: This call causes BMesh references to be lost, so do right after getting bmesh reference
-    aFacesToSplit = [oFace for oFace in bmClothSim.faces if oFace.select]           # Obtain array of all faces to separate so we can select them once edge loop is found
-
-    #=== Determine the edges separating the skinned cloth mesh from the simulated one (removing edge-of-cloth edges) ===
-    bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
-    bpy.ops.mesh.region_to_loop()       # This will select only the edges at the boundary of the cutout polys... including edge of cloth, seams and the (needed) edges that connect split mesh to main mesh
-    for oEdge in bmClothSim.edges:      # Iterate over the edges at the boundary to remove any edge that is 'on the edge' -> This leaves selected only edges that have one polygon in the main mesh and one polygon in the mesh-to-be-cut
-        if oEdge.select == True:
-            if oEdge.is_manifold == False:  # Deselect the edges-on-edge (i.e. natural edge of cloth)
-                oEdge.select_set(False)
-
-    #=== Setup two maps (that will have the same size) to store for both simulated and skinned cloth parts what 'TwinVertID' maps to simVert / skinVert 
-    aTwinIdToVertSim = {}           # Each of these will go from 1..<NumVertIDs> and be used to determine mapping
-    aTwinIdToVertSkin = {}
-
-    #=== Iterate over the split verts at the boundary loop to store a uniquely-generated 'twin vert ID' into the custom data layer so we can re-twin the split verts from different meshes after the mesh separate ===
-    nNextVertTwinID = 1  
-    aVertsBoundary = [oVert for oVert in bmClothSim.verts if oVert.select]              # Create a collection for all the verts on the boundary loop
-    for oVert in aVertsBoundary:
-        oVert[oLayVertTwinID] = nNextVertTwinID  # These are unique to the whole skinned body so all detached chunk can always find their corresponding skinned body vert for per-frame positioning
-        #print("TwinID {:3d} = VertSim {:5d} at {:}".format(nNextVertTwinID, oVert.index, oVert.co))
-        nNextVertTwinID += 1
-        
-    #=== Reselect the to-be-skinned faces again   ===
-    bpy.ops.mesh.select_all(action='DESELECT')
-    bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='FACE')
-    bChunkMeshHasGeometry = False   # Determine if chunk mesh has any faces
-    for oFace in aFacesToSplit:
-        oFace.select_set(True)
-        bChunkMeshHasGeometry = True
-
-    #=== If chunk mesh has no geometry then we don't generate it as client has nothing to render / process for this chunk ===
-    if bChunkMeshHasGeometry == False:
-        print("\n>>> gBL_Cloth_Create() skips the creation of simulated cloth '{}' from body '{}' because it has no geometry to simulate <<<".format(sNameClothSkinned, sNameBody))
-        return      ####DESIGN: A fatal failure??
-
-    #=== Split and separate the skinned-part of the cloth from the simulated mesh (twin-vert IDs layer info will be copied to new mesh) ===
-    bpy.ops.mesh.split()        # 'Split' the selected polygons so both 'sides' have verts at the border and form two submesh
-    bpy.ops.mesh.separate()     # 'Separate' the selected polygon (now with their own non-manifold edge from split above) into its own mesh as a 'chunk'
-
-    #=== Post-process the just-detached chunk to calculate the 'twin verts' array between the skinned-part of cloth to simulated-part of cloth ===
-    bpy.ops.object.mode_set(mode='OBJECT')
-    bpy.context.object.select = False  # Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
-    bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')        
-    oMeshClothSkinnedO = bpy.context.object 
-    oMeshClothSkinnedO.name = oMeshClothSkinnedO.data.name = sNameClothSkinned  ###NOTE: Do twice so name sticks!
-    oMeshClothSkinnedO.name = oMeshClothSkinnedO.data.name = sNameClothSkinned
-
-    #=== Post-process the skinned-part to be ready for Unity ===
-    gBlender.Cleanup_VertGrp_RemoveNonBones(oMeshClothSkinnedO)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
-    Client_ConvertMesh(oMeshClothSkinnedO, False)                   ###NOTE: Call with 'False' to NOT separate verts at UV seams  ####PROBLEM!!!: This causes UV at seams to be horrible ####SOON!!!                   
-
-    #=== Post-process the simulated-part to be ready for Unity ===
-    Client_ConvertMesh(oMeshClothSimO, False)                   ###NOTE: Call with 'False' to NOT separate verts at UV seams  ####PROBLEM!!!: This causes UV at seams to be horrible ####SOON!!!
-    bpy.ops.object.vertex_group_remove(all=True)        # Remove all vertex groups from detached chunk to save memory
-
-    #=== Serialize the simulated mesh and its important map to be received by Unity's CCloth.  (Skinned part is requested in separate call as a standard skinned mesh) ===
-    oBA = gBL_GetMesh(oMeshClothSimO.name, 'NoSkinInfo')               # Serialze the entire mesh (don't send skinning info)
-
-
-    #===== ASSEMBLE THE TWIN VERT MAPPING =====
-    #=== Iterate over the boundary verts of the simulated mesh to find their vertex IDs ===
-    gBlender.SelectAndActivate(oMeshClothSimO.name)
-    bpy.ops.object.mode_set(mode='EDIT')
-    bmMeshClothSim = bmesh.from_edit_mesh(oMeshClothSimO.data)
-    oLayVertTwinID = bmMeshClothSim.verts.layers.int[G.C_PropArray_ClothSkinToSim]
-    for oVert in bmMeshClothSim.verts:  ###LEARN: Interestingly, both the set and retrieve list their verts in the same order... with different topology!
-        nTwinID = oVert[oLayVertTwinID]
-        if nTwinID != 0:
-            aTwinIdToVertSim[nTwinID] = oVert.index             # Remember what skin vert this TwinID maps to
-            #print("TwinID {:3d} = VertSim {:5d} at {:}".format(nTwinID, oVert.index, oVert.co))
-    bpy.ops.object.mode_set(mode='OBJECT')
-    
-    #=== Iterate through the boundary verts of the skinned part of the clto to access the freshly-created custom data layer to obtain ID information that enables us to match the skinned mesh vertices to the simulated cloth mesh for pinning ===
-    gBlender.SelectAndActivate(oMeshClothSkinnedO.name)
-    bpy.ops.object.mode_set(mode='EDIT')
-    bmMeshClothSkinned = bmesh.from_edit_mesh(oMeshClothSkinnedO.data)
-    oLayVertTwinID = bmMeshClothSkinned.verts.layers.int[G.C_PropArray_ClothSkinToSim]
-    for oVert in bmMeshClothSkinned.verts:  ###LEARN: Interestingly, both the set and retrieve list their verts in the same order... with different topology!
-        nTwinID = oVert[oLayVertTwinID]
-        if nTwinID != 0:
-            aTwinIdToVertSkin[nTwinID] = oVert.index             # Remember what skin vert this TwinID maps to
-            #print("TwinID {:3d} = VertSkin {:5d} at {:}".format(nTwinID, oVert.index, oVert.co))
-    bpy.ops.object.mode_set(mode='OBJECT')
-    
-    #=== Assembled the serializable flat array of twin verts Unity needs to pin simulated cloth to skinned cloth part ===
-    aMapTwinVerts = array.array('H')  # The final flattened map of what verts from the 'detached chunk part' maps to what vert in the 'skinned main body'  Client needs this to pin the edges of the softbody-simulated part to the main body skinned mesh
-    for nTwinID in range(1, nNextVertTwinID):
-        aMapTwinVerts.append(aTwinIdToVertSim [nTwinID])
-        aMapTwinVerts.append(aTwinIdToVertSkin[nTwinID])
-        #print("nTwinID {:3d} = VertSim {:4d} = VertSkin {:4d}".format(nTwinID, aTwinIdToVertSim[nTwinID], aTwinIdToVertSkin[nTwinID]))
-    oMeshClothSimO[G.C_PropArray_ClothSkinToSim] = aMapTwinVerts.tobytes()  # Store the output map as an object property for later access when Client requests this part.  (We store as byte array to save memory as its only for future serialization to Client and Blender has no use for this info)  ###CHECK: We don't need to store?
-    gBlender.Stream_SerializeArray(oBA, aMapTwinVerts.tobytes())       # Send the additional flat map we created above
-
-
-    return oBA;                                                 # De-serialized by Unity's CCloth.  CCloth will requested the skinned mesh as a standard skinned mesh in later separate call

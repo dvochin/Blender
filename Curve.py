@@ -7,6 +7,67 @@ import struct
 import gBlender
 import G
 import Client
+import Cut          ###HACK!!!!!!
+
+
+
+
+###DEVNOW: Can finally pin curve points to source body verts...
+# Now have rudimentary bezier curves doing fairly well.
+    # Hack with first point
+    # Will be editing via hotspots in Unity... get that geared up!
+
+
+    # Need some centered (like nipple center)?  Add prop?
+    # Really give up on proportional?  How about morphing rig?
+# How to order now that we have pins?
+# How to handle symmetry
+# How to handle bezier curve and parenting
+    # Redo current pins to be a type of parent??
+
+
+def gBL_Curve_SetPinPositions():
+    oCurves = bpy.data.objects["CURVE_HACK"]
+    oBodySrc = bpy.data.objects["WomanA"]
+    for oCurvePinO in oCurves.children:
+        if (oCurvePinO.name != "Center"):
+            oVertGrp = oBodySrc.vertex_groups["_PinVert_" + oCurvePinO.name]
+            if (oVertGrp != None):
+                bFound = False
+                nVertGrpIndex = oVertGrp.index 
+                for oVert in oBodySrc.data.vertices:
+                    for oVertGrp in oVert.groups:
+                        if oVertGrp.group == nVertGrpIndex:
+                            oCurvePinO.location = oBodySrc.matrix_world * oVert.co
+                            print("Setting Curve Pin: ", oCurvePinO.name, oCurvePinO.location)
+                            bFound = True
+                    if (bFound):
+                        break;
+            else:
+                print("ERROR: Could not find PinVert for curve pin " + oCurvePinO.name)
+        
+
+
+def gBL_Curve_HACK():
+    oCurves = bpy.data.objects["CURVE_HACK"]
+    gBL_Curve_Create("Test", len(oCurves.children), True)
+    nPt = 0
+    sNameClothSource = "FullShirt"
+    for oCurveO in oCurves.children:
+        #print(nPt, oCurveO.name, oCurveO.location)
+        gBL_Curve_UpdateCurvePoint(sNameClothSource, "Test", nPt, oCurveO.location.x, oCurveO.location.y, oCurveO.location.z)
+        if (len(oCurveO.children)):
+            oCurveBezierO = oCurveO.children[0] 
+            gBL_Curve_UpdateCurveBezier(sNameClothSource, "Test", nPt, oCurveBezierO.location.x, oCurveBezierO.location.y, oCurveBezierO.location.z)
+        nPt += 1
+    gBL_Curve_Rebuild(sNameClothSource, "Test")
+
+    oMeshO = gBlender.DuplicateAsSingleton(sNameClothSource, sNameClothSource+"-HACK", G.C_NodeFolder_Game, True)
+    oMeshO.hide = oMeshO.hide_render = False
+    aBorderLocatorVertPos = {}                            # Map of 'locator verts' for each border.  Because boolean destroys most mesh metainfo, we're using the vertex position of one vertex on each border to rebuild the list of verts per border
+
+    oCurves = bpy.data.objects[G.C_NodeName_Curve]
+    Cut.Cut_ApplyCut(oMeshO, oCurves.children[0], Vector((0,0,0)), aBorderLocatorVertPos)
 
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    CURVE: Client-controlled cutting functionality to perform Boolean cuts on clothing meshes.
@@ -21,12 +82,12 @@ def gBL_Curve_Create(sNameCurve, nCurvePts, bSymmetryX):                    # Cr
     oCurveO.name = oCurve.name = sNameCurve
     oCurveO.name = oCurve.name = sNameCurve
     oCurveO.rotation_mode = 'XYZ'
-    oCurveO.rotation_euler.x = radians(90)          ###LEARN: How to rotate in eulers
+    #######HACK!!!!! oCurveO.rotation_euler.x = radians(90)          ###LEARN: How to rotate in eulers
     oCurve.dimensions = "3D"
     oCurve.fill_mode = "FULL"
     oSpline = oCurve.splines[0]
     oSpline.use_cyclic_u = bSymmetryX           # Symmetry curves are by definition cyclic (e.g. side curve), non-symmetry (e.g. neck opening) are non-cyclic as their points are mirrored with a mirror modifier
-    oSpline.resolution_u = 8                      ###TODO!!!
+    oSpline.resolution_u = 16                      ###TODO!!!
     aCurvePts = oSpline.bezier_points
     while len(aCurvePts) < nCurvePts:           # Keep adding points until we have the required number.  Client will adjust the individual point positions in gBL_Curve_UpdateCurvePoint()
         aCurvePts.add()
@@ -53,6 +114,21 @@ def gBL_Curve_UpdateCurvePoint(sNameBaseCloth, sNameCurve, nPt, x, y, z):
 
     return str(vecCurvePtAdjClient[0]) + "," + str(vecCurvePtAdjClient[1]) + "," + str(vecCurvePtAdjClient[2])      # Return the adjusted position of the just-set point so Client knows where on the cloth the curve point falls. 
 
+def gBL_Curve_UpdateCurveBezier(sNameBaseCloth, sNameCurve, nPt, x, y, z):
+    if sNameCurve not in bpy.data.objects:
+        return "ERROR: gBL_Curve_UpdateCurvePoint() could not find curve object '{}'".format(sNameCurve)
+    oCurveO = bpy.data.objects[sNameCurve]
+    oCurve = oCurveO.data
+    oSpline = oCurve.splines[0]
+    oCurvePt = oSpline.bezier_points[nPt]
+    oCurvePt.handle_left_type = oCurvePt.handle_right_type = 'FREE'
+    if (nPt == 0):          ###HACK!!
+        oCurvePt.handle_left  = G.VectorC2B(Vector((-x, y, z)))        # As we're receiving a 3D vector without going through the conversion to verts done while sending a mesh we must convert the coordinate manually here (and likewise when we obtain coordinate from client)
+        oCurvePt.handle_right = G.VectorC2B(Vector(( x, y, z)))
+    else:
+        oCurvePt.handle_left  = G.VectorC2B(Vector(( x, y, z)))
+        oCurvePt.handle_right = G.VectorC2B(Vector((-x, y, z)))
+
 
 def gBL_Curve_Rebuild(sNameBaseCloth, sNameCurve):              # Rebuild the curve & cutter... typically done after client has changed on or more curve points
     if sNameCurve not in bpy.data.objects:          ###DESIGN Need separate call for this or update into only function that uses??
@@ -73,8 +149,8 @@ def gBL_Curve_Rebuild(sNameBaseCloth, sNameCurve):              # Rebuild the cu
     #=== Convert back to a curve so that we can easily display a solid curve by adding a bevel object ===        
     bpy.ops.object.convert(target='CURVE')           # Re-convert to spline now that we have a 'baked' representation with about a hundred vertices.
     bpy.ops.object.mode_set(mode='EDIT')
-    for nSmoothIterations in range(20):        ###TUNE     ###LEARN: This is how to smooth a curve!  (Smooth as a mesh makes non-mirror-x centers diverge, and looptools doesn't smooth enough)
-        bpy.ops.curve.smooth()
+    for nSmoothIterations in range(1):        ###TUNE     ###LEARN: This is how to smooth a curve!  (Smooth as a mesh makes non-mirror-x centers diverge, and looptools doesn't smooth enough)
+        bpy.ops.curve.smooth()      #########HACK!!!!!!!!
     bpy.ops.object.mode_set(mode='OBJECT')
     oCutter = oCutterO.data
     oCutter.resolution_u = 1
@@ -83,7 +159,7 @@ def gBL_Curve_Rebuild(sNameBaseCloth, sNameCurve):              # Rebuild the cu
     #=== Add a mirror modifier to the cutter mesh whether the curve is symmetrical or not so user sees cuts for both sides of the body ===
     gBlender.Util_CreateMirrorModifierX(oCutterO)
     bpy.ops.object.select_all(action='DESELECT')
-    oCutterO.hide_select = oCutterO.hide_render = True
+    #############oCutterO.hide_select = oCutterO.hide_render = True
 
     oCurveO .update_tag({'DATA'})                ###LEARN!!! How to efficiently update only one object!  ###CHECK: Keep???
     oCutterO.update_tag({'DATA'})

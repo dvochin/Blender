@@ -1,4 +1,4 @@
-# def OBS_PreviousPairImplementationForBreasts():    ### No longer done in-body but as part of new PairMesh_XXX functionality
+# def OBS_PreviousPairImplementationForBreasts():    ### No longer done in-body but as part of new SlaveMesh_XXX functionality
 # 
 #     #===== Create the mapping between breast verts and its collider sub-mesh.  At every morph we must set each collider verts to its matching breast vert =====
 #     #=== Select the collider sub mesh and obtain its vert indices ===

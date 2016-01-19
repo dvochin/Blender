@@ -111,7 +111,7 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
             oMeshBreastO.vertex_groups.remove(oVertGrp)
 
 
-    ####OBS: Breast collider no longer updated in-mesh... Now part of the new PairMesh_XXX functionality that 'glues' a mesh to the source body being morphed
+    ####OBS: Breast collider no longer updated in-mesh... Now part of the new SlaveMesh_XXX functionality that 'glues' a mesh to the source body being morphed
 #     #===== Create the mapping between breast verts and its collider sub-mesh.  At every morph we must set each collider verts to its matching breast vert =====
 #     #=== Select the collider sub mesh and obtain its vert indices ===
 #     bpy.ops.mesh.select_all(action='DESELECT')
@@ -197,56 +197,3 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
     
     gBlender.DataLayer_RemoveLayerInt(sNameBodySrc, G.C_DataLayer_SourceBreastVerts)      # Remove the temporary data layer from source body (no longer needed after breast mesh split)
 
-
-
-
-
-
-#---------------------------------------------------------------------------    
-#---------------------------------------------------------------------------    BREAST COLLIDERS
-#---------------------------------------------------------------------------    
-
-def CBodyColBreasts_GetColliderInfo(sNameBreastColMesh):       # Highly-specific function to CBodyColBreasts Unity class that extracts the collider source mesh superimposed on top of the detached softbody breast mesh and return arrays defining the collider source mesh for our runtime PhysX engine.
-    # This PhysX mesh takes a small encoded (containing about 32 verts) mesh to generate sphere & capsule collidersX.  This call process which vert will create a sphere collider in PhysX and which edge will generate a capsule colliders (currently used to repell clothing away from breasts)  (Args ex: "BodyA", "WomanA", "Breasts")
-    ###CHECK: Can capping during breast separation cause problem with collider overlay??
-
-    oMeshBreastColO = gBlender.SelectAndActivate(sNameBreastColMesh)    
-    bpy.ops.object.mode_set(mode='EDIT')
-    bpy.ops.mesh.select_all(action='DESELECT')
-    
-    ####OBS??? #=== Iterate through the verts to assemble the aVertSphereRadiusRatio array storing the red channel of the vertex color.  (This information stores the relative radius of each vertex sphere with a value of zero meaning no sphere) ===
-    bm = bmesh.from_edit_mesh(oMeshBreastColO.data)
-    oLayVertColors = bm.loops.layers.color.active        # Obtain reference to bmesh vertex color channel store in loops  ###LEARN: 2 defined 'Col' and 'Col.001' with 'Col.001' active and appearing to contain valid data... can this change?? ###CHECK
-    nNumActiveVerts = 0
-    aVertSphereRadiusRatio = array.array('H')            # This array stores a number from 0-255 to scale the sphere radius (kept in Unity only) used by this collider mesh.  (0 means no sphere created for that vertex)  A maximum of 32 spheres can be defined
-    for oVert in bm.verts:
-        nVertSphereRadiusRatio = oVert.link_loops[0][oLayVertColors][0]
-        if nVertSphereRadiusRatio > 0.1:                         ###KEEP? Setting zero color can be tricky so some threshold??
-            #print("CBodyColBreasts: SphereIndex # {:2} = Vert {:2} = Val: {:2}".format(nNumActiveVerts, oVert.index, nVertSphereRadiusRatio))
-            nNumActiveVerts += 1
-        else:
-            nVertSphereRadiusRatio = 0                              # Non collider-related verts get zero strength so they don't generate a sphere collider
-        aVertSphereRadiusRatio.append((int)(255 * nVertSphereRadiusRatio))       # The red vertex color channel (a float for 0 to 1) is multiplied by 255 and sent as a short
-    if nNumActiveVerts > 32:
-        raise Exception("ERROR: CBodyColBreasts_GetColliderInfo() found more than 32 active verts while scanning vertex colors on source collider mesh.  (PhysX cannot process more than 32 cloth-repeling vertices)")
-    
-    aCapsuleSpheres = array.array('H')                        # This array stores the two vertex IDs of each vertex / sphere that represends the end of each tapered capsule.  These are marked by 'sharp edges' for each capsule
-    nNumCapsules = 0
-    for oEdge in bm.edges:
-        if (oEdge.smooth == False):
-            aCapsuleSpheres.append(oEdge.verts[0].index) 
-            aCapsuleSpheres.append(oEdge.verts[1].index)
-            #print("CBodyColBreasts: Capsule {:2} found between {:2}-{:2}".format(nNumCapsules, oEdge.verts[0].index, oEdge.verts[1].index))
-            nNumCapsules += 1
-    if nNumCapsules > 32:
-        raise Exception("ERROR: CBodyColBreasts_GetColliderInfo() found more than 32 capsules while scanning for sharp edges on source collider mesh.  (PhysX cannot process more than 32 cloth-repeling capsules)")
-
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-    #=== Send the requested arrays to client ===
-    print("CBodyColBreasts: Sending {} verts/spheres and {} edges/capsules.".format(len(oMeshBreastColO.data.vertices), nNumCapsules))
-    oBA = bytearray()
-    gBlender.Stream_SerializeArray(oBA, aVertSphereRadiusRatio.tobytes())
-    gBlender.Stream_SerializeArray(oBA, aCapsuleSpheres.tobytes())
-    oBA += Client.Stream_GetEndMagicNo();       ###CHECK?
-    return oBA                  # Return carefully-constructed serialized stream of data that client will deserialize to construct its own structures from our info.

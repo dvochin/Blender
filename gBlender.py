@@ -88,7 +88,7 @@ import G
 import Curve
 import SourceReloader
 import Breasts
-
+import CBody
 
 #---------------------------------------------------------------------------	
 #---------------------------------------------------------------------------	GLOBAL VARIABLES
@@ -110,7 +110,7 @@ def gBL_Initialize():
 #---------------------------------------------------------------------------	
 
 #---------------------------------------------------------------------------	COMMON OPERATIONS
-def SelectAndActivate(sNameObject):	 #=== Goes to object mode, deselects everything, selects and activates object with name 'sNameObject'
+def SelectAndActivate(sNameObject, bCheckForPresence=True):	 #=== Goes to object mode, deselects everything, selects and activates object with name 'sNameObject'
 	if bpy.ops.object.mode_set.poll():			###LEARN: In some situations we cannot change mode (like when selecting a linked object from another file)
 		bpy.ops.object.mode_set(mode='OBJECT')
 	bpy.ops.object.select_all(action='DESELECT')###LEARN: Good way to select and activate the right object for ops... ***IMPROVE: Possible??
@@ -123,19 +123,22 @@ def SelectAndActivate(sNameObject):	 #=== Goes to object mode, deselects everyth
 		bpy.context.scene.objects.active = oObj
 		if bpy.ops.object.mode_set.poll():
 			bpy.ops.object.mode_set(mode='OBJECT')
-	#else:		###IMPROVE?
-	#	raise Exception("ERROR: SelectAndActivate() cannot find object '{}'".format(sNameObject))
+	else:
+		if (bCheckForPresence):
+			raise Exception("ERROR: SelectAndActivate() cannot find object '{}'".format(sNameObject))
 	return oObj
 
 def DeleteObject(sNameObject):
 	#print("DeleteObject: " + sNameObject)
-	SelectAndActivate(sNameObject)
-	print("<<< Deleting object '{}' >>>".format(sNameObject))
+	oObj = SelectAndActivate(sNameObject, False)
+	if (oObj != None):
+		print("<<< Deleting object '{}' >>>".format(sNameObject))
 	bpy.ops.object.delete(use_global=True)
 
 def DuplicateAsSingleton(sSourceName, sNewName, sNameParent, bHideSource):
+	print("-- DuplicateAsSingleton  sSourceName '{}'  sNewName '{}'  sNameParent '{}'".format(sSourceName, sNewName, sNameParent))
 	DeleteObject(sNewName)
-	oSrcO = SelectAndActivate(sSourceName)
+	oSrcO = SelectAndActivate(sSourceName, False)
 	if oSrcO is None:
 		raise Exception("ERROR: DuplicateAsSingleton() could not select object '{}'".format(sSourceName))
 	bpy.ops.object.duplicate()
@@ -145,11 +148,12 @@ def DuplicateAsSingleton(sSourceName, sNewName, sNameParent, bHideSource):
 	oNewO.name = oNewO.data.name = sNewName
 	oNewO.hide = oNewO.hide_render = oNewO.hide_select = False
 	oSrcO.hide = bHideSource		   ###CHECK: oSrcO.hide_render	Do we hide here or in caller if required??
-	SetParent(oNewO.name, sNameParent)
+	if (sNameParent != None):
+		SetParent(oNewO.name, sNameParent)
 	return oNewO
 
 def SetParent(sNameObject, sNameParent):
-	SelectAndActivate(sNameObject)
+	SelectAndActivate(sNameObject, False)
 	if sNameParent is not None:							# 'store' the new object at the provided location in Blender's nodes
 		if sNameParent not in bpy.data.objects:
 			raise Exception("ERROR: SetParent() could not locate parent node " + sNameParent)
@@ -271,7 +275,7 @@ def Util_CalcSurfDistanceBetweenTwoVertGroups(bm, aVerts1, aVerts2):	 # Calculat
 			if (nDistPathMin > nDistPath):
 				nDistPathMin = nDistPath
 		aDistToCenters[oVert1.index] = nDistPathMin
-		print("- Vert {:5d} has min surf dist {:7.4f}".format(oVert1.index, nDistPathMin))
+		#print("- Vert {:5d} has min surf dist {:7.4f}".format(oVert1.index, nDistPathMin))
 		if (nDistMax_All < nDistPathMin):
 			nDistMax_All = nDistPathMin
 	bpy.ops.mesh.select_all(action='DESELECT')
@@ -472,6 +476,14 @@ def Stream_SerializeArray(oBA, oArray):				 # Serialize an array to client by fi
 	else:		 
 		oBA += struct.pack('L', 0)
 
+def Stream_SerializeCollection(aCollection):		
+	"Send Unity the requested serialized bytearray of the previously-defined collection"
+	oBA = bytearray()
+	oBA += struct.pack('H', G.C_MagicNo_TranBegin)  ###LEARN: Struct.Pack args: b=char B=ubyte h=short H=ushort, i=int I=uint, q=int64, Q=uint64, f=float, d=double, s=char[] ,p=PascalString[], P=void*
+	Stream_SerializeArray(oBA, aCollection.tobytes())
+	oBA += struct.pack('H', G.C_MagicNo_TranEnd)
+	return oBA
+
 def Stream_SendBone(oBA, oBone):				# Recursive function that sends a bone and the tree of bones underneath it in 'breadth first search' order.	 Information sent include bone name, position and number of children.
 	Stream_SendStringPascal(oBA, oBone.name)		# Precise opposite of this function found in Unity's CBodeEd.ReadBone()
 	vecBone = G.VectorB2C(oBone.head_local)				  # Obtain the bone head and convert to client-space (LHS/RHS conversion)		 ###LEARN: 'head' appears to give weird coordinates I don't understand... head_local appears much more reasonable! (tail is the 'other end' of the bone (the part that rotates) while head is the pivot point we need
@@ -481,11 +493,10 @@ def Stream_SendBone(oBA, oBone):				# Recursive function that sends a bone and t
 		Stream_SendBone(oBA, oBoneChild)
 
 
-
 #---------------------------------------------------------------------------	
 #---------------------------------------------------------------------------	SCENE EVENT HANDLERS
 #---------------------------------------------------------------------------	
-
+###OBS??
 def Event_OnLoad(scene):			 # Runs on scene_update_post when the user has changed the scene and we need to update our state
 	gBL_Initialize()
 	
@@ -564,6 +575,24 @@ def Body_InitialPrep(sNameSource):
 	#DataLayer_EnumerateInt_DEBUG(sNameSource, "Body_InitialPrep() END")
 	Breasts.BodyInit_CreateCutoffBreastFromSourceBody(sNameSource)		# Create the cutoff breast needed for breast morph ops. 
 	###SOON: Port all the prep stuff to this top-level call!
+
+	#===== BREAST DESIGN-TIME INITIALIZATION =====
+	#=== Create the right-breast collider from the (authoritative) left breast === 
+	oMeshBreastRO = DuplicateAsSingleton(sNameSource + "-BreastLCol-Source", sNameSource + "-BreastRCol-Source", None, False)
+	for oVert in oMeshBreastRO.data.vertices:			# Invert the left breast collider verts to create right collider
+		oVert.co.x = -oVert.co.x
+	bpy.ops.object.mode_set(mode='EDIT')
+	bpy.ops.mesh.select_all(action='SELECT')
+	bpy.ops.mesh.normals_make_consistent()				# Above inverted the normals.  Recalculate them
+	bpy.ops.mesh.select_all(action='DESELECT')
+	bpy.ops.object.mode_set(mode='OBJECT')
+
+	#=== Define both breast colliders ===
+	CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BreastLCol", 0.000001, bMirror=False, bSkin=False)
+	CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BreastRCol", 0.000001, bMirror=False, bSkin=False)
+
+	#===== Define cloth colliders =====			###IMPROVE: Auto-generate these from a naming pattern??
+	CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BodyColCloth-Top", 0.000001, bMirror=True, bSkin=True)
 
 
 #---------------------------------------------------------------------------	
