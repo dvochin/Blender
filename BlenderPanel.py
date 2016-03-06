@@ -137,20 +137,20 @@ class gBL_temp4(bpy.types.Operator):
 
 class gBL_temp5(bpy.types.Operator):
     bl_idname = "gbl.temp5"
-    bl_label = "5: CurvePos"
-    bl_options = {'REGISTER', 'UNDO'}
-    def invoke(self, context, event):
-        self.report({"INFO"}, "GBOP: " + self.bl_label)
-        Curve.gBL_Curve_SetPinPositions()
-        return {"FINISHED"}
-
-class gBL_temp6(bpy.types.Operator):
-    bl_idname = "gbl.temp6"
-    bl_label = "6: Curve"
+    bl_label = "5: CurveDef"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
         Curve.gBL_Curve_HACK()
+        return {"FINISHED"}
+
+class gBL_temp6(bpy.types.Operator):
+    bl_idname = "gbl.temp6"
+    bl_label = "6:ClothCrv"
+    bl_options = {'REGISTER', 'UNDO'}
+    def invoke(self, context, event):
+        self.report({"INFO"}, "GBOP: " + self.bl_label)
+        CBody.CBody._aBodies[0].aCloths["FullShirt"].aCurves[0].CreateOrUpdateCurve()
         return {"FINISHED"}
 
 class gBL_temp7(bpy.types.Operator):

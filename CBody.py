@@ -86,7 +86,7 @@ class CBody:
         self.sGenitals          = sGenitals                 # The body's genitals (e.g. 'Vagina-Erotic9-A', 'PenisW-Erotic9-A' etc.)
         self.sMeshPrefix        = "Body" + chr(65 + self.nBodyID) + '-'  # The Blender object name prefix of every submesh (e.g. 'BodyA-Detach-Breasts', etc)
         self.nUnity2Blender_NumVerts = nUnity2Blender_NumVerts
-        
+
         self.oMeshSource        = None                      # The 'source body'.  Never modified in any way
         self.oMeshAssembled     = None                      # The 'assembled mesh'.  Fully assembled with proper genitals.  Basis of oMeshMorph                  
         self.oMeshMorph         = None                      # The 'morphing mesh'.   Orinally copied from oMeshAssembled and morphed to the user's preference.  Basis of oMeshBody
@@ -101,6 +101,10 @@ class CBody:
 
         
         print("\n=== CBody()  nBodyID:{}  sMeshPrefix:'{}'  sMeshSource:'{}'  sSex:'{}'  sGenitals:'{}' ===".format(self.nBodyID, self.sMeshPrefix, self.sMeshSource, self.sSex, self.sGenitals))
+    
+
+        self.oMeshClothHACK = CMesh.CMesh.CreateFromExistingObject("FullShirt",  bpy.data.objects["FullShirt"])            ###DEV!!!!! 
+
     
         self.oMeshSource = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource,            bpy.data.objects[self.sMeshSource])            ###DEV: Special ctor??
         self.oMeshFace   = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource + "-Face",  bpy.data.objects[self.sMeshSource + "-Face"])
