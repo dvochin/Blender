@@ -132,33 +132,34 @@ class gBL_temp4(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBody.CBody._aBodies[0].CreateCloth("FullShirt", "_ClothSkinnedArea_Top", "Top")
+        CBody.CBody._aBodies[0].CreateCloth("BodySuit", "_ClothSkinnedArea_Top", "Shirt")      ###One of teh body suits?
         return {"FINISHED"}
 
 class gBL_temp5(bpy.types.Operator):
     bl_idname = "gbl.temp5"
-    bl_label = "5: CurveDef"
+    bl_label = "5: ClothCrv"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        Curve.gBL_Curve_HACK()
+        CBody.CBody._aBodies[0].aCloths["Shirt"].UpdateCutterCurves()
         return {"FINISHED"}
 
 class gBL_temp6(bpy.types.Operator):
     bl_idname = "gbl.temp6"
-    bl_label = "6:ClothCrv"
+    bl_label = "6: ClothCut"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBody.CBody._aBodies[0].aCloths["FullShirt"].aCurves[0].CreateOrUpdateCurve()
+        CBody.CBody._aBodies[0].aCloths["Shirt"].CutClothWithCutterCurves()
         return {"FINISHED"}
 
 class gBL_temp7(bpy.types.Operator):
     bl_idname = "gbl.temp7"
-    bl_label = "7:"
+    bl_label = "7: ClothGame"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
+        CBody.CBody._aBodies[0].aCloths["Shirt"].PrepareClothForGame()
         return {"FINISHED"}
 
 class SlaveMesh_DefineMasterSlaveRelationship(bpy.types.Operator):

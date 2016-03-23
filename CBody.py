@@ -103,9 +103,7 @@ class CBody:
         print("\n=== CBody()  nBodyID:{}  sMeshPrefix:'{}'  sMeshSource:'{}'  sSex:'{}'  sGenitals:'{}' ===".format(self.nBodyID, self.sMeshPrefix, self.sMeshSource, self.sSex, self.sGenitals))
     
 
-        self.oMeshClothHACK = CMesh.CMesh.CreateFromExistingObject("FullShirt",  bpy.data.objects["FullShirt"])            ###DEV!!!!! 
-
-    
+  
         self.oMeshSource = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource,            bpy.data.objects[self.sMeshSource])            ###DEV: Special ctor??
         self.oMeshFace   = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource + "-Face",  bpy.data.objects[self.sMeshSource + "-Face"])
     
@@ -161,7 +159,8 @@ class CBody:
         if (sSex != "Man"):
             oMeshSrcBreast = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource + "-Breast")          ###WEAK: Create another ctor?
             self.oMeshSrcBreast = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + "Breast", oMeshSrcBreast)        
-            self.oMeshSrcBreast.SetParent(G.C_NodeFolder_Game)    
+            self.oMeshSrcBreast.SetParent(G.C_NodeFolder_Game)
+            oMeshSrcBreast.hide = True    
         
 
 
@@ -176,7 +175,7 @@ class CBody:
 
     def CreateCloth(self, sNameClothSrc, sVertGrp_ClothSkinArea, sClothType):
         "Create a CCloth object compatible with this body"
-        self.aCloths[sNameClothSrc] = CCloth.CCloth(self, sNameClothSrc, sVertGrp_ClothSkinArea, sClothType)
+        self.aCloths[sClothType] = CCloth.CCloth(self, sNameClothSrc, sVertGrp_ClothSkinArea, sClothType)
         return "OK"
     
     
@@ -328,6 +327,7 @@ class CBody:
     
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
+        oMeshSlaveO.hide = True
     
         return ""
 
@@ -448,7 +448,7 @@ def SlaveMesh_DefineMasterSlaveRelationship(sNameBodySrc, sTypeOfSlaveMesh, nVer
         gBlender.Cleanup_VertGrp_RemoveNonBones(oMeshSlaveO)
     
     bpy.ops.object.select_all(action='DESELECT')
-
+    oMeshO.hide = True
 
 
 
