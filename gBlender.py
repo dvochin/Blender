@@ -1,13 +1,4 @@
 ### NEXT ###
-###BUG!!!!: Can not find a single vert on detached breasts!  (Even if it's there!) WHY???
-# Fucking get naming of bodies straight throughout!!
-#Can fucking finally regen body col... why broken?
-#- Problem with versions... too old, too new, for vert transfer and use_beauty!
-#- Had to rem out during bodycol creation torso mat!
-#- What happented to all the mats in earlier stage?
-#- Use-beauty changed things??
-#- Why was man with bodycol???
-# Remember: code that extracts breasts: now have colliders out of mesh!
 ### Reconsider these other 'GetMesh' functions.  Always call getMesh and get extra arrays in a common method!!!
 
 ### TODO ###
@@ -19,7 +10,6 @@
 # Annoying to have to reboot blender and Client at each run... boost memory handles freed??
 
 ### PROBLEMS ###
-# Bodycol issues with penis for shemale... what to do???
 # Boolean cuts the other way if center causes mesh to rebuild normals differently is too high
 	# Auto-detect when 'bad border vertices' for each cutter remain after boolean cut and flip!
 
@@ -32,8 +22,7 @@
 
 ### PROBLEMS? ###
 #? Cooked cloth still contains vertex groups!
-# BodyCol later decimation can flip normals???
-# Still get small holes in capping of penis... Enough to throw off PhysX tetra creation?
+# Still get small holes in capping of penis... Enough to throw off Flex tetra creation?
 #? Penis at rotation x = 0.	 OK???
 # 3DView MUST be called with rotate about 3D cursor with it at origin... iterate through view3d to fix this!  (Probably other settings as well!)
 # Problem with penis vert groups! Selects a bunch extra -> Fixed by sorting verts!!
@@ -46,10 +35,10 @@
 # def v3d_refresh(ctx): for a in ctx.window.screen.areas: if a.type == 'VIEW_3D': for r in a.regions: r.tag_redraw() a.tag_redraw()
 # Consider ditching all skinning info on all meshes (including intermediate bodies) and re-skin by proximity on source DAZ body at the very last step
 # For access to DAZ's morphing library (useful for face!) it would be great to be able to map their verts to our own modified ones by our own algorithm
-#+++ Density of all colliders in PhysX should apply what we learned between cloth and colliders??? +++
+#+++ Density of all colliders in Flex should apply what we learned between cloth and colliders??? +++
 # Different colors for each curve pins & curves
 #- For easier straps: Implement a 'repel' feature where user-placed verts of current spline will 'push' verts of other splines?
-# For body collider also ship to PhysX some 'bone-based' rough collider for the arms, legs and neck to act as a failsafe when the accurate colliders fail
+# For body collider also ship to Flex some 'bone-based' rough collider for the arms, legs and neck to act as a failsafe when the accurate colliders fail
 
 ### DISCUSSION ###
 #+ For clothing, ditching half, fixing mesh at x=0, mirror and then edit would enable fast morphing of body + clothing!
@@ -65,7 +54,7 @@
 # Place to enter border GUI info... and save where??
 	# Border global settings with a % override for individual borders...
 # Cloth fitting and applying border after?
-	# Do we revive PhysX cloth fit??
+	# Do we revive Flex cloth fit??
 # Make sure all calls from client begin with gBL_
 
 ### LEARN ###
@@ -112,13 +101,14 @@ def gBL_Initialize():
 #---------------------------------------------------------------------------	COMMON OPERATIONS
 def SelectAndActivate(sNameObject, bCheckForPresence=True):	 #=== Goes to object mode, deselects everything, selects and activates object with name 'sNameObject'
 	if bpy.ops.object.mode_set.poll():			###LEARN: In some situations we cannot change mode (like when selecting a linked object from another file)
-		bpy.ops.object.mode_set(mode='OBJECT')
+		bpy.ops.object.mode_set(mode='OBJECT')	###BUG: Deselect below won't unselect hidden objects!  WTF???
+	bpy.context.scene.objects.active = None		###CHECK!!! 
 	bpy.ops.object.select_all(action='DESELECT')###LEARN: Good way to select and activate the right object for ops... ***IMPROVE: Possible??
 	oObj = None
 	if sNameObject in bpy.data.objects:			###LEARN: How to test if an object exists in Blender
 		oObj = bpy.data.objects[sNameObject]
 		oObj.hide_select = False				###LEARN: We can't select it if hide_select is set!
-		oObj.hide = oObj.hide_select = False	###CHECK: Keep?
+		oObj.hide = False
 		oObj.select = True
 		bpy.context.scene.objects.active = oObj
 		if bpy.ops.object.mode_set.poll():
@@ -129,15 +119,18 @@ def SelectAndActivate(sNameObject, bCheckForPresence=True):	 #=== Goes to object
 	return oObj
 
 def DeleteObject(sNameObject):
-	#print("DeleteObject: " + sNameObject)
-	oObj = SelectAndActivate(sNameObject, False)
-	if (oObj != None):
-		print("<<< Deleting object '{}' >>>".format(sNameObject))
-	bpy.ops.object.delete(use_global=True)
+	#if (oObj != None):
+	#	print("<<< Deleting object '{}' >>>".format(sNameObject))
+	#bpy.ops.object.delete(use_global=True)		###BUGFIXED!!! Frequently causes memory corruption on code called from Unity or Blender console... adopt a more gentle way to delete?  (queue up or just rename to temp names?)
+	if sNameObject in bpy.data.objects:			###LEARN: This is by *far* the best way to delete in Blender!!
+		oObj = bpy.data.objects[sNameObject]
+		bpy.data.scenes[0].objects.unlink(oObj)
+		bpy.data.objects.remove(oObj)	
 
 def DuplicateAsSingleton(sSourceName, sNewName, sNameParent, bHideSource):
-	print("-- DuplicateAsSingleton  sSourceName '{}'  sNewName '{}'  sNameParent '{}'".format(sSourceName, sNewName, sNameParent))
+	#print("-- DuplicateAsSingleton  sSourceName '{}'  sNewName '{}'  sNameParent '{}'".format(sSourceName, sNewName, sNameParent))
 	DeleteObject(sNewName)
+	
 	oSrcO = SelectAndActivate(sSourceName, False)
 	if oSrcO is None:
 		raise Exception("ERROR: DuplicateAsSingleton() could not select object '{}'".format(sSourceName))
@@ -146,8 +139,9 @@ def DuplicateAsSingleton(sSourceName, sNewName, sNameParent, bHideSource):
 	oSrcO.select = False		   #... but source object is still left selected.  Unselect it now to leave new object the only one selected and active.
 	oNewO.name = oNewO.data.name = sNewName				###CHECK: Do we really want to enforce name this way?  Can have side effects?  Should display error??
 	oNewO.name = oNewO.data.name = sNewName
-	oNewO.hide = oNewO.hide_render = oNewO.hide_select = False
-	oSrcO.hide = bHideSource		   ###CHECK: oSrcO.hide_render	Do we hide here or in caller if required??
+	oNewO.hide = oNewO.hide_select = False
+	if (bHideSource):
+		Util_HideMesh(oSrcO)
 	if (sNameParent != None):
 		SetParent(oNewO.name, sNameParent)
 	return oNewO
@@ -222,8 +216,9 @@ def Util_FindClosestVert(oMeshO, vecVert, nTolerance):		# Attempts to find the c
 	###BUG: Many uses of this function sabotaged because of flaws in closest_point_on_mesh()!  Will find a vert up to .015 away (1.5cm!)
 	oMesh = oMeshO.data
 	aClosestPtResults = oMeshO.closest_point_on_mesh(vecVert, nTolerance)		 # Return (location, normal, face index)  ###LEARN: Must be called in object mode (unfortunately) or we'll get an error "object has no mesh data"!
-	nPolyClosest = aClosestPtResults[2]
-	if nPolyClosest == -1:
+	bFound = aClosestPtResults[0]			###NOTE: Returns (result, location, normal, index)
+	nPolyClosest = aClosestPtResults[3]
+	if bFound == False:
 		###PROBLEM: closest_point_on_mesh() has been shown to FAIL finding mesh containg verts that were clearly at a searched-for position!
 		#=== Try to find vert in a brute-force iteration... SLOW!!! ===
 		for oVert in oMesh.vertices:
@@ -234,6 +229,8 @@ def Util_FindClosestVert(oMeshO, vecVert, nTolerance):		# Attempts to find the c
 		print("WARNING: Util_FindClosestVert() could not find vert close to {} at tolerance {}".format(vecVert, nTolerance))
 		bpy.context.scene.cursor_location = oMeshO.matrix_world * vecVert	###LEARN: How to convert from local vert to global.
 		return -1, -1, None						# Could not find through slow approach either... return 'not found'
+	
+	#print(type(nPolyClosest), nPolyClosest, aClosestPtResults)
 	
 	oPolyClosest = oMesh.polygons[nPolyClosest]
 	nDistMin = sys.float_info.max
@@ -306,6 +303,18 @@ def Util_CreateMirrorModifierX(oMeshO):
 	oModMirror.use_mirror_vertex_groups = False
 	return oModMirror
 			
+def Util_TransferWeights(oMeshO, oMeshSrcO):
+	oMeshSrcO.hide = oMeshO.hide = False			###BUG on hide?
+	oModTransfer = oMeshO.modifiers.new(name="DATA_TRANSFER", type="DATA_TRANSFER")
+	oModTransfer.object = oMeshSrcO
+	oModTransfer.use_vert_data = True
+	oModTransfer.data_types_verts = { "VGROUP_WEIGHTS" }
+	bpy.ops.object.datalayout_transfer(modifier=oModTransfer.name)	###LEARN: Operation acts upon the setting of 
+	AssertFinished(bpy.ops.object.modifier_apply(modifier=oModTransfer.name))
+	bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
+	bpy.ops.object.vertex_group_clean(group_select_mode='ALL')	# Clean up empty vert groups new Blender insists on creating during skin transfer  ###LEARN: Needs weight mode to work!
+	bpy.ops.object.mode_set(mode='OBJECT')
+			
 def Util_SelectVertGroupVerts(oMeshO, sNameVertGrp):			# Select all the verts of the specified vertex group 
 	#=== Obtain access to mesh in edit mode, deselect and go into vert mode ===
 	###SelectAndActivate(oMeshO.name)			 ###IMPROVE? Select fist??
@@ -349,6 +358,14 @@ def Util_GetMapDistToEdges():			# Returns a map of distances of all manifold ver
 
 	return aMapDistToEdges, nDistMax_AllInnerVerts		###WEAK: Only one consumer of this call now (Breast) -> move back??
 
+def Util_HideMesh(oMeshO):
+	if bpy.ops.object.mode_set.poll():
+		bpy.ops.object.mode_set(mode='OBJECT')
+	oMeshO.select = False			###LEARN: We *must* unselect an object before hiding as group unselect wont unselect those (causing problems with duplication) 
+	if (bpy.context.scene.objects.active == oMeshO):
+		bpy.context.scene.objects.active = None
+	oMeshO.hide = True
+
 def gBL_Util_RemoveGameMeshes():
 	print("<<<<< gBL_Util_RemoveGameMeshes() removing game meshes...>>>>>")
 	oNodeFolderGame = bpy.data.objects[G.C_NodeFolder_Game]
@@ -359,11 +376,8 @@ def gBL_Util_HideGameMeshes():
 	print("<<< gBL_Util_RemoveGameMeshes() removing game meshes...>>>")
 	oNodeFolderGame = bpy.data.objects[G.C_NodeFolder_Game]
 	for oNodeO in oNodeFolderGame.children:
-		oNodeO.hide = oNodeO.hide_render = True
-	bpy.data.objects["WomanA" + G.C_NameSuffix_Face].hide = False			###HACK
-	###BROKEN bpy.data.objects["ManA" + G.C_NameSuffix_Face].hide = False
-	bpy.data.objects["WomanA" + G.C_NameSuffix_BodyCol].hide = True
-	###BROKEN bpy.data.objects["ManA" + G.C_NameSuffix_BodyCol].hide = True
+		Util_HideMesh(oNodeO)
+	#bpy.data.objects["WomanA" + G.C_NameSuffix_Face].hide = False			###HACK
 					
 def Util_RemoveProperty(o, sNameProp):		# Safely removes a property from an object.
     if sNameProp in o:
@@ -448,13 +462,31 @@ def Cleanup_DecimateEdges(oObj, nness, nRatioOfFacesToKeep):  ###OBS? ###IMPROVE
 	bpy.ops.mesh.select_all(action='DESELECT') 
 	bpy.ops.object.mode_set(mode='OBJECT')
 
-def Cleanup_VertGrp_RemoveNonBones(oMeshO):	 # Remove non-bone vertex groups so skinning normalize & fix below will not be corrupted by non-bone vertex groups
+def Cleanup_VertGrp_RemoveNonBones(oMeshO, bCleanUpBones):	 # Remove non-bone vertex groups so skinning normalize & fix below will not be corrupted by non-bone vertex groups  ###IMPROVE: Always clean (remove arg?)
+	if (len(oMeshO.vertex_groups) == 0):
+		return
 	aVertGrpToRemove = []
 	for oVertGrp in oMeshO.vertex_groups:
 		if oVertGrp.name[0] == G.C_VertGrpPrefix_NonBone:  # Any vertex groups that starts with '_' is a non-bone and has no value for Client
 			aVertGrpToRemove.append(oVertGrp)
 	for oVertGrp in aVertGrpToRemove:
-		oMeshO.vertex_groups.remove(oVertGrp) 
+		oMeshO.vertex_groups.remove(oVertGrp)
+	if (bCleanUpBones):
+		#bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
+		bWasHidden = oMeshO.hide
+		if (bWasHidden):
+			Util_HideMesh(oMeshO)
+		oMeshO.hide = False
+		bpy.ops.object.mode_set(mode='EDIT')
+		bpy.ops.mesh.select_all(action='SELECT')
+		bpy.ops.object.vertex_group_clean(group_select_mode='ALL')	# Clean up empty vert groups new Blender insists on creating during skin transfer
+		bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)  # Limit mesh to four bones each   ###CHECK: Possible our 'non-bone' vertgrp take info away???
+		bpy.ops.object.vertex_group_normalize_all(lock_active=False)
+		bpy.ops.mesh.select_all(action='DESELECT')
+		bpy.ops.object.mode_set(mode='OBJECT')
+		if (bWasHidden):
+			gBL_Util_Hide(oMeshO)
+		
 
 
 #---------------------------------------------------------------------------	
@@ -576,23 +608,23 @@ def Body_InitialPrep(sNameSource):
 	Breasts.BodyInit_CreateCutoffBreastFromSourceBody(sNameSource)		# Create the cutoff breast needed for breast morph ops. 
 	###SOON: Port all the prep stuff to this top-level call!
 
-	#===== BREAST DESIGN-TIME INITIALIZATION =====
-	#=== Create the right-breast collider from the (authoritative) left breast === 
-	oMeshBreastRO = DuplicateAsSingleton(sNameSource + "-BreastLCol-Source", sNameSource + "-BreastRCol-Source", None, False)
-	for oVert in oMeshBreastRO.data.vertices:			# Invert the left breast collider verts to create right collider
-		oVert.co.x = -oVert.co.x
-	bpy.ops.object.mode_set(mode='EDIT')
-	bpy.ops.mesh.select_all(action='SELECT')
-	bpy.ops.mesh.normals_make_consistent()				# Above inverted the normals.  Recalculate them
-	bpy.ops.mesh.select_all(action='DESELECT')
-	bpy.ops.object.mode_set(mode='OBJECT')
+# 	#===== BREAST DESIGN-TIME INITIALIZATION =====
+# 	#=== Create the right-breast collider from the (authoritative) left breast === 
+# 	oMeshBreastRO = DuplicateAsSingleton(sNameSource + "-BreastLCol-Source", sNameSource + "-BreastRCol-Source", None, False)
+# 	for oVert in oMeshBreastRO.data.vertices:			# Invert the left breast collider verts to create right collider
+# 		oVert.co.x = -oVert.co.x
+# 	bpy.ops.object.mode_set(mode='EDIT')
+# 	bpy.ops.mesh.select_all(action='SELECT')
+# 	bpy.ops.mesh.normals_make_consistent()				# Above inverted the normals.  Recalculate them
+# 	bpy.ops.mesh.select_all(action='DESELECT')
+# 	bpy.ops.object.mode_set(mode='OBJECT')
 
-	#=== Define both breast colliders ===
-	CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BreastLCol", 0.000001, bMirror=False, bSkin=False)
-	CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BreastRCol", 0.000001, bMirror=False, bSkin=False)
-
-	#===== Define cloth colliders =====			###IMPROVE: Auto-generate these from a naming pattern??
-	CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BodyColCloth-Top", 0.000001, bMirror=True, bSkin=True)
+# 	#=== Define both breast colliders ===
+# 	CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BreastLCol", 0.000001, bMirror=False, bSkin=False)
+# 	CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BreastRCol", 0.000001, bMirror=False, bSkin=False)
+# 
+# 	#===== Define cloth colliders =====			###IMPROVE: Auto-generate these from a naming pattern??
+# 	CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BodyColCloth-Top", 0.000001, bMirror=True, bSkin=True)
 
 
 #---------------------------------------------------------------------------	

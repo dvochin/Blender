@@ -21,7 +21,8 @@ def Cut_ApplyCuts(sNameClothSource, sNameClothOutput, bCleanupBorders):     ###O
 
     #=== Prepare for function by extracting needed objects from scene ===
     oMeshO = gBlender.DuplicateAsSingleton(sNameClothSource, sNameClothOutput, G.C_NodeFolder_Game, True)
-    oMeshO.hide = oMeshO.hide_render = False
+    gBlender.Util_HideMesh(oMeshO)
+    oMeshO.hide_render = False
     bpy.ops.object.mode_set(mode='EDIT')
     oCurves = bpy.data.objects[G.C_NodeName_Curve]
     aBorderLocatorVertPos = {}                            # Map of 'locator verts' for each border.  Because boolean destroys most mesh metainfo, we're using the vertex position of one vertex on each border to rebuild the list of verts per border

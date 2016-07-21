@@ -30,7 +30,7 @@ import Curve
 import Cut
 import Breasts
 import Penis
-import CBBodyCol
+# import CBBodyCol
 
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    PANEL & UI
@@ -41,6 +41,7 @@ class Panel_gBL_Object(bpy.types.Panel):      ###LEARN: Docs at http://www.blend
     bl_region_type = "TOOLS"        ###LEARN: From "WINDOW", "HEADER", "CHANNELS", "TEMPORARY", "UI", "TOOLS", "TOOL_PROPS", "PREVIEW"
     bl_context = "objectmode"       ###LEARN: From "mesh_edit", "curve_edit", "surface_edit", "text_edit", "armature_edit", "mball_edit", "lattice_edit", "posemode", "sculpt_mode", "weightpaint", "vertexpaint", "texturepaint", "particlemode", "objectmode"
     bl_label = "gBlender V.083A"
+    bl_category = "gBlender"        ###LEARN: Shows up as tab name in blender panel!
   
     def draw_header(self, context):
         layout = self.layout
@@ -71,7 +72,7 @@ class gBL_reload_source_files(bpy.types.Operator):
 
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        SourceReloader.ImportSource_ReloadFiles(False)
+        SourceReloader.ImportSource_ReloadFiles()
         gBlender.gBL_Initialize()                            ###NOTE: Initialize normally called from OnLoad()  Manually call here to simulate load
         return {"FINISHED"}
 
@@ -113,8 +114,8 @@ class gBL_temp2(bpy.types.Operator):
     def invoke(self, context , event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
         oBody = CBody.CBody(0, 'WomanA', 'Woman', 'Vagina-Erotic9-A', 5000)
-        oBody.CreateSoftBody("BreastL", True)
-        oBody.CreateSoftBody("BreastR", True)
+        #oBody.CreateSoftBody("Breasts", 0.01)
+        oBody.CreateSoftBody("Vagina", 0.003)
         return {"FINISHED"}
 
 class gBL_temp3(bpy.types.Operator):
@@ -132,7 +133,8 @@ class gBL_temp4(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBody.CBody._aBodies[0].CreateCloth("BodySuit", "_ClothSkinnedArea_Top", "Shirt")      ###One of teh body suits?
+        CBody.CBody._aBodies[0].CreateCloth("MyShirt", "Shirt", "BodySuit", "_ClothSkinnedArea_Top")      ###One of the body suits?
+        #CBody.CBody._aBodies[0].aCloths["MyShirt"].aCurves[0].oCurveO
         return {"FINISHED"}
 
 class gBL_temp5(bpy.types.Operator):
@@ -141,7 +143,7 @@ class gBL_temp5(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBody.CBody._aBodies[0].aCloths["Shirt"].UpdateCutterCurves()
+        CBody.CBody._aBodies[0].aCloths["MyShirt"].UpdateCutterCurves()
         return {"FINISHED"}
 
 class gBL_temp6(bpy.types.Operator):
@@ -150,7 +152,7 @@ class gBL_temp6(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBody.CBody._aBodies[0].aCloths["Shirt"].CutClothWithCutterCurves()
+        CBody.CBody._aBodies[0].aCloths["MyShirt"].CutClothWithCutterCurves()
         return {"FINISHED"}
 
 class gBL_temp7(bpy.types.Operator):
@@ -159,7 +161,7 @@ class gBL_temp7(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBody.CBody._aBodies[0].aCloths["Shirt"].PrepareClothForGame()
+        CBody.CBody._aBodies[0].aCloths["MyShirt"].PrepareClothForGame()
         return {"FINISHED"}
 
 class SlaveMesh_DefineMasterSlaveRelationship(bpy.types.Operator):
@@ -173,11 +175,12 @@ class SlaveMesh_DefineMasterSlaveRelationship(bpy.types.Operator):
 
 class gBL_temp9(bpy.types.Operator):
     bl_idname = "gbl.temp9"
-    bl_label = "9:SlvApply"
+    bl_label = "9:Shemale"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBody.CBody._aBodies[0].SlaveMesh_ResyncWithMasterMesh("BreastCol")
+        #CBody.CBody._aBodies[0].SlaveMesh_ResyncWithMasterMesh("BreastCol")
+        CBody.CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big', 5000)
         return {"FINISHED"}
 
 

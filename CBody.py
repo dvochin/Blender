@@ -1,3 +1,7 @@
+#    bm.verts.index_update()
+#    bm.verts.ensure_lookup_table()        ###TODO Needed in later versions of Blender!
+
+
 ### Breast colliders should be in game subfolder!
 ### UV seams now visible in Unity!
     # Keep extra arg in Client_ConvertMesh()?
@@ -9,8 +13,6 @@
 
 # Missing vert on cloth body collider... can cause problem?
 ### Had to disable breast colliders because of inter-breast collision!  Define groups!
-
-#? Combine call for CBodyColBreast and SlaveMesh into one??
 
 ###BUGS
 #? Some weird shimmer around rim!
@@ -84,7 +86,7 @@ class CBody:
         self.sMeshSource        = sMeshSource               # The name of the source body mesh (e.g. 'WomanA', 'ManA', etc)
         self.sSex               = sSex                      # The body's sex (one of 'Man', 'Woman' or 'Shemale')
         self.sGenitals          = sGenitals                 # The body's genitals (e.g. 'Vagina-Erotic9-A', 'PenisW-Erotic9-A' etc.)
-        self.sMeshPrefix        = "Body" + chr(65 + self.nBodyID) + '-'  # The Blender object name prefix of every submesh (e.g. 'BodyA-Detach-Breasts', etc)
+        self.sMeshPrefix        = "B" + chr(65 + self.nBodyID) + '-'  # The Blender object name prefix of every submesh (e.g. 'BodyA-Detach-Breasts', etc)
         self.nUnity2Blender_NumVerts = nUnity2Blender_NumVerts
 
         self.oMeshSource        = None                      # The 'source body'.  Never modified in any way
@@ -102,17 +104,21 @@ class CBody:
         
         print("\n=== CBody()  nBodyID:{}  sMeshPrefix:'{}'  sMeshSource:'{}'  sSex:'{}'  sGenitals:'{}' ===".format(self.nBodyID, self.sMeshPrefix, self.sMeshSource, self.sSex, self.sGenitals))
     
-
   
         self.oMeshSource = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource,            bpy.data.objects[self.sMeshSource])            ###DEV: Special ctor??
         self.oMeshFace   = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource + "-Face",  bpy.data.objects[self.sMeshSource + "-Face"])
+
+        ###HACK!!!!!!        
+        self.oMeshFlexCldr = CMesh.CMesh.CreateFromExistingObject("WomanA-FlexCollider-020",  bpy.data.objects["WomanA-FlexCollider-020"])      ###DEVF        #self.oFlexCloth = CMesh.CMesh.CreateFromExistingObject("BodySuit",  bpy.data.objects["BodySuit"])      ###DEVF
+
     
         #=== Duplicate the source body (kept in the most pristine condition possible) as the assembled body. Delete unwanted parts and attach the user-specified genital mesh instead ===
         self.oMeshAssembled = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + "Assembled", self.oMeshSource)     # Creates the top-level body object named like "BodyA", "BodyB", that will accept the various genitals we tack on to the source body.
         self.oMeshAssembled.SetParent(G.C_NodeFolder_Game)    
         sNameVertGroupToCutout = None
         if self.sGenitals.startswith("Vagina"):         # Woman has vagina and breasts
-            sNameVertGroupToCutout = "_Cutout_Vagina"
+            print("###### VAGINA CUTOUT BROKEN!!!")
+            ###BROKEN!!!!!!! sNameVertGroupToCutout = "_Cutout_Vagina"
         elif self.sGenitals.startswith("Penis"):        # Man & Shemale have penis
             sNameVertGroupToCutout = "_Cutout_Penis"
         if sNameVertGroupToCutout is not None:
@@ -122,22 +128,28 @@ class CBody:
             bpy.ops.object.mode_set(mode='OBJECT')
     
         #=== Import and preprocess the genitals mesh and assemble into this mesh ===
-        oMeshGenitalsSource = CMesh.CMesh.CreateFromExistingObject(self.sGenitals)          ###WEAK: Create another ctor?
-        oMeshGenitals = CMesh.CMesh.CreateFromDuplicate("TEMP_Genitals", oMeshGenitalsSource)
-        bpy.context.scene.objects.active = oMeshGenitals.oMeshO
-        bpy.ops.object.shade_smooth()  ###IMPROVE: Fix the diffuse_intensity to 100 and the specular_intensity to 0 so in Blender the genital texture blends in with all our other textures at these settings
-     
-        #=== Join the genitals  with the output main body mesh and weld vertices together to form a truly contiguous mesh that will be lated separated by later segments of code into various 'detachable parts' ===           
-        self.oMeshAssembled.oMeshO.select = True
-        bpy.context.scene.objects.active = self.oMeshAssembled.oMeshO
-        bpy.ops.object.join()
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.select_all(action='DESELECT')      # Deselect all verts in assembled mesh
-        bpy.ops.object.mode_set(mode='OBJECT')
+        if (self.sGenitals.startswith("Vagina") == False):      ###V ###CHECK!!!
+            oMeshGenitalsSource = CMesh.CMesh.CreateFromExistingObject(self.sGenitals)          ###WEAK: Create another ctor?
+            oMeshGenitals = CMesh.CMesh.CreateFromDuplicate("TEMP_Genitals", oMeshGenitalsSource)
+            bpy.context.scene.objects.active = oMeshGenitals.oMeshO
+            bpy.ops.object.shade_smooth()  ###IMPROVE: Fix the diffuse_intensity to 100 and the specular_intensity to 0 so in Blender the genital texture blends in with all our other textures at these settings
+         
+            #=== Transfer weight from body to add-on genitals ===
+            gBlender.Util_TransferWeights(oMeshGenitals.oMeshO, self.oMeshSource.oMeshO)      #bpy.ops.object.vertex_group_transfer_weight()
+         
+            #=== Join the genitals  with the output main body mesh and weld vertices together to form a truly contiguous mesh that will be lated separated by later segments of code into various 'detachable parts' ===           
+            self.oMeshAssembled.oMeshO.select = True
+            bpy.context.scene.objects.active = self.oMeshAssembled.oMeshO
+            bpy.ops.object.join()                   ###IMPROVE: Make into a function?
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.select_all(action='SELECT')      # Deselect all verts in assembled mesh
+            bpy.ops.mesh.remove_doubles(threshold=0.0001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###LEARN: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
+            bpy.ops.mesh.select_all(action='DESELECT')      # Deselect all verts in assembled mesh
+            bpy.ops.object.mode_set(mode='OBJECT')
 
         ####LEARN: Screws up ConvertMesh royally!  self.oMeshAssembled.data.uv_textures.active_index = 1       # Join call above selects the uv texture of the genitals leaving most of the body untextured.  Revert to full body texture!   ###IMPROVE: Can merge genitals texture into body's??
-        gBlender.Util_SelectVertGroupVerts(self.oMeshAssembled.oMeshO, sNameVertGroupToCutout)  # Reselect the just-removed genitals area from the original body, as the faces have just been removed this will therefore only select the rim of vertices where the new genitals are inserted (so that we may remove_doubles to merge only it)
-        bpy.ops.mesh.remove_doubles(threshold=0.000001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###LEARN: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
+        ###gBlender.Util_SelectVertGroupVerts(self.oMeshAssembled.oMeshO, sNameVertGroupToCutout)  # Reselect the just-removed genitals area from the original body, as the faces have just been removed this will therefore only select the rim of vertices where the new genitals are inserted (so that we may remove_doubles to merge only it)
+        #bpy.ops.mesh.remove_doubles(threshold=0.000001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###LEARN: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
 
         #=== Create the custom data layer storing assembly vert index.  Enables traversal from Assembly / Morph meshes to Softbody parts 
         gBlender.DataLayer_CreateVertIndex(self.oMeshAssembled.GetName(), G.C_DataLayer_VertsAssy)
@@ -160,22 +172,19 @@ class CBody:
             oMeshSrcBreast = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource + "-Breast")          ###WEAK: Create another ctor?
             self.oMeshSrcBreast = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + "Breast", oMeshSrcBreast)        
             self.oMeshSrcBreast.SetParent(G.C_NodeFolder_Game)
-            oMeshSrcBreast.hide = True    
-        
+            self.oMeshSrcBreast.Hide()    
 
 
-    def CreateSoftBody(self, sSoftBodyPart, bIsBreast):
+
+    def CreateSoftBody(self, sSoftBodyPart, nFlexColliderShrinkDist):
         "Create a softbody by detaching sSoftBodyPart verts from game's skinned main body"
-        if (bIsBreast == True):     ####WEAK: Consider other ways of static creation branching??
-            self.aSoftBodies[sSoftBodyPart] = CSoftBody.CSoftBodyBreast(self, sSoftBodyPart)  # This will enable Unity to find this instance by our self.sSoftBodyPart key and the body.
-        else:
-            self.aSoftBodies[sSoftBodyPart] = CSoftBody.CSoftBody(self, sSoftBodyPart)        # This will enable Unity to find this instance by our self.sSoftBodyPart key and the body.
+        self.aSoftBodies[sSoftBodyPart] = CSoftBody.CSoftBody(self, sSoftBodyPart, nFlexColliderShrinkDist)        # This will enable Unity to find this instance by our self.sSoftBodyPart key and the body.
         return "OK"
 
 
-    def CreateCloth(self, sNameClothSrc, sVertGrp_ClothSkinArea, sClothType):
+    def CreateCloth(self, sNameCloth, sNameClothSrc, sVertGrp_ClothSkinArea, sClothType):
         "Create a CCloth object compatible with this body"
-        self.aCloths[sClothType] = CCloth.CCloth(self, sNameClothSrc, sVertGrp_ClothSkinArea, sClothType)
+        self.aCloths[sNameCloth] = CCloth.CCloth(self, sNameCloth, sNameClothSrc, sVertGrp_ClothSkinArea, sClothType)
         return "OK"
     
     
@@ -278,7 +287,7 @@ class CBody:
         #=== Obtain custom data layer containing the vertIDs of our breast verts into body ===
         bmBreast = self.oMeshSrcBreast.Open()
         oLayBodyVerts = bmBreast.verts.layers.int[G.C_DataLayer_SourceBreastVerts]      # Each integer in this data layer stores the vertex ID of the left breast in low 16-bits and vert ID of right breast in high 16-bit  ###LEARN: Creating this kills our bmesh references!
-        ###bmBreast.verts.index_update()
+        bmBreast.verts.index_update()
     
         #=== Iterate through the breast verts, extract the source verts from body from custom data layer, and set the corresponding verts in body ===
         for oVertBreast in bmBreast.verts:
@@ -294,7 +303,7 @@ class CBody:
         #=== Delete the 'baked' shape key we created above ===
         self.oMeshSrcBreast.oMeshO.active_shape_key_index = nKeys - 1
         bpy.ops.object.shape_key_remove()
-        #self.oMeshSrcBreast.oMeshO.hide = True;        ###BUG? Causes delete???
+        #self.oMeshSrcBreast.Hide()
 
         #=== Make sure the change we just did to the morphing body propagates to all dependent meshes ===
         self.Morph_UpdateDependentMeshes()
@@ -303,7 +312,7 @@ class CBody:
     
 
     #---------------------------------------------------------------------------    SLAVE MESH
-    def SlaveMesh_ResyncWithMasterMesh(self, sTypeOfSlaveMesh):
+    def SlaveMesh_ResyncWithMasterMesh(self, sTypeOfSlaveMesh):     ###DEVO?
         "Set the positions of the slave mesh verts to the positions of their coresponding verts in the master mesh (always self.oMeshMorph)"
         # Uses information previously stored in sNameSlaveMeshSlave by SlaveMesh_DefineMasterSlaveRelationship() at design time  sTypeOfSlaveMesh is like 'BreastCol', 'BodyCol', 'ClothColTop', etc
     
@@ -327,7 +336,7 @@ class CBody:
     
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
-        oMeshSlaveO.hide = True
+        gBlender.Util_HideMesh(oMeshSlaveO)
     
         return ""
 
@@ -385,7 +394,7 @@ class CBody:
 ###DISCUSSION: SlaveMesh
 #? Update GetVertMap()
 #? Currently applied to orig vert... integrate with mechanism to drill-down?
-
+###DEVO???
 def SlaveMesh_DefineMasterSlaveRelationship(sNameBodySrc, sTypeOfSlaveMesh, nVertTolerance, bMirror=True, bSkin=False):       ####DEV: An init call
     "Create a master / slave relationship so the slave mesh can follow the vert position of master mesh at runtime.  Only invoked at design time.  Stores its information in mesh custom layer"
     # sNameBodySrc is like 'WomanA', 'ManA'.  sTypeOfSlaveMesh is like 'BreastCol', 'BodyCol', 'ClothColTop', etc
@@ -442,13 +451,11 @@ def SlaveMesh_DefineMasterSlaveRelationship(sNameBodySrc, sTypeOfSlaveMesh, nVer
     if (bSkin):         ###IMPROVE: Remove existing skin info?
         oMeshSlaveO = gBlender.SelectAndActivate(sNameSlaveMeshSlave)
         oMeshSourceO = bpy.data.objects[sNameBodySrc]
-        oMeshSourceO.select = True                             # Select the original rim mesh (keeping rim+tetraverts mesh activated)
-        oMeshSourceO.hide = False
-        bpy.ops.object.vertex_group_transfer_weight()
-        gBlender.Cleanup_VertGrp_RemoveNonBones(oMeshSlaveO)
+        gBlender.Util_HideMesh(oMeshSourceO)
+        gBlender.Util_TransferWeights(oMeshSlaveO, oMeshSourceO)      #bpy.ops.object.vertex_group_transfer_weight()
     
     bpy.ops.object.select_all(action='DESELECT')
-    oMeshO.hide = True
+    gBlender.Util_HideMesh(oMeshO)
 
 
 

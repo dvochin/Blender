@@ -14,7 +14,7 @@ import G
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    PENIS PREPARATION
 #---------------------------------------------------------------------------    
-
+###OBS?
 def gBL_Penis_CalcColliders(sNameMeshPenis):            # Calculates the dimensions of a single capsule that best represents the penis to PhysX.  This provides critical information during runtime to properly setup penis collision by creating a serie of capsule colliders to properly collider the penis with its environment (vagina, breasts, underwear, legs, etc)
     ###NOTE: This runs after every user morph of the penis for man or shemale.  It is the responsibility of the morpher to keep the penis straight and of capsule shape.  (Bending occurs in PhysX)
     ###NOTE: All calculations are in mesh local space (as this is what Client sees).  *ONLY* the debug markers are converted to global space so the markers are at the right position
@@ -93,7 +93,7 @@ def gBL_Penis_CalcColliders(sNameMeshPenis):            # Calculates the dimensi
 #     #oCapsuleO.rotation_mode = 'XYZ'
 #     #oCapsuleO.rotation_euler.x = oMeshPenisO.rotation_euler.x
 #     oCapsuleO.draw_type = "WIRE"
-#     #oCapsuleO.hide = oCapsuleO.hide_render = True
+#     #oCapsuleO.hide = True
     
     #=== Format of comma-separated string from gBL_Penis_CalcColliders() is: Penis Radius, Penis Length, Base.y (base 'height'), Base.z (base forward/back), ScaleDampCenter.y, ScaleDampCenter.z, ScaleDampSizeStart, ScaleDampSizeEnd
     oPenisScaleDampCenterStart = bpy.data.objects["PenisScaleDampCenterStart"]

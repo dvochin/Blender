@@ -16,6 +16,7 @@
 # aVerts = [oVert for oVert in bmBody.verts if oVert.select]
 # aEdges = [oEdge for oEdge in bm.edges if oEdge.select]
 # bpy.context.scene.cursor_location = Vector((0,0,0))
+# Debug functionality from http://airplanes3d.net/downloads/pydev/pydev-blender-en.pdf
 #===============================================================================
 
 ###DISCUSSION: 
@@ -53,16 +54,19 @@ from mathutils import *
 ###TODO!!!!  Update / redo these and sync with Unity!
 C_NameSuffix_Morph      = "-Morph"          # Suffix applied to the mesh used as the source skinned mesh of the character.  It remains untouched
 C_NameSuffix_BodySkin       = "-BodySkin"           # Suffix applied to the mesh used as the skinned body during normal gameplay
-C_NameSuffix_BodyCol        = "-BodyCol"            ###BUG! Suffix applied to the coarsely-decimated body meshes that form the basis of collider speres for the creation of capsules used by PhysX to repel cloth and fluid
-C_NameSuffix_BodyColCloth   = "-BodyColCloth"       # Suffix applied to the coarsely-decimated body meshes that form the basis of collider speres for the creation of capsules used by PhysX to repel cloth and fluid
+# C_NameSuffix_BodyCol        = "-BodyCol"            ###BUG! Suffix applied to the coarsely-decimated body meshes that form the basis of collider speres for the creation of capsules used by Flex to repel cloth and fluid
+# C_NameSuffix_BodyColCloth   = "-BodyColCloth"       # Suffix applied to the coarsely-decimated body meshes that form the basis of collider speres for the creation of capsules used by Flex to repel cloth and fluid
 C_NameSuffix_BodyRim        = "-BodyRim"         ###OBS?? Suffix applied to the 'reduced skinned mesh' that only have the 'rim polygons' to service fast skinning in Client with 'BakeMesh()'
+C_NameSuffix_FlexCollider   = "-FlexCollider"      # Suffix applied to the 'shrunken mesh' of CSoftBody to enable Flex soft bodies to collide much closer than the technology allows
 C_NameSuffix_ClothBase      = "-ClothBase"          # Suffix applied to the mesh currently used as base for all clothing (e.g. Client-prepared copy of the bodysuit)
 C_NameSuffix_ClothCut       = "-ClothCut"           # Suffix applied to the temporary cloth mesh object currently being processed for display by the game ClothCut mode ####OBS??
-C_NameSuffix_ClothFit       = "-ClothFit"           # Suffix applied to the mesh currently used for PhysX fitting in Cloth Fit game mode (has no border)  ####OBS??
-C_NameSuffix_ClothSkinned   = "-ClothSkinned"       # Suffix applied to part of a cloth that is skinned to its owning body (e.g. is not PhysX cloth-simulated)
-C_NameSuffix_ClothSimulated = "-ClothSimulated"     # Suffix applied to part of a cloth that is PhysX simulated (e.g. is not skinned to its owning body)
+C_NameSuffix_ClothFit       = "-ClothFit"           # Suffix applied to the mesh currently used for Flex fitting in Cloth Fit game mode (has no border)  ####OBS??
+C_NameSuffix_ClothSkinned   = "-ClothSkinned"       # Suffix applied to part of a cloth that is skinned to its owning body (e.g. is not Flex cloth-simulated)
+C_NameSuffix_ClothSimulated = "-ClothSimulated"     # Suffix applied to part of a cloth that is Flex simulated (e.g. is not skinned to its owning body)
 C_NameSuffix_PenisShaftCollider = "-PenisShaftCollider"# Suffix applied to capsule mesh created by Penis_CalcTipPosAndRadius() to provide visual feedback to penis designer what colliders will be created as well as providing runtime data during construction of penis colliders
-C_NameSuffix_CBBodyColSpheres = "-CBBodyColSpheres" # Suffix applied to CBBodyColSpheres mesh providing source mesh for creation of spheres & capsules used to repel clothing around breasts in PhysX.
+# C_NameSuffix_CBBodyColSpheres = "-CBBodyColSpheres" # Suffix applied to CBBodyColSpheres mesh providing source mesh for creation of spheres & capsules used to repel clothing around breasts in Flex.
+C_NameSuffix_Rim            = "-Rim"                # Suffix for softbody rim mesh (for game-time normal adjustment)
+C_NameSuffix_RimBackplate   = "-RimBackplate"       # Suffix for softbody rim backplate mesh (for tetravert hunt)
 C_NameSuffix_Face           = "-Face"               # Suffix for character face
 C_NameSuffix_BreastCol      = "-BreastCol"          # Suffix applied to the breast collider mesh
 C_NameSuffix_Breast         = "-Breast"             # Suffix applied to a source body's cutoff breast (for morphing)
@@ -96,7 +100,7 @@ C_VertGrp_Detach = "_Detach_"        # All vertex groups that identify part of t
 C_VertGrp_Cutout = "_Cutout_"        # All vertex groups that identify vertices that are removed to make way for other mesh parts (such as Vagina mesh area and Penis mesh area) have this prefix.
 C_VertGrp_Area   = "_Area_"          # All vertex groups that contain contiguous areas of the mesh (to be used mostly for mesh seperation) start with this.
 C_VertGrp_Area_BreastMorph = C_VertGrp_Area + "BreastMorph"     # The name of the vertex group that blends the breasts to give zero weight at border, near zero near border and so on...
-C_Area_HeadHandFeet = C_VertGrp_Area + "HeadHandFeet"   # Vertex group of body that contains all verts of head, hands and feet.  (Used to remove unneeded verts for BodyCol that would slow down its algorithm)
+# C_Area_HeadHandFeet = C_VertGrp_Area + "HeadHandFeet"   # Vertex group of body that contains all verts of head, hands and feet.  (Used to remove unneeded verts for BodyCol that would slow down its algorithm)
 
 #---------------------------------------------------------------------------    PROPERTY ARRAY CONSTANTS
 C_PropArray_MapTwinVerts        = "aMapTwinVerts"           # Property array stored in Blender objects storing verts that are 'twinned' (e.g. at same position) between two meshes (e.g. body part and main body)
@@ -122,10 +126,10 @@ C_MagicNo_EndOfFlatGroup = 65535            # We indicate the 'end of a 'flatten
 C_BorderLenIntoVertGrpWeightRatio = 4           ###CHECK ###SOON: Too low for long borders!! (Just to visualize better!) How real-world lenght numbers are stuffed into vertex groups of borders (that only have a 0..1 range)
 C_PiDivBy2 = pi/2
 
-C_BodyCollider_TrimMargin = 0.03               # Extra space given when trimming body collider verts to create body collider fit to a cloth so as to not remove verts too close to cloth
-C_TypicalRatioTrisToEdges = (35034 / (53283-1000))       # Typical ratio of edges to tris for meshes.  Used to estimate how many faces to decimate when we want an approx number of edges (Calculated from Vic42-17K mesh stats)
-C_RatioEstimatedReductionBodyCol = 0.68       # Ratio of reduction body collider edges after it has removed edge triangles, mirrored and deleted the edges-on-edge
-C_MaxSize_BodyColSphere = 0.110             # The maximum radius of body collider spheres (measured by inserting the largest possible sphere inside body without any poke-through 
+# C_BodyCollider_TrimMargin = 0.03               # Extra space given when trimming body collider verts to create body collider fit to a cloth so as to not remove verts too close to cloth
+# C_TypicalRatioTrisToEdges = (35034 / (53283-1000))       # Typical ratio of edges to tris for meshes.  Used to estimate how many faces to decimate when we want an approx number of edges (Calculated from Vic42-17K mesh stats)
+# C_RatioEstimatedReductionBodyCol = 0.68       # Ratio of reduction body collider edges after it has removed edge triangles, mirrored and deleted the edges-on-edge
+# C_MaxSize_BodyColSphere = 0.110             # The maximum radius of body collider spheres (measured by inserting the largest possible sphere inside body without any poke-through 
 C_BreastMorphPivotPt = "BreastMorphPivotPt"                                   # Part of name given to reference points used as pivot points for breast morphing
 
 C_VectorUp      = Vector((0,0,1))                    # The 'up vector' in blender is Z+.  This is used to obtain quaternions to rotate this default vector to another vector (e.g. the normal of a cloth polygon)
@@ -159,7 +163,6 @@ def Debug_AddMarker(sName, sType, nSize, vecPos, eulerRot):
     oNodeMarker = bpy.context.object
     oNodeMarker.parent = bpy.data.objects[C_NodeName_Markers]
     oNodeMarker.empty_draw_size = nSize
-    oNodeMarker.hide_render = True
     oNodeMarker.show_x_ray = True
     if sName != "":
         oNodeMarker.name = sName
@@ -176,7 +179,7 @@ def Debug_RemoveMarkers():
     oNodeMarkers = bpy.data.objects[C_NodeName_Markers]
     for oNodeMarker in oNodeMarkers.children:
         if (oNodeMarker.name.startswith('(')):
-            oNodeMarker.hide = oNodeMarker.hide_select = oNodeMarker.hide_render = True
+            oNodeMarker.hide = oNodeMarker.hide_select = True
         else:
             oNodeMarker.select = True
     bpy.ops.object.delete()

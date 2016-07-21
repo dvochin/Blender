@@ -110,7 +110,6 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
         if (oVertGrp.name.startswith(G.C_VertGrp_Morph) == False) and (oVertGrp.name != "_Area_BreastColL"):
             oMeshBreastO.vertex_groups.remove(oVertGrp)
 
-
     ####OBS: Breast collider no longer updated in-mesh... Now part of the new SlaveMesh_XXX functionality that 'glues' a mesh to the source body being morphed
 #     #===== Create the mapping between breast verts and its collider sub-mesh.  At every morph we must set each collider verts to its matching breast vert =====
 #     #=== Select the collider sub mesh and obtain its vert indices ===
@@ -197,3 +196,4 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
     
     gBlender.DataLayer_RemoveLayerInt(sNameBodySrc, G.C_DataLayer_SourceBreastVerts)      # Remove the temporary data layer from source body (no longer needed after breast mesh split)
 
+    gBlender.Util_HideMesh(oMeshBreastO)
