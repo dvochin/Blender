@@ -135,7 +135,7 @@ class CSoftBody:
             oMeshSoftBodyRimBackplateSrc = CMesh.CMesh.CreateFromExistingObject("Vagina-Backplate")     ###V ###TODO!
             self.oMeshSoftBodyRimBackplate = CMesh.CMesh.CreateFromDuplicate(sNameSoftBody + G.C_NameSuffix_RimBackplate, oMeshSoftBodyRimBackplateSrc)
             self.oMeshSoftBodyRimBackplate.SetParent(G.C_NodeFolder_Game)
-            CMesh.CMesh.CreateFromDuplicate("FORJOIN-Vagina-Backplate", oMeshSoftBodyRimBackplateSrc)
+            CMesh.CMesh.CreateFromDuplicate("TEMPFORJOIN-Vagina-Backplate", oMeshSoftBodyRimBackplateSrc)
             self.oMeshSoftBody.oMeshO.select = True
             bpy.context.scene.objects.active = self.oMeshSoftBody.oMeshO
             bpy.ops.object.join()                   ###IMPROVE: Make into a function?
@@ -148,7 +148,7 @@ class CSoftBody:
         self.oMeshFlexCollider = CMesh.CMesh.CreateFromDuplicate(self.oMeshSoftBody.oMeshO.name + G.C_NameSuffix_FlexCollider, self.oMeshSoftBody)
         self.oMeshFlexCollider.Open()
         bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.transform.shrink_fatten(value=nFlexColliderShrinkDist)
+        ##########bpy.ops.transform.shrink_fatten(value=nFlexColliderShrinkDist)
         self.oMeshFlexCollider.Close()
 
         #===== SKINNED RIM CREATION =====
@@ -218,15 +218,18 @@ class CSoftBody:
         
        
         #===== Remove the tetraverts that are too far from the rim backplate =====
-        #===== Combine the tetravert-mesh with the rim backplate mesh of our softbody.  We need to isolate the tetraverts close to the back of the softbody tetraverts to 'pin' them =====
+        #=== Create a copy of the backplate that will be joined (destroyed) below ===
+        oMeshSoftBodyRimBackplateCopy = CMesh.CMesh.CreateFromDuplicate("TEMPFORJOIN-SoftBodyRimBackplate", self.oMeshSoftBodyRimBackplate)
+        
+        #=== Combine the tetravert-mesh with the rim backplate mesh of our softbody.  We need to isolate the tetraverts close to the back of the softbody tetraverts to 'pin' them ===
         gBlender.SelectAndActivate(oMeshUnityToBlenderCopy.GetName())             # First select and activate mesh that will be destroyed (temp mesh)    (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
-        self.oMeshSoftBodyRimBackplate.oMeshO.hide = False
-        self.oMeshSoftBodyRimBackplate.oMeshO.select = True                         # Now select...
-        bpy.context.scene.objects.active = self.oMeshSoftBodyRimBackplate.oMeshO    #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
+        oMeshSoftBodyRimBackplateCopy.oMeshO.hide = False
+        oMeshSoftBodyRimBackplateCopy.oMeshO.select = True                         # Now select...
+        bpy.context.scene.objects.active = oMeshSoftBodyRimBackplateCopy.oMeshO    #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
         bpy.ops.object.join()                                       #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
         oMeshUnityToBlenderCopy = None                              # Above join destroyed the copy mesh so set our variable to None
         #=== Select the rim verts in the joined mesh ===
-        bmRim = self.oMeshSoftBodyRimBackplate.Open()
+        bmRim = oMeshSoftBodyRimBackplateCopy.Open()
         oLayTetraVerts = bmRim.verts.layers.int[G.C_DataLayer_TetraVerts]
         for oVert in bmRim.verts:
             if (oVert.index > nNumVerts_UnityToBlenderMesh):
@@ -250,16 +253,16 @@ class CSoftBody:
             if nVertUnity < G.C_OffsetVertIDs:
                 oVert.select_set(True)                      # Select only the verts with no OrigVertID = tetraverts
         bpy.ops.mesh.delete(type='VERT')
-        self.oMeshSoftBodyRimBackplate.Close()
+        oMeshSoftBodyRimBackplateCopy.Close()
 
 
         #===== Combine the tetravert collection of verts with the rim mesh of our softbody.  We need to isolate the tetraverts close to the rim verts to 'pin' them =====
-        gBlender.SelectAndActivate(self.oMeshSoftBodyRimBackplate.GetName())             # First select and activate mesh that will be destroyed (temp mesh) (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
+        gBlender.SelectAndActivate(oMeshSoftBodyRimBackplateCopy.GetName())             # First select and activate mesh that will be destroyed (temp mesh) (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
         self.oMeshSoftBodyRim.oMeshO.hide = False                           # Now select...  ###IMPROVE: Add method to open in this way?
         self.oMeshSoftBodyRim.oMeshO.select = True                          # Now select...
         bpy.context.scene.objects.active = self.oMeshSoftBodyRim.oMeshO     #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
         bpy.ops.object.join()                                               #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
-        self.oMeshSoftBodyRimBackplate = None                               # Above join destroyed the mesh backplate so set to none
+        oMeshSoftBodyRimBackplateCopy = None                                # Above join destroyed the mesh backplate so set to none
 
 
         #=== Skin the rim+tetraverts mesh from original rim mesh.  (So tetraverts are skinned too!)

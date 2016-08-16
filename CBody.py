@@ -117,7 +117,7 @@ class CBody:
         self.oMeshAssembled.SetParent(G.C_NodeFolder_Game)    
         sNameVertGroupToCutout = None
         if self.sGenitals.startswith("Vagina"):         # Woman has vagina and breasts
-            print("###### VAGINA CUTOUT BROKEN!!!")
+            print("###### VAGINA CUTOUT BROKEN!!!")     ###NOW### Repair to old vagina being out-of-main body?
             ###BROKEN!!!!!!! sNameVertGroupToCutout = "_Cutout_Vagina"
         elif self.sGenitals.startswith("Penis"):        # Man & Shemale have penis
             sNameVertGroupToCutout = "_Cutout_Penis"

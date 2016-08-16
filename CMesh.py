@@ -42,14 +42,14 @@ class CMesh:
         #    gBlender.DeleteObject(self.oMeshO.name)
 
     @classmethod
-    def CreateFromDuplicate(cls, sNameMesh, oMeshParent):
-        "Create mesh by duplicating oMeshParent"
-        oMesh = gBlender.DuplicateAsSingleton(oMeshParent.GetName(), sNameMesh, oMeshParent.oMeshO.parent.name, False)
+    def CreateFromDuplicate(cls, sNameMesh, oMeshSrc):
+        "Create mesh by duplicating oMeshSrc"
+        oMesh = gBlender.DuplicateAsSingleton(oMeshSrc.GetName(), sNameMesh, oMeshSrc.oMeshO.parent.name, False)
         if (oMesh == None):
-            raise Exception("CMesh.CreateFromDuplicate() could not duplicate mesh " + oMeshParent.oMeshO.parent.name)
-        oInstance = cls(sNameMesh, oMesh, oMeshParent)
+            raise Exception("CMesh.CreateFromDuplicate() could not duplicate mesh " + oMeshSrc.oMeshO.parent.name)
+        oInstance = cls(sNameMesh, oMesh, oMeshSrc)
         oInstance.bDeleteUponDestroy = True
-        oMeshParent.Hide()              ###CHECK
+        oMeshSrc.Hide()              ###CHECK
         return oInstance
         
     @classmethod
