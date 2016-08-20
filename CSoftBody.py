@@ -21,7 +21,7 @@ import CMesh
 class CSoftBody:
     def __init__(self, oBody, sSoftBodyPart, nFlexColliderShrinkDist):
         self.oBody                  = oBody             # The back-reference to the owning body.
-        self.sSoftBodyPart          = sSoftBodyPart     # The name of the soft body part.  (e.g. "BreastL", "BreastR", "Penis")  This is our key in self.oBody.aSoftBodies[self.sSoftBodyPart]
+        self.sSoftBodyPart          = sSoftBodyPart     # The name of the soft body part.  (e.g. "BreastL", "BreastR", "Penis", etc)  This is our key in self.oBody.aSoftBodies[self.sSoftBodyPart]
         self.oMeshSoftBody          = None              # The softbody surface mesh itself.  Visible in Unity and moved by Flex softbody simulation via its internal solid tetramesh.
         self.oMeshFlexCollider      = None              # The 'collision' mesh is a 'shrunken' version of 'oMeshSoftBody' in order to feed to Flex a smaller mesh so that the appearance mesh can appear to collide much closer to other particles than if collision mesh would be shown to user.   
         self.oMeshSoftBodyRim       = None              # The 'softbody rim mesh'  Responsible to pin softbody tetraverts to the skinned body so it moves with the body
@@ -34,7 +34,7 @@ class CSoftBody:
         self.aMapRimVerts2SourceVerts   = array.array('H')  # Map of flattened rim verts to source verts.  Allows Unity to properly restore rim normals from the messed-up version that capping induced.
 
         
-        print("=== CSoftBody.ctor()  self.oBody = '{}'  self.sSoftBodyPart = '{}'  ===".format(self.oBody.sMeshPrefix, self.sSoftBodyPart))
+        print("=== CSoftBody.ctor()  self.oBody = '{}'  self.sSoftBodyPart = '{}' ===".format(self.oBody.sMeshPrefix, self.sSoftBodyPart))
         
         #=== Prepare naming of the meshes we'll create and ensure they are not in Blender ===
         sNameSoftBody = self.oBody.sMeshPrefix + "SB-" + self.sSoftBodyPart         # Create name for to-be-created detach mesh and open the body mesh
@@ -129,6 +129,7 @@ class CSoftBody:
         self.oMeshSoftBodyRimBackplate = CMesh.CMesh(sNameSoftBody + G.C_NameSuffix_RimBackplate, bpy.context.scene.objects.active, None)  # Connect to the backplate mesh
         self.oMeshSoftBodyRimBackplate.Hide()
         self.oMeshSoftBody.Close()                  # Close the rim mesh.  ###MOVE? (To ProcessTetraVerts()?)
+
             
         #=== Create the 'collision mesh' as a 'shrunken version' of appearance mesh (about vert normals) ===
         self.oMeshFlexCollider = CMesh.CMesh.CreateFromDuplicate(self.oMeshSoftBody.oMeshO.name + G.C_NameSuffix_FlexCollider, self.oMeshSoftBody)
@@ -204,18 +205,15 @@ class CSoftBody:
         
        
         #===== Remove the tetraverts that are too far from the rim backplate =====
-        #=== Create a copy of the backplate that will be joined (destroyed) below ===
-        oMeshSoftBodyRimBackplateCopy = CMesh.CMesh.CreateFromDuplicate("TEMPFORJOIN-SoftBodyRimBackplate", self.oMeshSoftBodyRimBackplate)
-        
-        #=== Combine the tetravert-mesh with the rim backplate mesh of our softbody.  We need to isolate the tetraverts close to the back of the softbody tetraverts to 'pin' them ===
+        #===== Combine the tetravert-mesh with the rim backplate mesh of our softbody.  We need to isolate the tetraverts close to the back of the softbody tetraverts to 'pin' them =====
         gBlender.SelectAndActivate(oMeshUnityToBlenderCopy.GetName())             # First select and activate mesh that will be destroyed (temp mesh)    (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
-        oMeshSoftBodyRimBackplateCopy.oMeshO.hide = False
-        oMeshSoftBodyRimBackplateCopy.oMeshO.select = True                         # Now select...
-        bpy.context.scene.objects.active = oMeshSoftBodyRimBackplateCopy.oMeshO    #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
+        self.oMeshSoftBodyRimBackplate.oMeshO.hide = False
+        self.oMeshSoftBodyRimBackplate.oMeshO.select = True                         # Now select...
+        bpy.context.scene.objects.active = self.oMeshSoftBodyRimBackplate.oMeshO    #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
         bpy.ops.object.join()                                       #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
         oMeshUnityToBlenderCopy = None                              # Above join destroyed the copy mesh so set our variable to None
         #=== Select the rim verts in the joined mesh ===
-        bmRim = oMeshSoftBodyRimBackplateCopy.Open()
+        bmRim = self.oMeshSoftBodyRimBackplate.Open()
         oLayTetraVerts = bmRim.verts.layers.int[G.C_DataLayer_TetraVerts]
         for oVert in bmRim.verts:
             if (oVert.index > nNumVerts_UnityToBlenderMesh):
@@ -239,16 +237,16 @@ class CSoftBody:
             if nVertUnity < G.C_OffsetVertIDs:
                 oVert.select_set(True)                      # Select only the verts with no OrigVertID = tetraverts
         bpy.ops.mesh.delete(type='VERT')
-        oMeshSoftBodyRimBackplateCopy.Close()
+        self.oMeshSoftBodyRimBackplate.Close()
 
 
         #===== Combine the tetravert collection of verts with the rim mesh of our softbody.  We need to isolate the tetraverts close to the rim verts to 'pin' them =====
-        gBlender.SelectAndActivate(oMeshSoftBodyRimBackplateCopy.GetName())             # First select and activate mesh that will be destroyed (temp mesh) (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
+        gBlender.SelectAndActivate(self.oMeshSoftBodyRimBackplate.GetName())             # First select and activate mesh that will be destroyed (temp mesh) (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
         self.oMeshSoftBodyRim.oMeshO.hide = False                           # Now select...  ###IMPROVE: Add method to open in this way?
         self.oMeshSoftBodyRim.oMeshO.select = True                          # Now select...
         bpy.context.scene.objects.active = self.oMeshSoftBodyRim.oMeshO     #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
         bpy.ops.object.join()                                               #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
-        oMeshSoftBodyRimBackplateCopy = None                                # Above join destroyed the mesh backplate so set to none
+        self.oMeshSoftBodyRimBackplate = None                               # Above join destroyed the mesh backplate so set to none
 
 
         #=== Skin the rim+tetraverts mesh from original rim mesh.  (So tetraverts are skinned too!)
