@@ -21,21 +21,20 @@ import CMesh
 class CSoftBody:
     def __init__(self, oBody, sSoftBodyPart, nFlexColliderShrinkDist):
         self.oBody                  = oBody             # The back-reference to the owning body.
-        self.sSoftBodyPart          = sSoftBodyPart     # The name of the soft body part.  (e.g. "BreastL", "BreastR", "Penis", "VaginaL", "VaginaR")  This is our key in self.oBody.aSoftBodies[self.sSoftBodyPart]
+        self.sSoftBodyPart          = sSoftBodyPart     # The name of the soft body part.  (e.g. "BreastL", "BreastR", "Penis")  This is our key in self.oBody.aSoftBodies[self.sSoftBodyPart]
         self.oMeshSoftBody          = None              # The softbody surface mesh itself.  Visible in Unity and moved by Flex softbody simulation via its internal solid tetramesh.
         self.oMeshFlexCollider      = None              # The 'collision' mesh is a 'shrunken' version of 'oMeshSoftBody' in order to feed to Flex a smaller mesh so that the appearance mesh can appear to collide much closer to other particles than if collision mesh would be shown to user.   
         self.oMeshSoftBodyRim       = None              # The 'softbody rim mesh'  Responsible to pin softbody tetraverts to the skinned body so it moves with the body
         self.oMeshSoftBodyRim_Orig  = None              # The 'original' 'softbody rim mesh'  (Untouched copy and source of oMeshSoftBodyRim)  Done this way to circumvent problems with data layers being destroyed!
         self.oMeshSoftBodyRimBackplate = None              # The 'backplate' mesh is a filled-in version of the self.oMeshSoftBodyRim_Orig rim mesh for the purpose of finding Flex tetraverts that should be pinned instead of simulated 
         self.oMeshUnity2Blender     = None              # The 'Unity-to-Blender' mesh.  Used by Unity to pass in geometry for Blender processing (e.g. Softbody tetravert skinning and pinning)   
-        self.bIsVagina = (self.sSoftBodyPart == "Vagina")
 
         self.aMapVertsSkinToSim = None          # This array stores pairs of <#RimTetravert, #Tetravert> so Unity can pin the softbody tetraverts from the rim tetravert skinned mesh
         self.aMapRimVerts2Verts         = None          # The final flattened map of what verts from the 'detached softbodypart' maps to what vert in the 'skinned main body'  Client needs this to pin the edges of the softbody-simulated part to the main body skinned mesh
         self.aMapRimVerts2SourceVerts   = array.array('H')  # Map of flattened rim verts to source verts.  Allows Unity to properly restore rim normals from the messed-up version that capping induced.
 
         
-        print("=== CSoftBody.ctor()  self.oBody = '{}'  self.sSoftBodyPart = '{}'  IsVagina = '{}' ===".format(self.oBody.sMeshPrefix, self.sSoftBodyPart, self.bIsVagina))
+        print("=== CSoftBody.ctor()  self.oBody = '{}'  self.sSoftBodyPart = '{}'  ===".format(self.oBody.sMeshPrefix, self.sSoftBodyPart))
         
         #=== Prepare naming of the meshes we'll create and ensure they are not in Blender ===
         sNameSoftBody = self.oBody.sMeshPrefix + "SB-" + self.sSoftBodyPart         # Create name for to-be-created detach mesh and open the body mesh
@@ -112,43 +111,30 @@ class CSoftBody:
                     self.aMapRimVerts2SourceVerts.append(nVertSrc)
         
         #=== Before the collapse to cap the softbody we must remove the info in the custom data layer so new collapse vert doesn't corrupt our rim data ===
-        if (self.bIsVagina == False):
-            bpy.ops.mesh.extrude_edges_indiv()          ###LEARN: This is the function we need to really extrude!
-            for oVert in bmSoftBody.verts:              # Iterate through all selected verts and clear their 'twin id' field.
-                if oVert.select == True:
-                    oVert[oLayVertTwinID] = 0           ###IMPROVE? Give cap extra geometry for a smooth that will be a better fit than a single center vert??
-            bpy.ops.mesh.edge_collapse()                ###LEARN: The collapse will combine all selected verts into one vert at the center
-    
-            #=== Create the 'backplate' mesh from the cap.  This mesh is used to find Flex tetraverts that should be pinned to the body instead of simulated ===
-            bpy.ops.mesh.select_more()                  # Add the verts immediate to the just-created center vert (the rim verts)
-            bpy.ops.mesh.duplicate()                    # Duplicate the 'backplate' so we can process it further
-            bpy.ops.mesh.subdivide(number_cuts=4)       # Subdivide it to provided geometry inside the hole.  (Needed so we can find tetraverts inside the center of the hole and not just extremities)
-            bpy.ops.mesh.remove_doubles(threshold=0.02) # Remove verts that are too close together (to speed up tetravert search)
-            bpy.ops.mesh.separate(type='SELECTED')      # Separate into another mesh.  This will become our 'backplate' mesh use to find pinned tetraverts
-            bpy.ops.object.mode_set(mode='OBJECT')      # Manually going to object to handle tricky split below...
-            bpy.context.object.select = False           # Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
-            bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')        
-            self.oMeshSoftBodyRimBackplate = CMesh.CMesh(sNameSoftBody + G.C_NameSuffix_RimBackplate, bpy.context.scene.objects.active, None)  # Connect to the backplate mesh
-            self.oMeshSoftBodyRimBackplate.Hide()
-            self.oMeshSoftBody.Close()                  # Close the rim mesh.  ###MOVE? (To ProcessTetraVerts()?)
-        else:
-            oMeshSoftBodyRimBackplateSrc = CMesh.CMesh.CreateFromExistingObject("Vagina-Backplate")     ###V ###TODO!
-            self.oMeshSoftBodyRimBackplate = CMesh.CMesh.CreateFromDuplicate(sNameSoftBody + G.C_NameSuffix_RimBackplate, oMeshSoftBodyRimBackplateSrc)
-            self.oMeshSoftBodyRimBackplate.SetParent(G.C_NodeFolder_Game)
-            CMesh.CMesh.CreateFromDuplicate("TEMPFORJOIN-Vagina-Backplate", oMeshSoftBodyRimBackplateSrc)
-            self.oMeshSoftBody.oMeshO.select = True
-            bpy.context.scene.objects.active = self.oMeshSoftBody.oMeshO
-            bpy.ops.object.join()                   ###IMPROVE: Make into a function?
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.remove_doubles(threshold=0.00001, use_unselected=True)  # The vagina vert group and cap are designed together to be perfectly aligned.  Glue the verts so they become a single mesh
-            bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.mesh.extrude_edges_indiv()          ###LEARN: This is the function we need to really extrude!
+        for oVert in bmSoftBody.verts:              # Iterate through all selected verts and clear their 'twin id' field.
+            if oVert.select == True:
+                oVert[oLayVertTwinID] = 0           ###IMPROVE? Give cap extra geometry for a smooth that will be a better fit than a single center vert??
+        bpy.ops.mesh.edge_collapse()                ###LEARN: The collapse will combine all selected verts into one vert at the center
 
+        #=== Create the 'backplate' mesh from the cap.  This mesh is used to find Flex tetraverts that should be pinned to the body instead of simulated ===
+        bpy.ops.mesh.select_more()                  # Add the verts immediate to the just-created center vert (the rim verts)
+        bpy.ops.mesh.duplicate()                    # Duplicate the 'backplate' so we can process it further
+        bpy.ops.mesh.subdivide(number_cuts=4)       # Subdivide it to provided geometry inside the hole.  (Needed so we can find tetraverts inside the center of the hole and not just extremities)
+        bpy.ops.mesh.remove_doubles(threshold=0.02) # Remove verts that are too close together (to speed up tetravert search)
+        bpy.ops.mesh.separate(type='SELECTED')      # Separate into another mesh.  This will become our 'backplate' mesh use to find pinned tetraverts
+        bpy.ops.object.mode_set(mode='OBJECT')      # Manually going to object to handle tricky split below...
+        bpy.context.object.select = False           # Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
+        bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')        
+        self.oMeshSoftBodyRimBackplate = CMesh.CMesh(sNameSoftBody + G.C_NameSuffix_RimBackplate, bpy.context.scene.objects.active, None)  # Connect to the backplate mesh
+        self.oMeshSoftBodyRimBackplate.Hide()
+        self.oMeshSoftBody.Close()                  # Close the rim mesh.  ###MOVE? (To ProcessTetraVerts()?)
             
         #=== Create the 'collision mesh' as a 'shrunken version' of appearance mesh (about vert normals) ===
         self.oMeshFlexCollider = CMesh.CMesh.CreateFromDuplicate(self.oMeshSoftBody.oMeshO.name + G.C_NameSuffix_FlexCollider, self.oMeshSoftBody)
         self.oMeshFlexCollider.Open()
         bpy.ops.mesh.select_all(action='SELECT')
-        ##########bpy.ops.transform.shrink_fatten(value=nFlexColliderShrinkDist)
+        bpy.ops.transform.shrink_fatten(value=nFlexColliderShrinkDist)
         self.oMeshFlexCollider.Close()
 
         #===== SKINNED RIM CREATION =====

@@ -213,7 +213,8 @@ def Util_ConvertToTriangles():	   # Triangulate the selected mesh so Client only
 
 #---------------------------------------------------------------------------	FINDING VERTS
 def Util_FindClosestVert(oMeshO, vecVert, nTolerance):		# Attempts to find the closest vert to 'vecVert' by using 'closest_point_on_mesh()'
-	###BUG: Many uses of this function sabotaged because of flaws in closest_point_on_mesh()!  Will find a vert up to .015 away (1.5cm!)
+	###BUG?  Many uses of this function sabotaged because of flaws in closest_point_on_mesh()!  Will find a vert up to .015 away (1.5cm!)  (Still present in latest Blender?)
+	###LEARN: Alternatives at http://blenderartists.org/forum/archive/index.php/t-229112.html
 	oMesh = oMeshO.data
 	aClosestPtResults = oMeshO.closest_point_on_mesh(vecVert, nTolerance)		 # Return (location, normal, face index)  ###LEARN: Must be called in object mode (unfortunately) or we'll get an error "object has no mesh data"!
 	bFound = aClosestPtResults[0]			###NOTE: Returns (result, location, normal, index)

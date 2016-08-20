@@ -17,6 +17,12 @@
 # aEdges = [oEdge for oEdge in bm.edges if oEdge.select]
 # bpy.context.scene.cursor_location = Vector((0,0,0))
 # Debug functionality from http://airplanes3d.net/downloads/pydev/pydev-blender-en.pdf
+
+# bm = bmesh.new()                ###IMPROVE: How to edit a bmesh without EDIT / OBJECT switch?
+# bm.from_mesh(obj.data)
+# # do some stuff to the bmesh
+# bpy.ops.object.mode_set(mode='OBJECT')
+# bm.to_mesh(obj.data) 
 #===============================================================================
 
 ###DISCUSSION: 

@@ -69,6 +69,7 @@ import CSoftBody
 import CCloth
 import CMesh
 import Client
+import CFlexSkin
 
 
 
@@ -96,7 +97,8 @@ class CBody:
         self.oMeshFace          = None                      # The 'face mesh'  Simply referenced here to service Unity's request for it  
         self.oMeshSrcBreast     = None                      # Our copy of source separated breast.  Used for breast morphs
 
-        self.aSoftBodies        = {}                        # Dictionary of CSoftBody objects representing softbody-simulated meshes.  (Contains items such as "BreastL", "BreastR", "Penis", "VaginaL", "VaginaR", to point to the object responsible for their meshes)
+        self.aSoftBodies        = {}                        # Dictionary of CSoftBody objects representing softbody-simulated meshes.  (Contains items such as "BreastL", "BreastR", "Penis", to point to the object responsible for their meshes)
+        self.aFlexSkins         = {}                        # Dictionary of CFlexSkin objects representing to handle body parts like Vagina 
         self.aCloths            = {}                        # Dictionary of CCloth objects fitted to this body
         
         self.aMapVertsSrcToMorph   = {}                     # Map of which original vert maps to what morph/assembled mesh verts.  Used to traverse morphs intended for the source body                  
@@ -179,6 +181,12 @@ class CBody:
     def CreateSoftBody(self, sSoftBodyPart, nFlexColliderShrinkDist):
         "Create a softbody by detaching sSoftBodyPart verts from game's skinned main body"
         self.aSoftBodies[sSoftBodyPart] = CSoftBody.CSoftBody(self, sSoftBodyPart, nFlexColliderShrinkDist)        # This will enable Unity to find this instance by our self.sSoftBodyPart key and the body.
+        return "OK"
+
+
+    def CreateFlexSkin(self, sFlexSkinPart, nParticlesPerShape):
+        "Create a FlexSkin by detaching sFlexSkinPart from game's skinned main body"
+        self.aFlexSkins[sFlexSkinPart] = CFlexSkin.CFlexSkin(self, sFlexSkinPart, nParticlesPerShape)
         return "OK"
 
 

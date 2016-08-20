@@ -31,6 +31,7 @@ import Cut
 import Breasts
 import Penis
 # import CBBodyCol
+from operator import itemgetter
 
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    PANEL & UI
@@ -115,7 +116,7 @@ class gBL_temp2(bpy.types.Operator):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
         oBody = CBody.CBody(0, 'WomanA', 'Woman', 'Vagina-Erotic9-A', 5000)
         #oBody.CreateSoftBody("Breasts", 0.01)
-        oBody.CreateSoftBody("Vagina", 0.003)
+        oBody.CreateFlexSkin("TestFlexSkin", 10)
         return {"FINISHED"}
 
 class gBL_temp3(bpy.types.Operator):
@@ -180,7 +181,7 @@ class gBL_temp9(bpy.types.Operator):
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
         #CBody.CBody._aBodies[0].SlaveMesh_ResyncWithMasterMesh("BreastCol")
-        CBody.CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big', 5000)
+        #CBody.CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big', 5000)
         return {"FINISHED"}
 
 
