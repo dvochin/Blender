@@ -359,9 +359,12 @@ def Util_GetMapDistToEdges():			# Returns a map of distances of all manifold ver
 
 	return aMapDistToEdges, nDistMax_AllInnerVerts		###WEAK: Only one consumer of this call now (Breast) -> move back??
 
-def Util_HideMesh(oMeshO):
+def Util_UnselectMesh(oMeshO):
 	if bpy.ops.object.mode_set.poll():
 		bpy.ops.object.mode_set(mode='OBJECT')
+
+def Util_HideMesh(oMeshO):
+	Util_UnselectMesh(oMeshO)
 	oMeshO.select = False			###LEARN: We *must* unselect an object before hiding as group unselect wont unselect those (causing problems with duplication) 
 	if (bpy.context.scene.objects.active == oMeshO):
 		bpy.context.scene.objects.active = None
@@ -384,7 +387,20 @@ def Util_RemoveProperty(o, sNameProp):		# Safely removes a property from an obje
     if sNameProp in o:
         del o[sNameProp]
     
-
+def Util_PrintMeshVerts(sDebugMsg, sNameMesh, sNameLayer=None):
+	print("\n=== PrintMeshVert for mesh '{}' and layer '{}' for '{}'".format(sNameMesh, sNameLayer, sDebugMsg))
+	oMeshO = SelectAndActivate(sNameMesh, True)
+	bm = bmesh.new();
+	bm.from_mesh(oMeshO.data)
+	if (sNameLayer != None):
+		oLayer = bm.verts.layers.int[sNameLayer]
+	nLayer = -1
+	for oVert in bm.verts:
+		vecPos = oVert.co
+		if (sNameLayer != None):
+			nLayer = oVert[oLayer]
+		print("- Vert {:4d} = {:8.5f} {:8.5f} {:8.5f}   Layer = {:3d}   Sel = {}".format(oVert.index, vecPos.x, vecPos.y, vecPos.z, nLayer, oVert.select))
+	print("==========================\n")
 
 
 #---------------------------------------------------------------------------	

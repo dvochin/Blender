@@ -332,7 +332,7 @@ class CBody:
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
     
         #=== Retreive the previously-calculated information from our custom data layers ===
-        bm = bmesh.from_edit_mesh(oMeshSlaveO.data)
+        bm = bmesh.from_edit_mesh(oMeshSlaveO.data)     ###NOW### Need a matching update_edit_mesh()!!!! 
         oLaySlaveMeshVerts = bm.verts.layers.int[G.C_DataLayer_SlaveMeshVerts]
         
         #=== Iterate through the slave mesh, find the corresponding vert in the morph body (going through map from source mesh to morph mesh) and set slave vert

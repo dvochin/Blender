@@ -35,6 +35,7 @@ class CMesh:
         self.oMeshO         = oMeshO
         self.bDeleteUponDestroy = True             # By default we delete our Blender object when we get destroyed
         self.SetName(sNameMesh)
+        self.bmLastOpen = None                      # The last-opened BMesh.
 
     #def __del__(self):        ###DEV
         ####BROKEN!!!  Game deletes objects even if they are still reference!  e.g. self.oMeshBody sometimes!!!!!!!!
@@ -62,22 +63,42 @@ class CMesh:
         oInstance.bDeleteUponDestroy = False
         return oInstance
 
-    
     def Open(self):
         gBlender.SelectAndActivate(self.oMeshO.name)         ###DEV: Best way by name??        ###IMPROVE: Remember hidden flag??
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')  # Make sure we're in vert mode
-        return bmesh.from_edit_mesh(self.oMeshO.data)          ###DEV: Store as member?
+        self.bmLastOpen = bmesh.from_edit_mesh(self.oMeshO.data)          ###DEV: Store as member?
+        self.UpdateBMeshTables()
+        return self.bmLastOpen
 
     def Close(self):
         if (bpy.ops.mesh.select_mode.poll()):
             bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')  # Try to set vert mode
         if (bpy.ops.mesh.select_all.poll()):
             bpy.ops.mesh.select_all(action='DESELECT')      # Try to deselect all verts
-        self.Hide()
+        self.ExitFromEditMode()
+        self.Hide()     ###IMPROVE: Update lookup table and verts
 
+    def ExitFromEditMode(self):     # Cleanly exit 'EDIT' mode while updating bmesh.  Dont affect anything else!
+        try:
+            bmesh.update_edit_mesh(self.oMeshO.data)
+        except:
+            print("#WARNING#: CMesh.ExitFromEditMode() could not update_edit_mesh() on mesh " + self.GetName())
+        self.bmLastOpen = None
+        gBlender.Util_UnselectMesh(self.oMeshO)
+        
+
+    def UpdateBMeshTables(self):
+        if (self.bmLastOpen != None):
+            self.bmLastOpen.verts.index_update()             ###IMPROVE: Also do edges and faces?
+            self.bmLastOpen.edges.index_update()
+            self.bmLastOpen.faces.index_update()
+            self.bmLastOpen.verts.ensure_lookup_table()
+            self.bmLastOpen.edges.ensure_lookup_table()
+            self.bmLastOpen.faces.ensure_lookup_table()
+    
     def Hide(self):
-        gBlender.Util_HideMesh(self.oMeshO)
+        gBlender.Util_HideMesh(self.oMeshO)         ###TODO: Merge all that stuff in gBlender into CMesh!
 
     def SetName(self, sNameMesh):
         self.oMeshO.name = self.oMeshO.data.name = sNameMesh       ###LEARN: We *must* apply name twice to make sure we get this name (Would get something like 'MyName.001' if 'MyName' was already defined
