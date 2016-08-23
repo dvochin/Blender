@@ -1,3 +1,12 @@
+#- Init
+#  - We don't need to cap and create backmesh
+#  - Constructor for FlexSkin does everything...  separates, produces rim, thickens the mesh, creates its array for Unity to download 
+#- Improve: Current FlexSkin based on distance search... replace with geometry search with 'get more'
+#- IDEA to find close geometry to any vert: Expand selection to faces then convert to vert sel again!
+#- Remember: pass in particle spacing!
+#- From Unity for FlexSkin: call ctor, obtain presentation mesh and FlexSkin arrays and complete.
+    #- The bits about ProcessTetraVerts skipped.
+
 import bpy
 import sys
 import bmesh

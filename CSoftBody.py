@@ -37,7 +37,7 @@ class CSoftBody:
         self.oMeshFlexCollider      = None              # The 'collision' mesh is a 'shrunken' version of 'oMeshSoftBody' in order to feed to Flex a smaller mesh so that the appearance mesh can appear to collide much closer to other particles than if collision mesh would be shown to user.   
         self.oMeshSoftBodyRim       = None              # The 'softbody rim mesh'  Responsible to pin softbody tetraverts to the skinned body so it moves with the body
         self.oMeshSoftBodyRim_Orig  = None              # The 'original' 'softbody rim mesh'  (Untouched copy and source of oMeshSoftBodyRim)  Done this way to circumvent problems with data layers being destroyed!
-        self.oMeshSoftBodyRimBackplate = None           # The 'backplate' mesh is a filled-in version of the self.oMeshSoftBodyRim_Orig rim mesh for the purpose of finding Flex tetraverts that should be pinned instead of simulated 
+        self.oMeshSoftBodyRimBackplate = None           # The 'backmesh' mesh is a filled-in version of the self.oMeshSoftBodyRim_Orig rim mesh for the purpose of finding Flex tetraverts that should be pinned instead of simulated 
         self.oMeshUnity2Blender     = None              # The 'Unity-to-Blender' mesh created by CreateUnity2BlenderMesh().  Used by Unity to pass in geometry for Blender processing (e.g. Softbody tetravert skinning and pinning)   
 
         self.aMapVertsSkinToSim     = None              # This array stores pairs of <#RimTetravert, #Tetravert> so Unity can pin the softbody tetraverts from the rim tetravert skinned mesh
@@ -131,21 +131,21 @@ class CSoftBody:
                 oVert[oLayVertTwinID] = 0           ###IMPROVE? Give cap extra geometry for a smooth that will be a better fit than a single center vert??
         bpy.ops.mesh.edge_collapse()                ###LEARN: The collapse will combine all selected verts into one vert at the center
 
-        #=== Create the 'backplate' mesh from the cap.  This mesh is used to find Flex tetraverts that should be pinned to the body instead of simulated ===
+        #=== Create the 'backmesh' mesh from the cap.  This mesh is used to find Flex tetraverts that should be pinned to the body instead of simulated ===
         bpy.ops.mesh.select_more()                  # Add the verts immediate to the just-created center vert (the rim verts)
-        bpy.ops.mesh.duplicate()                    # Duplicate the 'backplate' so we can process it further
+        bpy.ops.mesh.duplicate()                    # Duplicate the 'backmesh' so we can process it further
         bpy.ops.mesh.subdivide(number_cuts=4)       # Subdivide it to provided geometry inside the hole.  (Needed so we can find tetraverts inside the center of the hole and not just extremities)
         bpy.ops.mesh.remove_doubles(threshold=0.02) # Remove verts that are too close together (to speed up tetravert search)
-        bpy.ops.mesh.separate(type='SELECTED')      # Separate into another mesh.  This will become our 'backplate' mesh use to find pinned tetraverts
+        bpy.ops.mesh.separate(type='SELECTED')      # Separate into another mesh.  This will become our 'backmesh' mesh use to find pinned tetraverts
         self.oMeshSoftBody.ExitFromEditMode()
         bpy.context.object.select = False           # Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
         bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')
-        self.oMeshSoftBodyRimBackplate = CMesh.CMesh(sNameSoftBody + G.C_NameSuffix_RimBackplate, bpy.context.scene.objects.active, None)  # Connect to the backplate mesh
+        self.oMeshSoftBodyRimBackplate = CMesh.CMesh(sNameSoftBody + G.C_NameSuffix_RimBackplate, bpy.context.scene.objects.active, None)  # Connect to the backmesh mesh
         gBlender.DataLayer_RemoveLayers(self.oMeshSoftBodyRimBackplate.GetName())
         self.oMeshSoftBodyRimBackplate.Hide()
         self.oMeshSoftBody.Close()
 
-        #=== Create the 'collision mesh' as a 'shrunken version' of appearance mesh (about vert normals) ===
+        #=== Create the 'collision mesh' as a 'shrunken version' of appearance mesh (about vert normals) === ###OBS???
         self.oMeshFlexCollider = CMesh.CMesh.CreateFromDuplicate(self.oMeshSoftBody.oMeshO.name + G.C_NameSuffix_FlexCollider, self.oMeshSoftBody)
         self.oMeshFlexCollider.Open()
         bpy.ops.mesh.select_all(action='SELECT')
@@ -220,8 +220,8 @@ class CSoftBody:
         oMeshUnityToBlenderCopy.Close()
         
 
-        #===== Remove the tetraverts that are too far from the rim backplate =====
-        #===== Combine the tetravert-mesh with the rim backplate mesh of our softbody.  We need to isolate the tetraverts close to the back of the softbody tetraverts to 'pin' them =====
+        #===== Remove the tetraverts that are too far from the rim backmesh =====
+        #===== Combine the tetravert-mesh with the rim backmesh mesh of our softbody.  We need to isolate the tetraverts close to the back of the softbody tetraverts to 'pin' them =====
         oMeshSoftBodyRimBackplateCOPY = CMesh.CMesh.CreateFromDuplicate("TEMPFORJOIN-BACKPLATE", self.oMeshSoftBodyRimBackplate)
          
         gBlender.SelectAndActivate(oMeshUnityToBlenderCopy.GetName())             # First select and activate mesh that will be destroyed (temp mesh)    (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
@@ -234,7 +234,7 @@ class CSoftBody:
         bmRimBackplate = oMeshSoftBodyRimBackplateCOPY.Open()
         oLayTetraVerts = bmRimBackplate.verts.layers.int[G.C_DataLayer_TetraVerts]
         bpy.ops.mesh.select_loose()                             # Select the loose geometry...  (This will only select Unity's tetravert)
-        bpy.ops.mesh.select_all(action='INVERT')                #... and invert it (leaving only the backplate selected (for upcoming nearby selection)
+        bpy.ops.mesh.select_all(action='INVERT')                #... and invert it (leaving only the backmesh selected (for upcoming nearby selection)
         #=== Move the rim verts with the close tetraverts some distance so we can quickly separate the tetraverts close to rim verts ===        
         C_TempMove = 10             ###SOON ###IMPROVE: Switch to the 'transfer mesh' modifier?
         bpy.ops.transform.transform(mode='TRANSLATION', value=(0, C_TempMove, 0, 0), proportional='ENABLED', proportional_size=nDistTetraVertsFromRim, proportional_edit_falloff='CONSTANT')  # Move the rim verts with propportional editing so the tetraverts near rim are moved too.  This is how we separate them
@@ -248,9 +248,9 @@ class CSoftBody:
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.transform.transform(mode='TRANSLATION', value=(0, -C_TempMove, 0, 0))  # Move the clothing verts with proportional enabled with a constant curve.  This will also move the body verts near any clothing ###TUNE
         bpy.ops.mesh.select_all(action='DESELECT')
-        #=== Delete the verts of the backplate... to leave only the 'close tetraverts to the backplate' that need to be pinned instead of simulated ===
+        #=== Delete the verts of the backmesh... to leave only the 'close tetraverts to the backmesh' that need to be pinned instead of simulated ===
         bpy.ops.mesh.select_loose()                             # Select the loose geometry...  (This will only select Unity's tetravert)
-        bpy.ops.mesh.select_all(action='INVERT')                #... and invert it (leaving only the backplate selected (for upcoming nearby selection)
+        bpy.ops.mesh.select_all(action='INVERT')                #... and invert it (leaving only the backmesh selected (for upcoming nearby selection)
         bpy.ops.mesh.delete(type='VERT')
         oMeshSoftBodyRimBackplateCOPY.Close()
  
@@ -260,7 +260,7 @@ class CSoftBody:
         self.oMeshSoftBodyRim.oMeshO.select = True                          # Now select...
         bpy.context.scene.objects.active = self.oMeshSoftBodyRim.oMeshO     #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
         bpy.ops.object.join()                                               #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!  ###LEARN: join is not deterministic in which verts will be first!!
-        oMeshSoftBodyRimBackplateCOPY = None                               # Above join destroyed the mesh backplate so set to none
+        oMeshSoftBodyRimBackplateCOPY = None                               # Above join destroyed the mesh backmesh so set to none
         #gBlender.Util_PrintMeshVerts("oMeshSoftBodyRim after join", self.oMeshSoftBodyRim.GetName(), G.C_DataLayer_TwinVert)
 
         #=== Skin the rim+tetraverts mesh from original rim mesh.  (So tetraverts are skinned too!)
@@ -602,9 +602,9 @@ class CSoftBody:
 #                     oVert[oLayVertTwinID] = 0           ###IMPROVE? Give cap extra geometry for a smooth that will be a better fit than a single center vert??
 #             bpy.ops.mesh.edge_collapse()                ###LEARN: The collapse will combine all selected verts into one vert at the center
 # 
-#             #=== Create the 'backplate' mesh from the cap.  This mesh is used to find Flex tetraverts that should be pinned to the body instead of simulated ===
+#             #=== Create the 'backmesh' mesh from the cap.  This mesh is used to find Flex tetraverts that should be pinned to the body instead of simulated ===
 #             bpy.ops.mesh.select_more()                  # Add the verts immediate to the just-created center vert (the rim verts)
-#             bpy.ops.mesh.duplicate()                    # Duplicate the 'backplate' so we can process it further
+#             bpy.ops.mesh.duplicate()                    # Duplicate the 'backmesh' so we can process it further
 #             bpy.ops.mesh.subdivide(number_cuts=4)       # Subdivide it to provided geometry inside the hole.  (Needed so we can find tetraverts inside the center of the hole and not just extremities)
 #             bpy.ops.mesh.remove_doubles(threshold=0.02) # Remove verts that are too close together (to speed up tetravert search)
 # 
@@ -615,12 +615,12 @@ class CSoftBody:
 #             self.oMeshSoftBody.oMeshO.vertex_groups.active_index = oVertGroup_DetachPart.index
 #             bpy.ops.object.vertex_group_select()  # Select only the just-updated vertex group of the vertices we need to separate from the composite mesh.
 # 
-#         #=== Finish creating the backplate from vagina or no-vagina submesh selected above ===
-#         bpy.ops.mesh.separate(type='SELECTED')      # Separate into another mesh.  This will become our 'backplate' mesh use to find pinned tetraverts
+#         #=== Finish creating the backmesh from vagina or no-vagina submesh selected above ===
+#         bpy.ops.mesh.separate(type='SELECTED')      # Separate into another mesh.  This will become our 'backmesh' mesh use to find pinned tetraverts
 #         bpy.ops.object.mode_set(mode='OBJECT')      # Manually going to object to handle tricky split below...
 #         bpy.context.object.select = False           # Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
 #         bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')        
-#         self.oMeshSoftBodyRimBackplate = CMesh.CMesh(sNameSoftBody + G.C_NameSuffix_RimBackplate, bpy.context.scene.objects.active, None)  # Connect to the backplate mesh
+#         self.oMeshSoftBodyRimBackplate = CMesh.CMesh(sNameSoftBody + G.C_NameSuffix_RimBackplate, bpy.context.scene.objects.active, None)  # Connect to the backmesh mesh
 #         self.oMeshSoftBodyRimBackplate.Hide()
 #         self.oMeshSoftBody.Close()                  # Close the rim mesh.  ###MOVE? (To ProcessTetraVerts()?) 
 
