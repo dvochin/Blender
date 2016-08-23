@@ -37,11 +37,11 @@ class CSoftBody:
         self.oMeshFlexCollider      = None              # The 'collision' mesh is a 'shrunken' version of 'oMeshSoftBody' in order to feed to Flex a smaller mesh so that the appearance mesh can appear to collide much closer to other particles than if collision mesh would be shown to user.   
         self.oMeshSoftBodyRim       = None              # The 'softbody rim mesh'  Responsible to pin softbody tetraverts to the skinned body so it moves with the body
         self.oMeshSoftBodyRim_Orig  = None              # The 'original' 'softbody rim mesh'  (Untouched copy and source of oMeshSoftBodyRim)  Done this way to circumvent problems with data layers being destroyed!
-        self.oMeshSoftBodyRimBackplate = None              # The 'backplate' mesh is a filled-in version of the self.oMeshSoftBodyRim_Orig rim mesh for the purpose of finding Flex tetraverts that should be pinned instead of simulated 
-        self.oMeshUnity2Blender     = None              # The 'Unity-to-Blender' mesh.  Used by Unity to pass in geometry for Blender processing (e.g. Softbody tetravert skinning and pinning)   
+        self.oMeshSoftBodyRimBackplate = None           # The 'backplate' mesh is a filled-in version of the self.oMeshSoftBodyRim_Orig rim mesh for the purpose of finding Flex tetraverts that should be pinned instead of simulated 
+        self.oMeshUnity2Blender     = None              # The 'Unity-to-Blender' mesh created by CreateUnity2BlenderMesh().  Used by Unity to pass in geometry for Blender processing (e.g. Softbody tetravert skinning and pinning)   
 
-        self.aMapVertsSkinToSim = None          # This array stores pairs of <#RimTetravert, #Tetravert> so Unity can pin the softbody tetraverts from the rim tetravert skinned mesh
-        self.aMapRimVerts2Verts         = None          # The final flattened map of what verts from the 'detached softbodypart' maps to what vert in the 'skinned main body'  Client needs this to pin the edges of the softbody-simulated part to the main body skinned mesh
+        self.aMapVertsSkinToSim     = None              # This array stores pairs of <#RimTetravert, #Tetravert> so Unity can pin the softbody tetraverts from the rim tetravert skinned mesh
+        self.aMapRimVerts2Verts     = None              # The final flattened map of what verts from the 'detached softbodypart' maps to what vert in the 'skinned main body'  Client needs this to pin the edges of the softbody-simulated part to the main body skinned mesh
         #self.aMapRimVerts2SourceVerts   = array.array('H')  # Map of flattened rim verts to source verts.  Allows Unity to properly restore rim normals from the messed-up version that capping induced.
 
         
@@ -185,9 +185,6 @@ class CSoftBody:
         gBlender.Cleanup_VertGrp_RemoveNonBones(self.oMeshSoftBodyRim_Orig.oMeshO, True)  # Remove the extra vertex groups that are not skinning related        ####DEV: Move?
         self.oMeshSoftBodyRim_Orig.Hide()
 
-        #=== Create the 'Unity2Blender' mesh Unity needs to pass us tetraverts geometry === 
-        self.oMeshUnity2Blender = self.CreateMesh_Unity2Blender(oBody.nUnity2Blender_NumVerts)
-
 
 
 
@@ -324,6 +321,71 @@ class CSoftBody:
         return "OK"     ###TEMP
 
 
+    def CreateMesh_Unity2Blender(self, nVerts):       ###MOVE: Not really related to CBody but is global
+        "Create a temporary Unity2Blender with 'nVerts' vertices.  Used by Unity to pass Blender temporary mesh geometry for Blender processing (e.g. Softbody tetramesh pinning)"
+        sNameMeshUnity2Blender = self.oMeshSoftBody.GetName() + G.C_NameSuffix_Unity2Blender
+        if (self.oMeshUnity2Blender != None):
+            self.oMeshUnity2Blender.Destroy()
+            self.oMeshUnity2Blender = None
+        oMeshD = bpy.data.meshes.new(sNameMeshUnity2Blender)
+        oMeshO = bpy.data.objects.new(oMeshD.name, oMeshD)
+        print("== CreateMesh_Unity2Blender() for mesh '{}' and verts {} ==".format(sNameMeshUnity2Blender, nVerts));
+        oMeshO.rotation_euler.x = radians(90)          # Rotate temp mesh 90 degrees like every other mesh.  ###IMPROVE: Get rid of 90 rotation EVERYWHERE!!
+        bpy.context.scene.objects.link(oMeshO)
+        aVerts = []
+        for nVert in range(nVerts):
+            aVerts.append((0,0,0))
+        oMeshD.from_pydata(aVerts,[],[])
+        oMeshD.update()
+        gBlender.SetParent(oMeshO.name, G.C_NodeFolder_Game)
+        self.oMeshUnity2Blender = CMesh.CMesh.CreateFromExistingObject(oMeshO.name)     # Store CMesh reference into the member dedicated for this purpose so Unity can access and upload to us via its normal (efficient) channel
+        self.oMeshUnity2Blender.SetName(sNameMeshUnity2Blender)     # Ensure we have the name we need. 
+        self.oMeshUnity2Blender.bDeleteUponDestroy = True
+        self.oMeshUnity2Blender.Hide()
+        return "OK"         # Return OK to Unity
+    
+    
+    def Morph_UpdateDependentMeshes(self):
+        "Updates this softbody mesh from its source morph body"
+        #=== Iterate through this softbody mesh and update our vert position to our corresponding morph source body ===
+        bmSoftBody = self.oMeshSoftBody.Open()
+        oLayVertAssy = bmSoftBody.verts.layers.int[G.C_DataLayer_VertsAssy]
+        aVertsMorph = self.oBody.oMeshMorph.oMeshO.data.vertices
+        for oVert in bmSoftBody.verts:
+            if (oVert[oLayVertAssy] >= G.C_OffsetVertIDs):
+                nVertMorph = oVert[oLayVertAssy] - G.C_OffsetVertIDs        # Obtain the vertID from the assembled mesh (removing offset added during creation)
+                oVert.co = aVertsMorph[nVertMorph].co.copy()
+        self.oMeshSoftBody.Close()
+
+
+
+    def SerializeCollection_aMapRimVerts2Verts(self):               ###IMPROVE: Fanning out by function the best way?
+        return gBlender.Stream_SerializeCollection(self.aMapRimVerts2Verts) 
+
+    def SerializeCollection_aMapVertsSkinToSim(self):
+        return gBlender.Stream_SerializeCollection(self.aMapVertsSkinToSim)
+
+#     def SerializeCollection_aMapRimVerts2SourceVerts(self):
+#         return gBlender.Stream_SerializeCollection(self.aMapRimVerts2SourceVerts)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #     def ProcessTetraVerts(self, nNumVerts_UnityToBlenderMesh, nDistTetraVertsFromRim):
 #         "Process the Flex-created tetraverts and create softbody rim mesh.  Updates our rim mesh currently containing only rim (for normals).  This mesh will be responsible to 'pin' some softbody tetraverts to the skinned body so softbody doesn't 'fly out'"
 #         print("-- CSoftBody.ProcessTetraVerts() on body '{}' and softbody '{}' with tetra distance {} --".format(self.oBody.sMeshPrefix, self.sSoftBodyPart, nDistTetraVertsFromRim));
@@ -344,7 +406,7 @@ class CSoftBody:
 #             if (oVert.index >= nNumVerts_UnityToBlenderMesh):
 #                 oVert.select_set(True)
 #         bpy.ops.mesh.delete(type='VERT')        # Delete all verts from Unity2Blender mesh that are 'extra' (That is only created once with the max # of verts we can ever expect)
-#         nVertsRimOrig = len(self.oMeshSoftBodyRim.oMeshO.data.vertices)     # Remember how many verts rim had before join (so we can resync below) 
+#         nVertsRimOrig = len(self.oMeshSoftBodyRim.oMesh.data.vertices)     # Remember how many verts rim had before join (so we can resync below) 
 #         print("- CSoftBody.ProcessTetraVerts() shifts joined rim verts by {} from inserting Unity tetraverts.".format(nNumVerts_UnityToBlenderMesh))
 #  
 #         #=== Create the custom data layer and store vert indices into it === 
@@ -356,8 +418,8 @@ class CSoftBody:
 #         #===== Combine the tetravert-mesh with the rim mesh of that softbody.  We need to isolate the tetraverts close to the rim verts to 'pin' them =====
 #         ###LEARN: Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh)
 #         gBlender.SelectAndActivate(oMeshUnityToBlenderCopy.GetName())             # First select and activate mesh that will be destroyed (temp mesh)
-#         self.oMeshSoftBodyRim.oMeshO.select = True                         # Now select...
-#         bpy.context.scene.objects.active = self.oMeshSoftBodyRim.oMeshO    #... and activate mesh that will be kepp (merged into)  (Note that to-be-destroyed mesh still selected!)
+#         self.oMeshSoftBodyRim.oMesh.select = True                         # Now select...
+#         bpy.context.scene.objects.active = self.oMeshSoftBodyRim.oMesh    #... and activate mesh that will be kepp (merged into)  (Note that to-be-destroyed mesh still selected!)
 #         bpy.ops.object.join()                                       #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
 #         oMeshUnityToBlenderCopy = None                              # Above join destroyed the copy mesh so set our variable to None
 # 
@@ -382,9 +444,9 @@ class CSoftBody:
 #         bpy.ops.transform.transform(mode='TRANSLATION', value=(0, -C_TempMove, 0, 0))  # Move the clothing verts with proportional enabled with a constant curve.  This will also move the body verts near any clothing ###TUNE
 #         bpy.ops.object.mode_set(mode='OBJECT')    
 #         #=== Skin the rim+tetraverts mesh from original rim mesh.  (So tetraverts are skinned too!)
-#         gBlender.Util_TransferWeights(self.oMeshSoftBodyRim.oMeshO, oMeshSoftBodyRim_Copy.oMeshO)      #bpy.ops.object.vertex_group_transfer_weight()
-#         gBlender.Cleanup_VertGrp_RemoveNonBones(self.oMeshSoftBodyRim.oMeshO, True)        
-#         nVertsRimJoined = len(self.oMeshSoftBodyRim.oMeshO.data.vertices)     # Remember how many verts rim now has once close tetraverts are kept in
+#         gBlender.Util_TransferWeights(self.oMeshSoftBodyRim.oMesh, oMeshSoftBodyRim_Copy.oMesh)      #bpy.ops.object.vertex_group_transfer_weight()
+#         gBlender.Cleanup_VertGrp_RemoveNonBones(self.oMeshSoftBodyRim.oMesh, True)        
+#         nVertsRimJoined = len(self.oMeshSoftBodyRim.oMesh.data.vertices)     # Remember how many verts rim now has once close tetraverts are kept in
 #         nShiftAppliedToOrigRimVerts = nVertsRimJoined - nVertsRimOrig   # Calculate the shift applied to orig verts  
 #         self.oMeshSoftBodyRim.Close()
 # 
@@ -439,55 +501,6 @@ class CSoftBody:
 #                 G.DumpStr("###ERROR in CSoftBody.SeparateSoftBodyPart() finding nTwinID {} in aMapTwinId2VertRim".format(nTwinID)) 
 # 
 #         return "OK"     ###TEMP
-
-
-    def CreateMesh_Unity2Blender(self, nVerts):       ###MOVE: Not really related to CBody but is global
-        "Create a temporary Unity2Blender with 'nVerts' vertices.  Used by Unity to pass Blender temporary mesh geometry for Blender processing (e.g. Softbody tetramesh pinning)"
-        print("== CreateMesh_Unity2Blender({}) ==".format(nVerts));
-        #=== Create the requested number of verts ===
-        aVerts = []
-        for nVert in range(nVerts):
-            aVerts.append((0,0,0))
-        #=== Create the mesh with verts only ===
-        oMeshD = bpy.data.meshes.new(self.oMeshSoftBody.GetName() + "-Unity2Blender")
-        oMeshO = bpy.data.objects.new(oMeshD.name, oMeshD)
-        oMeshO.name = oMeshD.name
-        oMeshO.rotation_euler.x = radians(90)          # Rotate temp mesh 90 degrees like every other mesh.  ###IMPROVE: Get rid of 90 rotation EVERYWHERE!!
-        bpy.context.scene.objects.link(oMeshO)
-        oMeshD.from_pydata(aVerts,[],[])
-        oMeshD.update(calc_edges=True)
-        gBlender.SetParent(oMeshO.name, G.C_NodeFolder_Game)
-        oMesh = CMesh.CMesh.CreateFromExistingObject(oMeshO.name)
-        oMesh.bDeleteUponDestroy = True
-        gBlender.Util_HideMesh(oMeshO)
-        return oMesh
-    
-    
-    def Morph_UpdateDependentMeshes(self):
-        "Updates this softbody mesh from its source morph body"
-        #=== Iterate through this softbody mesh and update our vert position to our corresponding morph source body ===
-        bmSoftBody = self.oMeshSoftBody.Open()
-        oLayVertAssy = bmSoftBody.verts.layers.int[G.C_DataLayer_VertsAssy]
-        aVertsMorph = self.oBody.oMeshMorph.oMeshO.data.vertices
-        for oVert in bmSoftBody.verts:
-            if (oVert[oLayVertAssy] >= G.C_OffsetVertIDs):
-                nVertMorph = oVert[oLayVertAssy] - G.C_OffsetVertIDs        # Obtain the vertID from the assembled mesh (removing offset added during creation)
-                oVert.co = aVertsMorph[nVertMorph].co.copy()
-        self.oMeshSoftBody.Close()
-
-
-
-    def SerializeCollection_aMapRimVerts2Verts(self):               ###IMPROVE: Fanning out by function the best way?
-        return gBlender.Stream_SerializeCollection(self.aMapRimVerts2Verts) 
-
-    def SerializeCollection_aMapVertsSkinToSim(self):
-        return gBlender.Stream_SerializeCollection(self.aMapVertsSkinToSim)
-
-#     def SerializeCollection_aMapRimVerts2SourceVerts(self):
-#         return gBlender.Stream_SerializeCollection(self.aMapRimVerts2SourceVerts)
-
-
-
 
 
 
@@ -610,3 +623,32 @@ class CSoftBody:
 #         self.oMeshSoftBodyRimBackplate = CMesh.CMesh(sNameSoftBody + G.C_NameSuffix_RimBackplate, bpy.context.scene.objects.active, None)  # Connect to the backplate mesh
 #         self.oMeshSoftBodyRimBackplate.Hide()
 #         self.oMeshSoftBody.Close()                  # Close the rim mesh.  ###MOVE? (To ProcessTetraVerts()?) 
+
+
+
+
+#     def CreateUnity2BlenderMesh(self, nVerts):
+#         """Creates a temporary mesh of 'nVerts' vertices as requested by Unity.  This is then used by Unity to efficently upload to Blender a large amount of verticies for further processing by Blender."""
+#         sNameMeshUnity2Blender = self.oMeshSoftBody + G.C_NameSuffix_Unity2Blender          ###MOVE? Only useful for softbodies?
+#         gBlender.DeleteObject(self.oMeshUnity2Blender.GetName())
+#         gBlender.DeleteObject(sNameMeshUnity2Blender)
+#         self.oMeshUnity2Blender = None
+#         oMesh = bpy.data.meshes.new(sNameMeshUnity2Blender)
+#         oMeshO = bpy.data.objects.new(sNameMeshUnity2Blender, oMesh)
+#         oMesh.name = oMeshO.name = sNameMeshUnity2Blender       #Ensure we get the name we want!
+#         oMesh.name = oMeshO.name = sNameMeshUnity2Blender
+#         oScene = bpy.context.scene
+#         oScene.objects.link(oMeshO)
+#         oScene.objects.active = oMeshO
+#         oMeshO.select = True
+#         aVerts = []
+#         for nVert in range(nVerts):
+#             aVerts.append(Vector((0,0,0)))
+#         oMesh.from_pydata(aVerts, [], [])
+#         oMesh.update()
+#         self.oMeshUnity2Blender = CMesh.CMesh.CreateFromExistingObject(sNameMeshUnity2Blender, G.C_NodeFolder_Game)     # Store in our member variable as a CMesh so Unity can handshake with as usual       
+#         print("CreateUnity2BlenderMesh() created mesh {} with {} verts.".format(sNameMeshUnity2Blender, nVerts))
+#         #return oMeshO
+#         return "OK"
+
+

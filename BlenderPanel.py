@@ -114,9 +114,9 @@ class gBL_temp2(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context , event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        oBody = CBody.CBody(0, 'WomanA', 'Woman', 'Vagina-Erotic9-A', 5000)
+        oBody = CBody.CBody(0, 'WomanA', 'Woman', 'Vagina-Erotic9-A')
         #oBody.CreateSoftBody("Breasts", 0.01)
-        oBody.CreateFlexSkin("TestFlexSkin", 10)
+        #oBody.CreateFlexSkin("TestFlexSkin", 10)
         return {"FINISHED"}
 
 class gBL_temp3(bpy.types.Operator):

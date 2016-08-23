@@ -81,14 +81,13 @@ import CFlexSkin
 class CBody:
     _aBodies = []                       # The global array of bodies.  Unity finds bodies
 
-    def __init__(self, nBodyID, sMeshSource, sSex, sGenitals, nUnity2Blender_NumVerts):
+    def __init__(self, nBodyID, sMeshSource, sSex, sGenitals):
         CBody._aBodies.append(self)                         # Append ourselves to global array.  The only way Unity can find our instance is through CBody._aBodies[<OurID>]
         self.nBodyID            = nBodyID                   # Our ID is passed in by Blender and remains the only public way to access this instance (e.g. CBody._aBodies[<OurID>])
         self.sMeshSource        = sMeshSource               # The name of the source body mesh (e.g. 'WomanA', 'ManA', etc)
         self.sSex               = sSex                      # The body's sex (one of 'Man', 'Woman' or 'Shemale')
         self.sGenitals          = sGenitals                 # The body's genitals (e.g. 'Vagina-Erotic9-A', 'PenisW-Erotic9-A' etc.)
         self.sMeshPrefix        = "B" + chr(65 + self.nBodyID) + '-'  # The Blender object name prefix of every submesh (e.g. 'BodyA-Detach-Breasts', etc)
-        self.nUnity2Blender_NumVerts = nUnity2Blender_NumVerts
 
         self.oMeshSource        = None                      # The 'source body'.  Never modified in any way
         self.oMeshAssembled     = None                      # The 'assembled mesh'.  Fully assembled with proper genitals.  Basis of oMeshMorph                  
@@ -471,9 +470,9 @@ def SlaveMesh_DefineMasterSlaveRelationship(sNameBodySrc, sTypeOfSlaveMesh, nVer
 #---------------------------------------------------------------------------    CBODY PUBLIC ACCESSOR
 #---------------------------------------------------------------------------    
 
-def CBody_Create(nBodyID, sMeshSource, sSex, sGenitals, nUnity2Blender_NumVerts):
+def CBody_Create(nBodyID, sMeshSource, sSex, sGenitals):
     "Proxy for CBody ctor as we can only return primitives back to Unity"
-    oBody = CBody(nBodyID, sMeshSource, sSex, sGenitals, nUnity2Blender_NumVerts)
+    oBody = CBody(nBodyID, sMeshSource, sSex, sGenitals)
     return str(oBody.nBodyID)           # Strings is one of the only things we can return to Unity
 
 def CBody_GetBody(nBodyID):

@@ -77,6 +77,7 @@ C_NameSuffix_Face           = "-Face"               # Suffix for character face
 C_NameSuffix_BreastCol      = "-BreastCol"          # Suffix applied to the breast collider mesh
 C_NameSuffix_Breast         = "-Breast"             # Suffix applied to a source body's cutoff breast (for morphing)
 C_NameSuffix_CutterPlane    = "-CutterPlane"        # Suffix applied to cloth cutter planes (responsible to slice cloth)
+C_NameSuffix_Unity2Blender  = "-Unity2Blender"      # Suffix applied to temporary meshes created to enable Unity to efficiently uploade verts to Blender.
 
 #---------------------------------------------------------------------------    NODE NAME PREFIX CONSTANTS
 C_NamePrefix_Body            = "Body"               # Prefix given to a 'body definition' created by gBL_Body_Create() such as "BodyA", "BodyB", etc that represents an abstract man/woman/shemale body that is processed by most of the code.

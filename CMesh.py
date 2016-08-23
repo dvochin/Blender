@@ -110,8 +110,10 @@ class CMesh:
     def SetParent(self, sNameParent):           
         gBlender.SetParent(self.oMeshO.name, sNameParent)       ###MOVE: Merge in here?
 
-
-
+    def Destroy(self):
+        gBlender.DeleteObject(self.GetName())       ###CHECK
+        self.oMeshO = None
+        
 #    def GetMeshFromUnity(self):     ###DEV???
 #        return self.oMeshO
         
