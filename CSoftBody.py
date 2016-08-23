@@ -1,3 +1,14 @@
+#NOW
+#Finally fucking fixed bad problems...
+#- Cleanup up as much as possible on both sides
+#- We need to remove stuff from remeshed body Flex collider too...
+    #- Need to abstract 'removal by area' to a function
+#- Then... merge of thick skin into SoftBody class... then vagina... then penetration!
+
+
+
+
+
 import bpy
 import sys
 import bmesh
@@ -92,14 +103,7 @@ class CSoftBody:
         bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')        
         self.oMeshSoftBody = CMesh.CMesh(sNameSoftBody, bpy.context.scene.objects.active, None)          # The just-split mesh becomes the softbody mesh! 
         bpy.ops.object.vertex_group_remove(all=True)        # Remove all vertex groups from detached chunk to save memory
-        
-        
-#         gBlender.Util_PrintMeshVerts(self.oMeshSoftBody.GetName(), G.C_DataLayer_TwinVert)
-        #self.FUCKOFF
-        #self.oMeshSoftBody.oMeshO.modifiers.clear()     ###LEARN: How to remove all modifiers (including armature)    ###BUG!?!?!?!  WTF does this make rim twin verts change later on??????????
-#         gBlender.Util_PrintMeshVerts(self.oMeshSoftBody.GetName(), G.C_DataLayer_TwinVert)
-        
-        
+        self.oMeshSoftBody.oMeshO.modifiers.clear()     ###LEARN: How to remove all modifiers (including armature)
         self.oBody.oMeshBody.Close()
 
         #===== SOFTBODY CAPPING =====        ###DESIGN: Would be an improvement to switch this to 'make face'?
@@ -136,49 +140,18 @@ class CSoftBody:
         self.oMeshSoftBody.ExitFromEditMode()
         bpy.context.object.select = False           # Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
         bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')
-        
-        if (True):
-            self.oMeshSoftBodyRimBackplate = CMesh.CMesh(sNameSoftBody + G.C_NameSuffix_RimBackplate, bpy.context.scene.objects.active, None)  # Connect to the backplate mesh
-            gBlender.DataLayer_RemoveLayers(self.oMeshSoftBodyRimBackplate.GetName())
-            #gBlender.DataLayer_RemoveLayerInt(self.oMeshSoftBodyRimBackplate.GetName(), G.C_DataLayer_TwinVert)
-#             bmSoftBodyRimBackplate = self.oMeshSoftBodyRimBackplate.Open()
-#             oLayVertTwinID = bmSoftBodyRimBackplate.verts.layers.int[G.C_DataLayer_TwinVert]
-#             for oVert in bmSoftBodyRimBackplate.verts:              # Iterate through all selected verts and clear their 'twin id' field.
-#                 oVert[oLayVertTwinID] = 0
-#             self.oMeshSoftBodyRimBackplate.Close()            
-            #gBlender.Util_PrintMeshVerts("Straight to var 1", self.oMeshSoftBodyRimBackplate.GetName())
-            #gBlender.Util_PrintMeshVerts("Straight to var 2", self.oMeshSoftBodyRimBackplate.GetName())
-            
-        else:
-            print(1)
-#             self.oMeshSoftBodyRimBackplate = CMesh.CMesh(sNameSoftBody + G.C_NameSuffix_RimBackplate, bpy.context.scene.objects.active, None)  # Connect to the backplate mesh
-#             gBlender.Util_PrintMeshVerts("Local Var 1", oMeshSoftBodyRimBackplateBAD.GetName(), G.C_DataLayer_TwinVert)
-#             gBlender.Util_PrintMeshVerts("Local Var 2", oMeshSoftBodyRimBackplateBAD.GetName(), G.C_DataLayer_TwinVert)
-#             #self.oMeshSoftBodyRimBackplate = oMeshSoftBodyRimBackplateBAD
-#             #gBlender.Util_PrintMeshVerts("To var 1", self.oMeshSoftBodyRimBackplate.GetName(), G.C_DataLayer_TwinVert)
-#             #gBlender.Util_PrintMeshVerts("To var 2", self.oMeshSoftBodyRimBackplate.GetName(), G.C_DataLayer_TwinVert)
-#             # = CMesh.CMesh.CreateFromDuplicate("TEMPFORJOIN_Backplate", oMeshSoftBodyRimBackplateBAD)
-#             gBlender.Util_PrintMeshVerts("Local Var After", oMeshSoftBodyRimBackplateBAD.GetName(), G.C_DataLayer_TwinVert)
-#             gBlender.Util_PrintMeshVerts("Real Var 1", self.oMeshSoftBodyRimBackplate.GetName(), G.C_DataLayer_TwinVert)
-#             gBlender.Util_PrintMeshVerts("Real Var 2", self.oMeshSoftBodyRimBackplate.GetName(), G.C_DataLayer_TwinVert)
-#             gBlender.DeleteObject(oMeshSoftBodyRimBackplateBAD.GetName())
-#             oMeshSoftBodyRimBackplateBAD = None
-            
-        #self.FUCK
-        
-        
-        
-        
+        self.oMeshSoftBodyRimBackplate = CMesh.CMesh(sNameSoftBody + G.C_NameSuffix_RimBackplate, bpy.context.scene.objects.active, None)  # Connect to the backplate mesh
+        gBlender.DataLayer_RemoveLayers(self.oMeshSoftBodyRimBackplate.GetName())
         self.oMeshSoftBodyRimBackplate.Hide()
-        self.oMeshSoftBody.Close()                  # Close the rim mesh.  ###MOVE? (To ProcessTetraVerts()?)
+        self.oMeshSoftBody.Close()
 
-            
         #=== Create the 'collision mesh' as a 'shrunken version' of appearance mesh (about vert normals) ===
         self.oMeshFlexCollider = CMesh.CMesh.CreateFromDuplicate(self.oMeshSoftBody.oMeshO.name + G.C_NameSuffix_FlexCollider, self.oMeshSoftBody)
         self.oMeshFlexCollider.Open()
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.transform.shrink_fatten(value=nFlexColliderShrinkDist)
         self.oMeshFlexCollider.Close()
+
 
         #===== SKINNED RIM CREATION =====
         #=== Create the 'Skinned Rim' skinned mesh that Client can use to use 'BakeMesh()' on a heavily-simplified version of the main body mesh that contains only the 'rim' polygons that attach to all the detachable softbody this code separates.  It is this 'Rim' skinned mesh that will 'pin' the softbody tetravert solid to the skinned body === 
@@ -211,7 +184,6 @@ class CSoftBody:
         bpy.ops.object.material_slot_add()  # Add a single default material (captures all the polygons of rim) so we can properly send the mesh over (crashes if zero material)
         gBlender.Cleanup_VertGrp_RemoveNonBones(self.oMeshSoftBodyRim_Orig.oMeshO, True)  # Remove the extra vertex groups that are not skinning related        ####DEV: Move?
         self.oMeshSoftBodyRim_Orig.Hide()
-        gBlender.Util_PrintMeshVerts("oMeshSoftBodyRim_Orig", self.oMeshSoftBodyRim_Orig.GetName(), G.C_DataLayer_TwinVert)
 
         #=== Create the 'Unity2Blender' mesh Unity needs to pass us tetraverts geometry === 
         self.oMeshUnity2Blender = self.CreateMesh_Unity2Blender(oBody.nUnity2Blender_NumVerts)
@@ -228,9 +200,7 @@ class CSoftBody:
 
         #=== Create a temporary copy of rim mesh so we can transfer weights efficiently from it to new mesh including tetraverts ===
         ####BUG? Destroy mesh of rim??
-        self.oMeshSoftBodyRim = CMesh.CMesh.CreateFromDuplicate("TEMP_SoftBodyRim", self.oMeshSoftBodyRim_Orig)
-        gBlender.Util_PrintMeshVerts("oMeshSoftBodyRim from orig", self.oMeshSoftBodyRim.GetName(), G.C_DataLayer_TwinVert)
-        
+        self.oMeshSoftBodyRim = CMesh.CMesh.CreateFromDuplicate("TEMP_SoftBodyRim", self.oMeshSoftBodyRim_Orig)         ###IMPROVE: Name for this softbody and keep?
         oMeshSoftBodyRim_Copy = CMesh.CMesh.CreateFromDuplicate("TEMP_SoftBodyRim_Copy", self.oMeshSoftBodyRim_Orig)
 
         #=== Create a temporary copy of Unity2Blender mesh so we can trim it to 'nNumVerts_UnityToBlenderMesh' verts ===  
@@ -252,109 +222,54 @@ class CSoftBody:
             oVert[oLayTetraVerts] = oVert.index + G.C_OffsetVertIDs    # Apply offset to easily tell real IDs in later loop
         oMeshUnityToBlenderCopy.Close()
         
-        if (True):
-            #===== Remove the tetraverts that are too far from the rim backplate =====
-            #===== Combine the tetravert-mesh with the rim backplate mesh of our softbody.  We need to isolate the tetraverts close to the back of the softbody tetraverts to 'pin' them =====
-            
-            oMeshSoftBodyRimBackplateCOPY = CMesh.CMesh.CreateFromDuplicate("TEMPFORJOIN-BACKPLATE", self.oMeshSoftBodyRimBackplate)
-             
-            gBlender.SelectAndActivate(oMeshUnityToBlenderCopy.GetName())             # First select and activate mesh that will be destroyed (temp mesh)    (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
-            oMeshSoftBodyRimBackplateCOPY.oMeshO.hide = False
-            oMeshSoftBodyRimBackplateCOPY.oMeshO.select = True                         # Now select...
-            bpy.context.scene.objects.active = oMeshSoftBodyRimBackplateCOPY.oMeshO    #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
-            bpy.ops.object.join()                                       #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
-            oMeshUnityToBlenderCopy = None                              # Above join destroyed the copy mesh so set our variable to None
-            #=== Select the rim verts in the joined mesh ===
-            bmRimBackplate = oMeshSoftBodyRimBackplateCOPY.Open()
-            oLayTetraVerts = bmRimBackplate.verts.layers.int[G.C_DataLayer_TetraVerts]
-            for oVert in bmRimBackplate.verts:
-                if (oVert.index > nNumVerts_UnityToBlenderMesh):
-                    oVert.select_set(True)                      # Select only the verts with no OrigVertID = tetraverts
-            #=== Move the rim verts with the close tetraverts some distance so we can quickly separate the tetraverts close to rim verts ===        
-            C_TempMove = 10
-            bpy.ops.transform.transform(mode='TRANSLATION', value=(0, C_TempMove, 0, 0), proportional='ENABLED', proportional_size=nDistTetraVertsFromRim, proportional_edit_falloff='CONSTANT')  # Move the rim verts with propportional editing so the tetraverts near rim are moved too.  This is how we separate them
-            #=== Delete all tetraverts that are too far from rim ===
-            bpy.ops.mesh.select_all(action='DESELECT')
-            for oVert in bmRimBackplate.verts:  # Select all body verts far from clothing (Separated by translation operation above)                                  
-                if oVert.co.z > -C_TempMove / 2:  ###WEAK!! Stupid 90 degree rotation rearing its ugly head again...
-                    oVert.select_set(True)
-            bpy.ops.mesh.delete(type='VERT')  # Delete all tetraverts that were too far from rim.  (These will be softbody-simulated and the others pinned)
-            #=== Move back the remaining rim and 'close tetraverts to their original position.  At this point only tetraverts near rim remain ===
-            bpy.ops.mesh.select_all(action='SELECT')
-            bpy.ops.transform.transform(mode='TRANSLATION', value=(0, -C_TempMove, 0, 0))  # Move the clothing verts with proportional enabled with a constant curve.  This will also move the body verts near any clothing ###TUNE
-            bpy.ops.mesh.select_all(action='DESELECT')
-            #=== Delete the verts of the backplate... to leave only the 'close tetraverts to the backplate' that need to be pinned instead of simulated ===
-            for oVert in bmRimBackplate.verts:
-                nVertUnity = oVert[oLayTetraVerts]
-                if nVertUnity < G.C_OffsetVertIDs:
-                    oVert.select_set(True)                      # Select only the verts with no OrigVertID = tetraverts
-            bpy.ops.mesh.delete(type='VERT')
-            oMeshSoftBodyRimBackplateCOPY.Close()
-     
-     
-            #===== Combine the tetravert collection of verts with the rim mesh of our softbody.  We need to isolate the tetraverts close to the rim verts to 'pin' them =====
-            gBlender.SelectAndActivate(oMeshSoftBodyRimBackplateCOPY.GetName())             # First select and activate mesh that will be destroyed (temp mesh) (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
-            self.oMeshSoftBodyRim.oMeshO.hide = False                           # Now select...  ###IMPROVE: Add method to open in this way?
-            self.oMeshSoftBodyRim.oMeshO.select = True                          # Now select...
-            bpy.context.scene.objects.active = self.oMeshSoftBodyRim.oMeshO     #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
-            bpy.ops.object.join()                                               #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
-            oMeshSoftBodyRimBackplateCOPY = None                               # Above join destroyed the mesh backplate so set to none
 
-            
-    
-        else:
-            
-            gBlender.SelectAndActivate(oMeshUnityToBlenderCopy.GetName())             # First select and activate mesh that will be destroyed (temp mesh)    (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
-            self.oMeshSoftBodyRimBackplate.oMeshO.hide = False
-            self.oMeshSoftBodyRimBackplate.oMeshO.select = True                         # Now select...
-            bpy.context.scene.objects.active = self.oMeshSoftBodyRimBackplate.oMeshO    #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
-            bpy.ops.object.join()                                       #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
-            oMeshUnityToBlenderCopy = None                              # Above join destroyed the copy mesh so set our variable to None
-            #=== Select the rim verts in the joined mesh ===
-            bmRimBackplate = self.oMeshSoftBodyRimBackplate.Open()
-            oLayTetraVerts = bmRimBackplate.verts.layers.int[G.C_DataLayer_TetraVerts]
-            for oVert in bmRimBackplate.verts:
-                if (oVert.index > nNumVerts_UnityToBlenderMesh):
-                    oVert.select_set(True)                      # Select only the verts with no OrigVertID = tetraverts
-            #=== Move the rim verts with the close tetraverts some distance so we can quickly separate the tetraverts close to rim verts ===        
-            C_TempMove = 10
-            bpy.ops.transform.transform(mode='TRANSLATION', value=(0, C_TempMove, 0, 0), proportional='ENABLED', proportional_size=nDistTetraVertsFromRim, proportional_edit_falloff='CONSTANT')  # Move the rim verts with propportional editing so the tetraverts near rim are moved too.  This is how we separate them
-            #=== Delete all tetraverts that are too far from rim ===
-            bpy.ops.mesh.select_all(action='DESELECT')
-            for oVert in bmRimBackplate.verts:  # Select all body verts far from clothing (Separated by translation operation above)                                  
-                if oVert.co.z > -C_TempMove / 2:  ###WEAK!! Stupid 90 degree rotation rearing its ugly head again...
-                    oVert.select_set(True)
-            bpy.ops.mesh.delete(type='VERT')  # Delete all tetraverts that were too far from rim.  (These will be softbody-simulated and the others pinned)
-            #=== Move back the remaining rim and 'close tetraverts to their original position.  At this point only tetraverts near rim remain ===
-            bpy.ops.mesh.select_all(action='SELECT')
-            bpy.ops.transform.transform(mode='TRANSLATION', value=(0, -C_TempMove, 0, 0))  # Move the clothing verts with proportional enabled with a constant curve.  This will also move the body verts near any clothing ###TUNE
-            bpy.ops.mesh.select_all(action='DESELECT')
-            #=== Delete the verts of the backplate... to leave only the 'close tetraverts to the backplate' that need to be pinned instead of simulated ===
-            for oVert in bmRimBackplate.verts:
-                nVertUnity = oVert[oLayTetraVerts]
-                if nVertUnity < G.C_OffsetVertIDs:
-                    oVert.select_set(True)                      # Select only the verts with no OrigVertID = tetraverts
-            bpy.ops.mesh.delete(type='VERT')
-            self.oMeshSoftBodyRimBackplate.Close()
-      
-      
-            #===== Combine the tetravert collection of verts with the rim mesh of our softbody.  We need to isolate the tetraverts close to the rim verts to 'pin' them =====
-            gBlender.SelectAndActivate(self.oMeshSoftBodyRimBackplate.GetName())             # First select and activate mesh that will be destroyed (temp mesh) (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
-            self.oMeshSoftBodyRim.oMeshO.hide = False                           # Now select...  ###IMPROVE: Add method to open in this way?
-            self.oMeshSoftBodyRim.oMeshO.select = True                          # Now select...
-            bpy.context.scene.objects.active = self.oMeshSoftBodyRim.oMeshO     #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
-            bpy.ops.object.join()                                               #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
-            self.oMeshSoftBodyRimBackplate = None                               # Above join destroyed the mesh backplate so set to none
-
-
-        gBlender.Util_PrintMeshVerts("oMeshSoftBodyRim after join", self.oMeshSoftBodyRim.GetName(), G.C_DataLayer_TwinVert)
-
-
-        
+        #===== Remove the tetraverts that are too far from the rim backplate =====
+        #===== Combine the tetravert-mesh with the rim backplate mesh of our softbody.  We need to isolate the tetraverts close to the back of the softbody tetraverts to 'pin' them =====
+        oMeshSoftBodyRimBackplateCOPY = CMesh.CMesh.CreateFromDuplicate("TEMPFORJOIN-BACKPLATE", self.oMeshSoftBodyRimBackplate)
+         
+        gBlender.SelectAndActivate(oMeshUnityToBlenderCopy.GetName())             # First select and activate mesh that will be destroyed (temp mesh)    (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
+        oMeshSoftBodyRimBackplateCOPY.oMeshO.hide = False
+        oMeshSoftBodyRimBackplateCOPY.oMeshO.select = True                         # Now select...
+        bpy.context.scene.objects.active = oMeshSoftBodyRimBackplateCOPY.oMeshO    #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
+        bpy.ops.object.join()                                       #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
+        oMeshUnityToBlenderCopy = None                              # Above join destroyed the copy mesh so set our variable to None
+        #=== Select the rim verts in the joined mesh ===
+        bmRimBackplate = oMeshSoftBodyRimBackplateCOPY.Open()
+        oLayTetraVerts = bmRimBackplate.verts.layers.int[G.C_DataLayer_TetraVerts]
+        bpy.ops.mesh.select_loose()                             # Select the loose geometry...  (This will only select Unity's tetravert)
+        bpy.ops.mesh.select_all(action='INVERT')                #... and invert it (leaving only the backplate selected (for upcoming nearby selection)
+        #=== Move the rim verts with the close tetraverts some distance so we can quickly separate the tetraverts close to rim verts ===        
+        C_TempMove = 10             ###SOON ###IMPROVE: Switch to the 'transfer mesh' modifier?
+        bpy.ops.transform.transform(mode='TRANSLATION', value=(0, C_TempMove, 0, 0), proportional='ENABLED', proportional_size=nDistTetraVertsFromRim, proportional_edit_falloff='CONSTANT')  # Move the rim verts with propportional editing so the tetraverts near rim are moved too.  This is how we separate them
+        #=== Delete all tetraverts that are too far from rim ===
+        bpy.ops.mesh.select_all(action='DESELECT')
+        for oVert in bmRimBackplate.verts:  # Select all body verts far from clothing (Separated by translation operation above)                                  
+            if oVert.co.z > -C_TempMove / 2:  ###WEAK!! Stupid 90 degree rotation rearing its ugly head again...
+                oVert.select_set(True)
+        bpy.ops.mesh.delete(type='VERT')  # Delete all tetraverts that were too far from rim.  (These will be softbody-simulated and the others pinned)
+        #=== Move back the remaining rim and 'close tetraverts to their original position.  At this point only tetraverts near rim remain ===
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.transform.transform(mode='TRANSLATION', value=(0, -C_TempMove, 0, 0))  # Move the clothing verts with proportional enabled with a constant curve.  This will also move the body verts near any clothing ###TUNE
+        bpy.ops.mesh.select_all(action='DESELECT')
+        #=== Delete the verts of the backplate... to leave only the 'close tetraverts to the backplate' that need to be pinned instead of simulated ===
+        bpy.ops.mesh.select_loose()                             # Select the loose geometry...  (This will only select Unity's tetravert)
+        bpy.ops.mesh.select_all(action='INVERT')                #... and invert it (leaving only the backplate selected (for upcoming nearby selection)
+        bpy.ops.mesh.delete(type='VERT')
+        oMeshSoftBodyRimBackplateCOPY.Close()
+ 
+        #===== Combine the tetravert collection of verts with the rim mesh of our softbody.  We need to isolate the tetraverts close to the rim verts to 'pin' them =====
+        gBlender.SelectAndActivate(oMeshSoftBodyRimBackplateCOPY.GetName())             # First select and activate mesh that will be destroyed (temp mesh) (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
+        self.oMeshSoftBodyRim.oMeshO.hide = False                           # Now select...  ###IMPROVE: Add method to open in this way?
+        self.oMeshSoftBodyRim.oMeshO.select = True                          # Now select...
+        bpy.context.scene.objects.active = self.oMeshSoftBodyRim.oMeshO     #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
+        bpy.ops.object.join()                                               #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!  ###LEARN: join is not deterministic in which verts will be first!!
+        oMeshSoftBodyRimBackplateCOPY = None                               # Above join destroyed the mesh backplate so set to none
+        #gBlender.Util_PrintMeshVerts("oMeshSoftBodyRim after join", self.oMeshSoftBodyRim.GetName(), G.C_DataLayer_TwinVert)
 
         #=== Skin the rim+tetraverts mesh from original rim mesh.  (So tetraverts are skinned too!)
         gBlender.Util_TransferWeights(self.oMeshSoftBodyRim.oMeshO, oMeshSoftBodyRim_Copy.oMeshO)      #bpy.ops.object.vertex_group_transfer_weight()
         gBlender.Cleanup_VertGrp_RemoveNonBones(self.oMeshSoftBodyRim.oMeshO, True)        
+
 
 
         #===== CREATE THE MAP PIN TETRAVERTS TO TETRAVERT MAP =====
@@ -368,12 +283,9 @@ class CSoftBody:
                 nTetraVertID -= G.C_OffsetVertIDs              # Retrieve the non-offsetted tetravert
                 self.aMapVertsSkinToSim.append(oVert.index)
                 self.aMapVertsSkinToSim.append(nTetraVertID)
-                #print("RimTetravert {:4d} = Tetravert {:4d}". format(oVert.index, nTetraVertID))
+                print("RimTetravert {:4d} = Tetravert {:4d}". format(oVert.index, nTetraVertID))
         self.oMeshSoftBodyRim.Close()
         
-        gBlender.Util_PrintMeshVerts("oMeshSoftBodyRim tetravert map create", self.oMeshSoftBodyRim.GetName(), G.C_DataLayer_TwinVert)
-
-
 
         #===== CREATE THE TWIN VERT MAPPING =====
         #===1. Iterate over the rim copy vertices, and find the rim vert for every 'twin verts' so next loop can map softbody part verts to rim verts for pinning === 
@@ -386,17 +298,6 @@ class CSoftBody:
                 aMapTwinId2VertRim[nTwinID] = oVert.index
                 print("TwinID {:3d} = RimVert {:5d} at {:}".format(nTwinID, oVert.index, oVert.co))
         self.oMeshSoftBodyRim.Close()
-
-#         bmRimCopy = oMeshSoftBodyRim_Copy.Open()
-#         oLayVertTwinID = bmRimCopy.verts.layers.int[G.C_DataLayer_TwinVert]
-#         aMapTwinId2VertRim = {}
-#         for oVert in bmRimCopy.verts:
-#             nTwinID = oVert[oLayVertTwinID]
-#             if nTwinID != 0:
-#                 aMapTwinId2VertRim[nTwinID] = oVert.index
-#                 print("TwinID {:3d} = RimVert {:5d} at {:}".format(nTwinID, oVert.index, oVert.co))
-#         oMeshSoftBodyRim_Copy.Close()
-#         oMeshSoftBodyRim_Copy = None
 
         #===2. Iterate through the verts of the newly separated softbody to access the freshly-created custom data layer to obtain ID information that enables us to match the softbody mesh vertices to the main skinned mesh for pinning ===
         bmSoftBody = self.oMeshSoftBody.Open()
@@ -419,8 +320,6 @@ class CSoftBody:
                 self.aMapRimVerts2Verts.append(nVertTwinRim)                ####BUG ####DEV: Can fail here... trap to earlier and catch!
             else:
                 G.DumpStr("###ERROR in CSoftBody.SeparateSoftBodyPart() finding nTwinID {} in aMapTwinId2VertRim".format(nTwinID)) 
-
-        gBlender.Util_PrintMeshVerts("oMeshSoftBodyRim last", self.oMeshSoftBodyRim.GetName(), G.C_DataLayer_TwinVert)
 
         return "OK"     ###TEMP
 
