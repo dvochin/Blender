@@ -6,6 +6,7 @@
 #- Remember: pass in particle spacing!
 #- From Unity for FlexSkin: call ctor, obtain presentation mesh and FlexSkin arrays and complete.
     #- The bits about ProcessTetraVerts skipped.
+#- Remove old FlexSkin files everywhere
 
 import bpy
 import sys

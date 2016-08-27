@@ -145,9 +145,26 @@ C_SymmetrySuffixNames = ['L', 'R']               # Suffix given to symmetrical c
 
 C_OffsetVertIDs = 1000000                       # Offset applied to all vert IDs pushed into mesh.  Used to separate 'real IDs' from new verts which would have zero ID
 
+
+
+#---------------------------------------------------------------------------    
+#---------------------------------------------------------------------------    GLOBAL VARIABLES (MANUALLY SET BY UNITY AT STARTUP)
+#---------------------------------------------------------------------------    
+class CGlobals:
+    _nFlexParticleSpacing = 0.02                # The inter-particular distance Flex uses to keep its particles away from other particles.  Used to 'shrink' our collision meshes so that collisions appear to occur at the surface of the presentation meshes.  
+    @classmethod
+    def SetFlexParticleSpacing(cls, nFlexParticleSpacing):
+        CGlobals._nFlexParticleSpacing = nFlexParticleSpacing       ###DESIGN: Store diameter or radius??
+        return "OK"                     ###HACK: Try to remove need for functions returning a string from gBlender c code
+        
+
+
 #---------------------------------------------------------------------------    COORDINATE CONVERSION    
 #---------------------------------------------------------------------------    Converts from Blender 3D space to Client 3D space.  (Blender is right-handed like OpenGL while most Clients (like Unity and DirectX) are left-handed)
 #---------------------------------------------------------------------------    ###IMPORTANT: We just negate x here as we assume that ***EVERY MESH IN BLENDER MEANT FOR EXPORT HAS A ROTATION OF 90 DEGREES ON X***  (This is a must to have intuitive interaction of the meshes with the characters standing up and default Blender camera rotation work intuitively.
+
+
+
 
 def VectorB2C(vec):           
     return Vector((-vec[0], vec[1], vec[2]))      

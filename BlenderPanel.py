@@ -115,6 +115,7 @@ class gBL_temp2(bpy.types.Operator):
     def invoke(self, context , event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
         oBody = CBody.CBody(0, 'WomanA', 'Woman', 'Vagina-Erotic9-A')
+        oBody.CreateSoftBody("Vagina", 0.1, True)
         #oBody.CreateSoftBody("Breasts", 0.01)
         #oBody.CreateFlexSkin("TestFlexSkin", 10)
         return {"FINISHED"}

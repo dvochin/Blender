@@ -79,7 +79,7 @@ import CFlexSkin
 #---------------------------------------------------------------------------    
 
 class CBody:
-    _aBodies = []                       # The global array of bodies.  Unity finds bodies
+    _aBodies = []                       # The global array of bodies.  Unity acceses body instances through this one global collection
 
     def __init__(self, nBodyID, sMeshSource, sSex, sGenitals):
         CBody._aBodies.append(self)                         # Append ourselves to global array.  The only way Unity can find our instance is through CBody._aBodies[<OurID>]
@@ -177,9 +177,9 @@ class CBody:
 
 
 
-    def CreateSoftBody(self, sSoftBodyPart, nFlexColliderShrinkDist):
+    def CreateSoftBody(self, sSoftBodyPart, nSoftBodyFlexColliderShrinkRatio, bIsFlexSkin):
         "Create a softbody by detaching sSoftBodyPart verts from game's skinned main body"
-        self.aSoftBodies[sSoftBodyPart] = CSoftBody.CSoftBody(self, sSoftBodyPart, nFlexColliderShrinkDist)        # This will enable Unity to find this instance by our self.sSoftBodyPart key and the body.
+        self.aSoftBodies[sSoftBodyPart] = CSoftBody.CSoftBody(self, sSoftBodyPart, nSoftBodyFlexColliderShrinkRatio, bIsFlexSkin)        # This will enable Unity to find this instance by our self.sSoftBodyPart key and the body.
         return "OK"
 
 
