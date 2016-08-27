@@ -273,7 +273,7 @@ class CSoftBody:
 
 
   
-    def ProcessTetraVerts(self, nNumVerts_UnityToBlenderMesh, nDistTetraVertsFromRim):
+    def ProcessTetraVerts(self, nDistTetraVertsFromRim):
         "Process the Flex-created tetraverts and create softbody rim mesh.  Updates our rim mesh currently containing only rim (for normals).  This mesh will be responsible to 'pin' some softbody tetraverts to the skinned body so softbody doesn't 'fly out'"
         print("-- CSoftBody.ProcessTetraVerts() on body '{}' and softbody '{}' with tetra distance {} --".format(self.oBody.sMeshPrefix, self.sSoftBodyPart, nDistTetraVertsFromRim));
 
@@ -281,37 +281,28 @@ class CSoftBody:
         ####BUG? Destroy mesh of rim??
         self.oMeshSoftBodyRim = CMesh.CMesh.CreateFromDuplicate("TEMP_SoftBodyRim", self.oMeshSoftBodyRim_Orig)         ###IMPROVE: Name for this softbody and keep?
         oMeshSoftBodyRim_Copy = CMesh.CMesh.CreateFromDuplicate("TEMP_SoftBodyRim_Copy", self.oMeshSoftBodyRim_Orig)
-
-        #=== Create a temporary copy of Unity2Blender mesh so we can trim it to 'nNumVerts_UnityToBlenderMesh' verts ===  
-        oMeshUnityToBlenderCopy = CMesh.CMesh.CreateFromDuplicate("TEMP_Unity2Blender", self.oMeshUnity2Blender)
         self.aMapPinnedFlexParticles = array.array('H')  # Blank out the two arrays that must be created everytime this is called
         self.aMapRimVerts2Verts = array.array('H')
 
         #=== Open the temp mesh Unity requested in CreateTempMesh() and push in a data layer with vert index.  This will prevent us from losing access to Unity's tetraverts as we process this mesh toward the softbody rim ===        
-        bm = oMeshUnityToBlenderCopy.Open()
-        for oVert in bm.verts:
-            if (oVert.index >= nNumVerts_UnityToBlenderMesh):       # Unity2Blender mesh has extra verts.  Make sure we only use the 'real ones'
-                oVert.select_set(True)
-        bpy.ops.mesh.delete(type='VERT')        # Delete all verts from Unity2Blender mesh that are 'extra' (That is only created once with the max # of verts we can ever expect)
-        #print("- CSoftBody.ProcessTetraVerts() shifts joined rim verts by {} from inserting Unity tetraverts.".format(nNumVerts_UnityToBlenderMesh))
- 
-        #=== Create the custom data layer and store vert indices into it === 
-        oLayTetraVerts = bm.verts.layers.int.new(G.C_DataLayer_TetraVerts)
-        for oVert in bm.verts:
+        oMeshUnity2BlenderCOPY = CMesh.CMesh.CreateFromDuplicate("TEMP_Unity2Blender", self.oMeshUnity2Blender)        # Create a temporary copy of Unity2Blender mesh because we need to destroy our copy and Unity owns its copy and must release it on its own
+        bmUnity2Blender = oMeshUnity2BlenderCOPY.Open()
+        oLayTetraVerts = bmUnity2Blender.verts.layers.int.new(G.C_DataLayer_TetraVerts)
+        for oVert in bmUnity2Blender.verts:
             oVert[oLayTetraVerts] = oVert.index + G.C_OffsetVertIDs    # Apply offset to easily tell real IDs in later loop
-        oMeshUnityToBlenderCopy.Close()
+        oMeshUnity2BlenderCOPY.Close()
         
 
         #===== Remove the tetraverts that are too far from the rim backmesh =====
         #===== Combine the tetravert-mesh with the rim backmesh mesh of our softbody.  We need to isolate the tetraverts close to the back of the softbody tetraverts to 'pin' them =====
         oMeshSoftBodyRimBackplateCOPY = CMesh.CMesh.CreateFromDuplicate("TEMPFORJOIN-BACKPLATE", self.oMeshSoftBodyRimBackplate)
          
-        gBlender.SelectAndActivate(oMeshUnityToBlenderCopy.GetName())             # First select and activate mesh that will be destroyed (temp mesh)    (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
+        gBlender.SelectAndActivate(oMeshUnity2BlenderCOPY.GetName())             # First select and activate mesh that will be destroyed (temp mesh)    (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
         oMeshSoftBodyRimBackplateCOPY.oMeshO.hide = False
         oMeshSoftBodyRimBackplateCOPY.oMeshO.select = True                         # Now select...
         bpy.context.scene.objects.active = oMeshSoftBodyRimBackplateCOPY.oMeshO    #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
         bpy.ops.object.join()                                       #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
-        oMeshUnityToBlenderCopy = None                              # Above join destroyed the copy mesh so set our variable to None
+        oMeshUnity2BlenderCOPY = None                              # Above join destroyed the copy mesh so set our variable to None
         #=== Select the rim verts in the joined mesh ===
         bmRimBackplate = oMeshSoftBodyRimBackplateCOPY.Open()
         oLayTetraVerts = bmRimBackplate.verts.layers.int[G.C_DataLayer_TetraVerts]
@@ -489,12 +480,12 @@ class CSoftBody:
 #         oMeshSoftBodyRim_Copy = CMesh.CMesh.CreateFromDuplicate("TEMP_SoftBodyRim_Copy", self.oMeshSoftBodyRim_Orig)
 # 
 #         #=== Create a temporary copy of Unity2Blender mesh so we can trim it to 'nNumVerts_UnityToBlenderMesh' verts ===  
-#         oMeshUnityToBlenderCopy = CMesh.CMesh.CreateFromDuplicate("TEMP_Unity2Blender", self.oMeshUnity2Blender)
+#         self.oMeshUnity2Blender = CMesh.CMesh.CreateFromDuplicate("TEMP_Unity2Blender", self.oMeshUnity2Blender)
 #         self.aMapPinnedFlexParticles = array.array('H')  # Blank out the two arrays that must be created everytime this is called
 #         self.aMapRimVerts2Verts         = array.array('H')
 # 
 #         #=== Open the temp mesh Unity requested in CreateTempMesh() and push in a data layer with vert index.  This will prevent us from losing access to Unity's tetraverts as we process this mesh toward the softbody rim ===        
-#         bm = oMeshUnityToBlenderCopy.Open()
+#         bm = self.oMeshUnity2Blender.Open()
 #         for oVert in bm.verts:
 #             if (oVert.index >= nNumVerts_UnityToBlenderMesh):
 #                 oVert.select_set(True)
@@ -506,15 +497,15 @@ class CSoftBody:
 #         oLayTetraVerts = bm.verts.layers.int.new(G.C_DataLayer_TetraVerts)
 #         for oVert in bm.verts:
 #             oVert[oLayTetraVerts] = oVert.index + G.C_OffsetVertIDs    # Apply offset to easily tell real IDs in later loop
-#         oMeshUnityToBlenderCopy.Close()
+#         self.oMeshUnity2Blender.Close()
 #         
 #         #===== Combine the tetravert-mesh with the rim mesh of that softbody.  We need to isolate the tetraverts close to the rim verts to 'pin' them =====
 #         ###LEARN: Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh)
-#         gBlender.SelectAndActivate(oMeshUnityToBlenderCopy.GetName())             # First select and activate mesh that will be destroyed (temp mesh)
+#         gBlender.SelectAndActivate(self.oMeshUnity2Blender.GetName())             # First select and activate mesh that will be destroyed (temp mesh)
 #         self.oMeshSoftBodyRim.oMesh.select = True                         # Now select...
 #         bpy.context.scene.objects.active = self.oMeshSoftBodyRim.oMesh    #... and activate mesh that will be kepp (merged into)  (Note that to-be-destroyed mesh still selected!)
 #         bpy.ops.object.join()                                       #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
-#         oMeshUnityToBlenderCopy = None                              # Above join destroyed the copy mesh so set our variable to None
+#         self.oMeshUnity2Blender = None                              # Above join destroyed the copy mesh so set our variable to None
 # 
 #         #===== Remove the tetraverts that are too far from the rim =====
 #         #=== Select the rim verts in the joined mesh ===
