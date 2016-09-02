@@ -24,7 +24,7 @@ import CMesh
 
 
 
-class CFlexSkin:
+class CFlexSkin:        ###OBS: Now part of CSoftBody
     def __init__(self, oBody, sFlexSkinPart, nParticlesPerShape):
         self.oBody                  = oBody             # The back-reference to the owning body.
         self.sFlexSkinPart          = sFlexSkinPart     # The name of the soft body part.  (e.g. "BreastL", "BreastR", "Penis")  This is our key in self.oBody.aSoftBodies[self.sFlexSkinPart]

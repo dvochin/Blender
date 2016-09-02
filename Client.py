@@ -209,7 +209,7 @@ import G
 #         bmCombo = bmesh.from_edit_mesh(oMeshComboO.data)
 #         nVertGrpIndex_Vagina = oMeshComboO.vertex_groups.find(G.C_VertGrp_Area + "Vagina")  # Find the rough-cut vagina-area part of our combo mesh that previous 'transfer_weight()' has transfered from source skinned body to our combo mesh       
 #         if nVertGrpIndex_Vagina == -1:
-#             raise Exception("ERROR: gBL_Body_Create() could not find Vagina vertex group in combo mesh!")
+#             raise Exception("###EXCEPTION: gBL_Body_Create() could not find Vagina vertex group in combo mesh!")
 #         oVertGroup_Vagina = oMeshComboO.vertex_groups[nVertGrpIndex_Vagina]
 #         oMeshComboO.vertex_groups.active_index = oVertGroup_Vagina.index
 #         bpy.ops.mesh.select_all(action='DESELECT')
@@ -785,7 +785,7 @@ def gBL_ReleaseMesh(sNameMesh):  # Release the python-side and blender-c-side st
 
 
 def gBL_UpdateClientVerts(sNameMesh):  # Update only the Client verts from the Blender verts.  Most of the magic happens in our modified Blender C code while calling update()
-    if (sNameMesh not in bpy.data.objects):
+    if (sNameMesh not in bpy.data.objects):     ###NOW### ###BROKEN???
         return G.DumpStr("ERROR: gBL_UpdateClientVerts() cannot find object '" + sNameMesh + "'")
     oMeshO = gBlender.SelectAndActivate(sNameMesh)
     oMeshO.data.use_fake_user = False  ###NOTE: We use this mesh flag in our modified Blender C code to indicate 'load verts from client'.  Make sure this is off in this context

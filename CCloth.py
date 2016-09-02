@@ -92,7 +92,7 @@ class CCloth:
         bmClothSim = self.oMeshClothSimulated.Open()
         nVertGrpIndex_Pin = self.oMeshClothSimulated.oMeshO.vertex_groups.find(self.sVertGrp_ClothSkinArea)       
         if nVertGrpIndex_Pin == -1:
-            raise Exception("ERROR: CCloth.PrepareClothForGame() could not find in skinned body pin vertex group " + self.sVertGrp_ClothSkinArea)
+            raise Exception("###EXCEPTION: CCloth.PrepareClothForGame() could not find in skinned body pin vertex group " + self.sVertGrp_ClothSkinArea)
         oVertGroup_Pin = self.oMeshClothSimulated.oMeshO.vertex_groups[nVertGrpIndex_Pin]
         self.oMeshClothSimulated.oMeshO.vertex_groups.active_index = oVertGroup_Pin.index
         bpy.ops.mesh.select_all(action='DESELECT')
@@ -160,7 +160,7 @@ class CCloth:
 #         bmClothSim = self.oMeshClothSimulated.Open()
 #         nVertGrpIndex_Pin = self.oMeshClothSimulated.oMeshO.vertex_groups.find(self.sVertGrp_ClothSkinArea)       
 #         if nVertGrpIndex_Pin == -1:
-#             raise Exception("ERROR: CCloth.PrepareClothForGame() could not find in skinned body pin vertex group " + self.sVertGrp_ClothSkinArea)
+#             raise Exception("###EXCEPTION: CCloth.PrepareClothForGame() could not find in skinned body pin vertex group " + self.sVertGrp_ClothSkinArea)
 #         oVertGroup_Pin = self.oMeshClothSimulated.oMeshO.vertex_groups[nVertGrpIndex_Pin]
 #         self.oMeshClothSimulated.oMeshO.vertex_groups.active_index = oVertGroup_Pin.index
 #         bpy.ops.mesh.select_all(action='DESELECT')

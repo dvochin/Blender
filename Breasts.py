@@ -101,7 +101,7 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
     bpy.ops.object.vertex_group_select()
     aVertNippleL = [oVertBreastL for oVertBreastL in bmBreast.verts if oVertBreastL.select]
     if len(aVertNippleL) > 1:
-        raise Exception("ERROR: BodyInit_CreateCutoffBreastFromSourceBody(): Too many verts for nipple!")      ###PROBLEM?: Weird bug when generating bodies is some of our vert groups get more verts!  WTF???
+        raise Exception("###EXCEPTION: BodyInit_CreateCutoffBreastFromSourceBody(): Too many verts for nipple!")      ###PROBLEM?: Weird bug when generating bodies is some of our vert groups get more verts!  WTF???
     #print("=== Nipple Vert = ", aVertNippleL)
     aMapDistToNipples, aDistToNippleMax = gBlender.Util_CalcSurfDistanceBetweenTwoVertGroups(bmBreast, bmBreast.verts, aVertNippleL)
 

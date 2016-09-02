@@ -91,7 +91,7 @@ def Cut_CleanupBorder(oMeshO, oCurveO, aBorderLocatorVertPos):           # Compl
                 oVertLocatorOnBorder = oVert
                 break
         if oVertLocatorOnBorder == None:
-            raise Exception("ERROR: Cut_CleanupBorder() could not find oVertLocatorOnBorder from position {} on border '{}'".format(vecVertLocatorOnBorderPos, sCurveName))
+            raise Exception("###EXCEPTION: Cut_CleanupBorder() could not find oVertLocatorOnBorder from position {} on border '{}'".format(vecVertLocatorOnBorderPos, sCurveName))
     
         #=== Obtain the verts of the just-cut border by starting at the 'oVertLocatorOnBorder' locater vert and by 'walking' the mesh along boundary edges ===
         oVertNow = oVertLocatorOnBorder
@@ -104,7 +104,7 @@ def Cut_CleanupBorder(oMeshO, oCurveO, aBorderLocatorVertPos):           # Compl
                 if oEdge.is_boundary == True and oEdge.tag == False:
                     oEdgeOnEdge = oEdge
             if oEdgeOnEdge == None:
-                raise Exception("ERROR: Cut_CleanupAfterCut could not iterate through boundary edges while collecting border verts.")
+                raise Exception("###EXCEPTION: Cut_CleanupAfterCut could not iterate through boundary edges while collecting border verts.")
             oEdgeOnEdge.tag = True                      # Tag this edge so we don't traverse it again.
             oVertNow = oEdgeOnEdge.other_vert(oVertNow)
     
@@ -274,7 +274,7 @@ def Cut_CleanupBorder(oMeshO, oCurveO, aBorderLocatorVertPos):           # Compl
                         oVertNext = oVertOther
                         break
             if oVertNext == None:
-                raise Exception("ERROR: Cut_CleanupBorder() could not iterate through entire border loop while storing border length.")
+                raise Exception("###EXCEPTION: Cut_CleanupBorder() could not iterate through entire border loop while storing border length.")
             
             
             nEdgeLength = oEdgeNow.calc_length()

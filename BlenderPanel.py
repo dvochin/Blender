@@ -30,6 +30,7 @@ import Curve
 import Cut
 import Breasts
 import Penis
+import CMesh
 # import CBBodyCol
 from operator import itemgetter
 
@@ -177,12 +178,73 @@ class SlaveMesh_DefineMasterSlaveRelationship(bpy.types.Operator):
 
 class gBL_temp9(bpy.types.Operator):
     bl_idname = "gbl.temp9"
-    bl_label = "9:Shemale"
+    bl_label = "9:TempDev"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
         #CBody.CBody._aBodies[0].SlaveMesh_ResyncWithMasterMesh("BreastCol")
         #CBody.CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big', 5000)
+
+
+        
+        #=== Obsolete Code to delete edge rings ===
+        oMeshOrifice = CMesh.CMesh.CreateFromExistingObject("Test-Vagina-Start")     ###HACK!!!!!!
+        bmOrifice = oMeshOrifice.Open()
+
+        gBlender.Util_SelectVertGroupVerts(oMeshOrifice.oMeshO, "Opening")
+        bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
+
+        aEdgesToDelete = []
+        for oEdge in bmOrifice.edges:
+            if (oEdge.select == True):
+                oEdgeCurrent = oEdge
+                oFaceCurrent = oEdgeCurrent.link_faces[0]
+                if (len(oEdgeCurrent.link_faces) != 1):
+                    raise Exception("###EXCEPTION in SelectRing. Starting edge had more than one face!".format(len(oEdgeCurrent.link_faces)))
+
+                while (True):
+                    print("Opposite edge search: Looking for opposite of edge {} by avoiding verts {} and {}".format(oEdgeCurrent, oEdgeCurrent.verts[0], oEdgeCurrent.verts[1]))
+                    if (len(oFaceCurrent.edges) != 4):
+                        print("SelectRing: Found a face with {} edges!  Halting this column search.".format(len(oFaceCurrent.edges)))
+                        break
+
+                    #=== Find the opposite edge to edge 'oEdgeCurrent' on face 'oFaceCurrent' by finding the first edge with two different verts ===
+                    oEdgeOppositeFound = None
+                    for oEdgeOppositeSearch in oFaceCurrent.edges:
+                        if ((oEdgeCurrent.verts[0] != oEdgeOppositeSearch.verts[0]) and (oEdgeCurrent.verts[0] != oEdgeOppositeSearch.verts[1]) and (oEdgeCurrent.verts[1] != oEdgeOppositeSearch.verts[0]) and (oEdgeCurrent.verts[1] != oEdgeOppositeSearch.verts[1])):
+                            print("Opposite edge search:  Found edge {} with vert {} and {}".format(oEdgeOppositeSearch, oEdgeOppositeSearch.verts[0], oEdgeOppositeSearch.verts[1]))
+                            oEdgeOppositeFound = oEdgeOppositeSearch
+                            break
+                    if (oEdgeOppositeFound != None):
+                        oEdgeCurrent = oEdgeOppositeFound
+                    else:
+                        raise Exception("###EXCEPTION in SelectRing: Could not find opposite to edge {}.".format(oEdgeCurrent)) # No reason this would ever happen given that we've just checked above if this face is a quad
+                    aEdgesToDelete.append(oEdgeCurrent)
+                    
+                    #=== Find the other face on edge oEdgeCurrent to continue iteration along the quads ===
+                    if (len(oEdgeCurrent.link_faces) == 2):
+                        if (oFaceCurrent == oEdgeCurrent.link_faces[0]):
+                            oFaceCurrent = oEdgeCurrent.link_faces[1]
+                        else:
+                            oFaceCurrent = oEdgeCurrent.link_faces[0]
+                    else:
+                        print("SelectRing: Edge had {} faces (expected two) = end of ring search for this column.".format(len(oEdgeCurrent.link_faces)))
+                        break
+                        
+
+        #=== Delete the ring edges tagged above ===
+        bpy.ops.mesh.select_all(action='DESELECT') 
+        for oEdge in aEdgesToDelete:
+            oEdge.select_set(True)
+        #bpy.ops.mesh.delete(type='EDGES')
+            
+        #oMeshOrifice.Close()
+      
+        
+        
+        
+        
+        
         return {"FINISHED"}
 
 

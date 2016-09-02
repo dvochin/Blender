@@ -115,7 +115,7 @@ def SelectAndActivate(sNameObject, bCheckForPresence=True):	 #=== Goes to object
 			bpy.ops.object.mode_set(mode='OBJECT')
 	else:
 		if (bCheckForPresence):
-			raise Exception("ERROR: SelectAndActivate() cannot find object '{}'".format(sNameObject))
+			raise Exception("###EXCEPTION: SelectAndActivate() cannot find object '{}'".format(sNameObject))
 	return oObj
 
 def DeleteObject(sNameObject):
@@ -133,7 +133,7 @@ def DuplicateAsSingleton(sSourceName, sNewName, sNameParent, bHideSource):
 	
 	oSrcO = SelectAndActivate(sSourceName, False)
 	if oSrcO is None:
-		raise Exception("ERROR: DuplicateAsSingleton() could not select object '{}'".format(sSourceName))
+		raise Exception("###EXCEPTION: DuplicateAsSingleton() could not select object '{}'".format(sSourceName))
 	bpy.ops.object.duplicate()
 	oNewO = bpy.context.object		  # Duplicate above leaves the duplicated object as the context object...
 	oSrcO.select = False		   #... but source object is still left selected.  Unselect it now to leave new object the only one selected and active.
@@ -150,7 +150,7 @@ def SetParent(sNameObject, sNameParent):
 	SelectAndActivate(sNameObject, False)
 	if sNameParent is not None:							# 'store' the new object at the provided location in Blender's nodes
 		if sNameParent not in bpy.data.objects:
-			raise Exception("ERROR: SetParent() could not locate parent node " + sNameParent)
+			raise Exception("###EXCEPTION: SetParent() could not locate parent node " + sNameParent)
 		###oNewO.parent = bpy.data.objects[sNameParent]		   ###LEARN: Parenting an object this way would reset the transform applied to object = disaster!  (Client-side meshes lose their 90 deg orientation and become 100x bigger!)
 		oParentO = bpy.data.objects[sNameParent]
 		oParentO.hide = oParentO.hide_select = False
@@ -164,7 +164,7 @@ def SetParent(sNameObject, sNameParent):
 	 
 def AssertFinished(sResultFromOp):	###IMPROVE: Use this much more!
 	if (sResultFromOp != {'FINISHED'}):
-		raise Exception("*Err: Operation returned: ", sResultFromOp)
+		raise Exception("###EXCEPTION: Operation returned: ", sResultFromOp)
 
 
 #---------------------------------------------------------------------------	VIEW 3D
@@ -176,7 +176,7 @@ def GetView3dSpace():						   # Returns the first 3dView.	Important to set param
 				for oSpace in oArea.spaces:
 					if oSpace.type == 'VIEW_3D':
 						return oSpace
-	raise Exception("ERROR: in GetView3dRegion().  Could not find View3D space!")
+	raise Exception("###EXCEPTION: in GetView3dRegion().  Could not find View3D space!")
 
 def SetView3dPivotPointAndTranOrientation(sPivotPointType, sTranOrientation, bResetCursor):		  # Set the first VIEW_3D space to 'sPivotPointType'  (Must be one of 'BOUNDING_BOX_CENTER', 'CURSOR', 'INDIVIDUAL_ORIGINS', 'MEDIAN_POINT', 'ACTIVE_ELEMENT') and sTranOrientation on of 'GLOBAL', 'LOCAL', 'NORMAL', 'GIMBAL', 'VIEW'
 	oSpace = GetView3dSpace()						###WEAK: Sets the first one... but if multiple 3D_VIEW are defined do we need to set all? (Which one is code using in this case?  Last user-activated one??)
@@ -199,7 +199,7 @@ def AssembleOverrideContextForView3dOps():
 						aContextOverride = {'window': oWindow, 'screen': oScreen, 'area': oArea, 'region': oRegion, 'scene': bpy.context.scene, 'edit_object': bpy.context.edit_object, 'active_object': bpy.context.active_object, 'selected_objects': bpy.context.selected_objects}	# Stuff the override context with very common requests by operators.  MORE COULD BE NEEDED!
 						#print("-AssembleOverrideContextForView3dOps() created override context: ", aContextOverride)
 						return aContextOverride
-	raise Exception("ERROR: AssembleOverrideContextForView3dOps() could not find a VIEW_3D with WINDOW region to create override context to enable View3D operators.  Operator cannot function.")
+	raise Exception("###EXCEPTION: AssembleOverrideContextForView3dOps() could not find a VIEW_3D with WINDOW region to create override context to enable View3D operators.  Operator cannot function.")
 
 
 #---------------------------------------------------------------------------	MESH CONVERSION

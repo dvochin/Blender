@@ -47,7 +47,7 @@ class CMesh:
         "Create mesh by duplicating oMeshSrc"
         oMesh = gBlender.DuplicateAsSingleton(oMeshSrc.GetName(), sNameMesh, oMeshSrc.oMeshO.parent.name, False)
         if (oMesh == None):
-            raise Exception("CMesh.CreateFromDuplicate() could not duplicate mesh " + oMeshSrc.oMeshO.parent.name)
+            raise Exception("###EXCEPTION: CMesh.CreateFromDuplicate() could not duplicate mesh " + oMeshSrc.oMeshO.parent.name)
         oInstance = cls(sNameMesh, oMesh, oMeshSrc)
         oInstance.bDeleteUponDestroy = True
         oMeshSrc.Hide()              ###CHECK
@@ -58,7 +58,7 @@ class CMesh:
         "Create mesh from existing object"
         oMesh = bpy.data.objects[sNameMesh]
         if (oMesh == None):
-            raise Exception("CMesh.CreateFromExistingObject() could not find mesh " + sNameMesh)
+            raise Exception("###EXCEPTION: CMesh.CreateFromExistingObject() could not find mesh " + sNameMesh)
         oInstance = cls(sNameMesh, oMesh, oMeshParent)
         oInstance.bDeleteUponDestroy = False
         return oInstance
