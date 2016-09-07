@@ -66,6 +66,7 @@ import gBlender
 import SourceReloader
 import G
 import CSoftBody
+import CSoftBodySkin
 import CCloth
 import CMesh
 import Client
@@ -157,7 +158,6 @@ class CBody:
         
         #=== Prepare a ready-for-morphing body for Unity.  Also create the 'body' mesh that will have parts detached from it where softbodies are ===
         self.oMeshMorph = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + 'Morph', self.oMeshAssembled)   
-        self.oMeshBody  = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + 'Body' , self.oMeshAssembled)   
 
         #=== Create map of source verts to morph verts ===  (Enables some morphs such as Breast morphs to be applied to morphing mesh)
         bmMorph = self.oMeshMorph.Open();
@@ -175,11 +175,15 @@ class CBody:
             self.oMeshSrcBreast.SetParent(G.C_NodeFolder_Game)
             self.oMeshSrcBreast.Hide()    
 
+        nSize = 1.75
+        self.Breasts_ApplyMorph('RESIZE', 'Nipple', 'Center', 'Wide', (nSize,nSize,nSize,0), None)     ###NOW###  ###HACK!
+
+        self.oMeshBody  = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + 'Body' , self.oMeshMorph)  ###CHECK!! ###DESIGN???   
 
 
-    def CreateSoftBody(self, sSoftBodyPart, nSoftBodyFlexColliderShrinkRatio, bIsFlexSkin):
+    def CreateSoftBody(self, sSoftBodyPart, nSoftBodyFlexColliderShrinkRatio):
         "Create a softbody by detaching sSoftBodyPart verts from game's skinned main body"
-        self.aSoftBodies[sSoftBodyPart] = CSoftBody.CSoftBody(self, sSoftBodyPart, nSoftBodyFlexColliderShrinkRatio, bIsFlexSkin)        # This will enable Unity to find this instance by our self.sSoftBodyPart key and the body.
+        self.aSoftBodies[sSoftBodyPart] = CSoftBody.CSoftBody(self, sSoftBodyPart, nSoftBodyFlexColliderShrinkRatio)        # This will enable Unity to find this instance by our self.sSoftBodyPart key and the body.
         return "OK"
 
 
@@ -286,6 +290,7 @@ class CBody:
         aVertsBodyMorph = self.oMeshMorph.oMeshO.data.vertices
     
         #=== 'Bake' all the shape keys in their current position into one and extract its verts ===
+        gBlender.SelectAndActivate(self.oMeshSrcBreast.GetName())
         aKeys = self.oMeshSrcBreast.oMeshO.data.shape_keys.key_blocks
         bpy.ops.object.shape_key_add(from_mix=True)         ###LEARN: How to 'bake' the current shape key mix into one.  (We delete it at end of this function)
         nKeys = len(aKeys)
@@ -305,12 +310,12 @@ class CBody:
             aVertsBodyMorph[nVertBodyBreastL].co = vecVert
             vecVert.x = -vecVert.x
             aVertsBodyMorph[nVertBodyBreastR].co = vecVert
-        self.oMeshSrcBreast.Close()
+        self.oMeshSrcBreast.ExitFromEditMode()
         
         #=== Delete the 'baked' shape key we created above ===
         self.oMeshSrcBreast.oMeshO.active_shape_key_index = nKeys - 1
         bpy.ops.object.shape_key_remove()
-        #self.oMeshSrcBreast.Hide()
+        self.oMeshSrcBreast.Close()
 
         #=== Make sure the change we just did to the morphing body propagates to all dependent meshes ===
         self.Morph_UpdateDependentMeshes()

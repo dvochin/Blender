@@ -37,7 +37,7 @@ class CCloth:
         #self.aTwinIdToVertSim = {}                      # Setup two maps (that will have the same size) to store for both simulated and skinned cloth parts what 'TwinVertID' maps to simVert / skinVert           
         #self.aTwinIdToVertSkin = {}                     # Each of these will go from 1..<NumVertIDs> and be used to determine mapping
         #self.aMapClothVertsSimToSkin = array.array('H') # The final flattened map of what verts from the 'simulated cloth verts' to 'skinned cloth vert'.  Unity needs this to pin the edges of the simulated part of the cloth to the skinned part
-        self.aMapPinnedFlexParticles = array.array('H') # The final flattened map of what verts from the 'skinned cloth vert' map to which verts in the (untouched) Flex-simulated mesh.  Flex needs this to create extra springs to keep the skinned part close to where it should be on the body!
+        self.aMapPinnedParticles = array.array('H') # The final flattened map of what verts from the 'skinned cloth vert' map to which verts in the (untouched) Flex-simulated mesh.  Flex needs this to create extra springs to keep the skinned part close to where it should be on the body!
 
         self.aCurves = []                               # Array of CCurve objects responsible to cut this cloth as per user directions
 
@@ -124,8 +124,8 @@ class CCloth:
 
         #=== Create the map between the skinned verts to their equivalent verts in the simulated mesh === 
         for oVert in bmClothSkin.verts:
-            self.aMapPinnedFlexParticles.append(oVert.index)
-            self.aMapPinnedFlexParticles.append(oVert[oLayVertOrigID])
+            self.aMapPinnedParticles.append(oVert.index)
+            self.aMapPinnedParticles.append(oVert[oLayVertOrigID])
             #print("- NewVertID {:4d} was {:4d} at {:}".format(oVert.index, oVert[oLayVertOrigID], oVert.co))
         
         #=== Post-process the skinned-part to be ready for Unity ===
@@ -180,12 +180,12 @@ class CCloth:
 #     
 #     
 #         #=== Iterate over the split verts at the boundary loop to store a uniquely-generated 'twin vert ID' into the custom data layer so we can re-twin the split verts from different meshes after the mesh separate ===
-#         nNextVertTwinID = 1  
+#         nNextRimVertID = 1  
 #         aVertsBoundary = [oVert for oVert in bmClothSim.verts if oVert.select]              # Create a collection for all the verts on the boundary loop
 #         for oVert in aVertsBoundary:
-#             oVert[oLayVertOrigID] = nNextVertTwinID  # These are unique to the whole skinned body so all detached chunk can always find their corresponding skinned body vert for per-frame positioning
-#             #print("TwinID {:3d} = VertSim {:5d} at {:}".format(nNextVertTwinID, oVert.index, oVert.co))
-#             nNextVertTwinID += 1
+#             oVert[oLayVertOrigID] = nNextRimVertID  # These are unique to the whole skinned body so all detached chunk can always find their corresponding skinned body vert for per-frame positioning
+#             #print("TwinID {:3d} = VertSim {:5d} at {:}".format(nNextRimVertID, oVert.index, oVert.co))
+#             nNextRimVertID += 1
 #             
 #         #=== Reselect the to-be-skinned faces again   ===
 #         bpy.ops.mesh.select_all(action='DESELECT')
@@ -246,7 +246,7 @@ class CCloth:
 #         self.oMeshClothSkinned.Close()
 #         
 #         #=== Assembled the serializable flat array of twin verts Unity needs to pin simulated cloth to skinned cloth part ===
-#         for nTwinID in range(1, nNextVertTwinID):
+#         for nTwinID in range(1, nNextRimVertID):
 #             self.aMapClothVertsSimToSkin.append(self.aTwinIdToVertSim [nTwinID])
 #             self.aMapClothVertsSimToSkin.append(self.aTwinIdToVertSkin[nTwinID])
 #             #print("nTwinID {:3d} = VertSim {:4d} = VertSkin {:4d}".format(nTwinID, self.aTwinIdToVertSim[nTwinID], self.aTwinIdToVertSkin[nTwinID]))
@@ -263,5 +263,5 @@ class CCloth:
 #     def SerializeCollection_aMapClothVertsSimToSkin(self):
 #         return gBlender.Stream_SerializeCollection(self.aMapClothVertsSimToSkin)
 
-    def SerializeCollection_aMapPinnedFlexParticles(self):
-        return gBlender.Stream_SerializeCollection(self.aMapPinnedFlexParticles)
+    def SerializeCollection_aMapPinnedParticles(self):
+        return gBlender.Stream_SerializeCollection(self.aMapPinnedParticles)

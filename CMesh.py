@@ -31,12 +31,13 @@ import Client
 class CMesh:
     def __init__(self, sNameMesh, oMeshO, oMeshParent = None):
         ###IMPROVE?  Won't work in CreateFromDuplicate! gBlender.DeleteObject(sNameMesh)                # Make sure this mesh does not exist already (all given names globally uniqye by design)
-        self.oMeshParent    = oMeshParent               # Our immediate CMesh parent mesh.  The one we update our verts from after morphing
         self.oMeshO         = oMeshO
+        self.oMeshParent    = oMeshParent          # Our immediate CMesh parent mesh.  The one we update our verts from after morphing ###NOW### Confusion between morphing parent (still used?) and node parent
         self.bDeleteUponDestroy = True             # By default we delete our Blender object when we get destroyed
         self.SetName(sNameMesh)
         self.bmLastOpen = None                      # The last-opened BMesh.
-
+#         if (self.oMeshParent != None):         ###DESIGN ###BUG Confusion with node parent and morph parent!!!
+#             self.SetParent(self.oMeshParent.GetName())   ###IMPROVE: By CMesh instead of name??
     #def __del__(self):        ###DEV
         ####BROKEN!!!  Game deletes objects even if they are still reference!  e.g. self.oMeshBody sometimes!!!!!!!!
         #if (self.bDeleteUponDestroy):

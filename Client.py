@@ -197,8 +197,8 @@ import G
 #     #=== Prepare the composite mesh for 'twin vert' mapping: The map that tells Client what vert from this detached chunk match what vert from the main skinned body ===
 #     bpy.ops.object.mode_set(mode='EDIT')
 #     bmCombo = bmesh.from_edit_mesh(oMeshComboO.data)  # Create a 'custom data layer' to store unique IDs into mesh vertices so matching parts of the chunks we separate into other meshes can be easily matched to the main skinned mesh (for Client pinning)
-#     oLayVertTwinID = bmCombo.verts.layers.int.new(G.C_DataLayer_TwinVert)  # Create a temp custom data layer to store IDs of split verts so we can find twins easily.    ###LEARN: This call causes BMesh references to be lost, so do right after getting bmesh reference
-#     nNextVertTwinID = 1  # We set the next twin vert ID to one.  New IDs for all detachable chunks will be created from this variable by incrementing.  This will enable each detached chunk to find what skinned vert from the body it needs to connect to during gameplay.
+#     oLayRimVerts = bmCombo.verts.layers.int.new(G.C_DataLayer_TwinID)  # Create a temp custom data layer to store IDs of split verts so we can find twins easily.    ###LEARN: This call causes BMesh references to be lost, so do right after getting bmesh reference
+#     nNextRimVertID = 1  # We set the next twin vert ID to one.  New IDs for all detachable chunks will be created from this variable by incrementing.  This will enable each detached chunk to find what skinned vert from the body it needs to connect to during gameplay.
 #     aaMapTwinId2VertChunk = {}  # Map of maps we use to enable aMapTwinId2VertChunk to traverse the major loop that creates it to another loop at the end that needs it.
 # 
 # 
@@ -246,7 +246,7 @@ import G
 #         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
 #         bmCombo = bmesh.from_edit_mesh(oMeshComboO.data)
 #     
-#         #=== Split the vagina about its left/right split point and create additional geometry so game runtime has non-empty polygons to fully skin and thereby act as CPinSkinned for the neighboring softbody tetraverts.    
+#         #=== Split the vagina about its left/right split point and create additional geometry so game runtime has non-empty polygons to fully skin and thereby act as CPinSkinned for the neighboring softbody particles.    
 #         bpy.ops.mesh.edge_split()  # Split edges: Each half of the vagina has polygons that go right up to the left/right split point now.
 #         bpy.ops.object.vertex_group_select()  # Reselect edges as edge_split() above unfortunately loses selection! (Fortunately vert group expanded to contain the new edges just created)
 #         bpy.ops.mesh.vertices_smooth()  # Perform a temporary smooth on the just-opened mesh.  This will pull newly-boundary verts away from each other (toward their closest polygons) so we form a very thin ribbon that will remain on the skinned body to provide anchors for CPinSkinned
@@ -356,7 +356,7 @@ import G
 #         bpy.ops.mesh.select_all(action='DESELECT')
 #         bpy.ops.object.vertex_group_select()  # Select only the just-updated vertex group of the vertices we need to separate from the composite mesh.
 #         bmCombo = bmesh.from_edit_mesh(oMeshComboO.data)  ###LEARN!!: We must re-obtain new bmesh everytime we re-enter edit mode.  (And of course old bmesh object references are gone but IDs persist!)
-#         oLayVertTwinID = bmCombo.verts.layers.int[G.C_DataLayer_TwinVert]  # Refetch our custom data layer because we exited edit mode...
+#         oLayRimVerts = bmCombo.verts.layers.int[G.C_DataLayer_TwinID]  # Refetch our custom data layer because we exited edit mode...
 #         aFacesToSplit = [oFace for oFace in bmCombo.faces if oFace.select]  # Obtain array of all faces to separate
 #     
 #         #=== Store the boundary edges of the split into the new vertex group so we can provide Client the mapping of split verts between the meshes ===
@@ -374,8 +374,8 @@ import G
 #         #=== Iterate over the split verts to store a uniquely-generated 'twin vert ID' into the custom data layer so we can re-twin the split verts from different meshes after the mesh separate ===
 #         aVertsBoundary = [oVert for oVert in bmCombo.verts if oVert.select]
 #         for oVert in aVertsBoundary:
-#             oVert[oLayVertTwinID] = nNextVertTwinID  # These are unique to the whole skinned body so all detached chunk can always find their corresponding skinned body vert for per-frame positioning
-#             nNextVertTwinID += 1
+#             oVert[oLayRimVerts] = nNextRimVertID  # These are unique to the whole skinned body so all detached chunk can always find their corresponding skinned body vert for per-frame positioning
+#             nNextRimVertID += 1
 #     
 #         #=== Reselect the faces again to split the 'detachable chunk' into its own mesh so that it can be sent to softbody/cloth simulation.  ===
 #         bpy.ops.mesh.select_all(action='DESELECT')
@@ -408,10 +408,10 @@ import G
 #         bpy.ops.object.mode_set(mode='EDIT')
 #         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
 #         bmPartChunk = bmesh.from_edit_mesh(oMeshPartChunkO.data)
-#         oLayVertTwinID = bmPartChunk.verts.layers.int[G.C_DataLayer_TwinVert]
+#         oLayRimVerts = bmPartChunk.verts.layers.int[G.C_DataLayer_TwinID]
 #         aMapTwinId2VertChunk = {}
 #         for oVert in bmPartChunk.verts:  ###LEARN: Interestingly, both the set and retrieve list their verts in the same order... with different topology!
-#             nTwinID = oVert[oLayVertTwinID]
+#             nTwinID = oVert[oLayRimVerts]
 #             if nTwinID != 0:
 #                 aMapTwinId2VertChunk[nTwinID] = oVert.index
 #                 if oVert.link_faces[0].material_index < nBodyMats:  # For capping below, select only the twin verts that are on one of the body's original material
@@ -425,7 +425,7 @@ import G
 #         bpy.ops.mesh.edge_collapse()  ###DESIGN ###IMPROVE Do we always cap whatever body part is ripped out?
 #         for oVert in bmPartChunk.verts:  # The cap vert(s) created will have copied one of the 'VertTwinID'.  Wipe it out to avoid corrupting matching below 
 #             if oVert.select:
-#                 oVert[oLayVertTwinID] = 0
+#                 oVert[oLayRimVerts] = 0
 #         bpy.ops.mesh.select_all(action='DESELECT')
 # 
 #         #=== Do the important conversion of the chunk mesh to be renderable by the Client... we're done processing that mesh. ===
@@ -440,9 +440,9 @@ import G
 #     bpy.ops.mesh.select_all(action='DESELECT')
 #     bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
 #     bmCombo = bmesh.from_edit_mesh(oMeshComboO.data)
-#     oLayVertTwinID = bmCombo.verts.layers.int[G.C_DataLayer_TwinVert]
+#     oLayRimVerts = bmCombo.verts.layers.int[G.C_DataLayer_TwinID]
 #     for oVert in bmCombo.verts:
-#         nTwinID = oVert[oLayVertTwinID]
+#         nTwinID = oVert[oLayRimVerts]
 #         if nTwinID != 0:
 #             oVert.select_set(True)  # Select this edge boundary vertex for the upcoming code in which we expand the rim selection to create the rim submesh
 # 
@@ -451,7 +451,7 @@ import G
 #     bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='FACE')  # ... then switch to poly mode to have the smallest set of polygons that have an edge at the boundary are left selected.  These will form their own 'reduced skin mesh' that will be baked at every frame to calculate pin positions
 #     bpy.ops.mesh.duplicate()
 #     bpy.ops.mesh.separate()  # 'Separate' the selected polygon (now with their own non-manifold edge from split above) into its own mesh as a 'chunk'
-#     bmCombo.verts.layers.int.remove(oLayVertTwinID)  # Remove the temp data layer in the skin mesh as the just-separated mesh has the info now...
+#     bmCombo.verts.layers.int.remove(oLayRimVerts)  # Remove the temp data layer in the skin mesh as the just-separated mesh has the info now...
 #     bpy.ops.mesh.select_all(action='DESELECT')
 #     bpy.ops.object.mode_set(mode='OBJECT')
 # 
@@ -472,10 +472,10 @@ import G
 #     bpy.ops.object.mode_set(mode='EDIT')
 #     bpy.ops.mesh.select_all(action='DESELECT')
 #     bmSkinColSrc = bmesh.from_edit_mesh(oMeshSkinColSrcO.data)
-#     oLayVertTwinID = bmSkinColSrc.verts.layers.int[G.C_DataLayer_TwinVert]
+#     oLayRimVerts = bmSkinColSrc.verts.layers.int[G.C_DataLayer_TwinID]
 #     aMapTwinId2VertRim = {}
 #     for oVert in bmSkinColSrc.verts:
-#         nTwinID = oVert[oLayVertTwinID]
+#         nTwinID = oVert[oLayRimVerts]
 #         if nTwinID != 0:
 #             oVertAdjacent = oVert.link_edges[0].other_vert(oVert)  # Find an 'adjacent vert' to this twin vert so that Client pin has the chance to fully orient the 'Z' of the normal of this pin so 'up' always points toward this adjacent vert (with 'LookAt' function)   ###IMPROVE: Would be nice to return an adjacent vert on boundary edge??
 #             aMapTwinId2VertRim[nTwinID] = (oVert.index, oVertAdjacent.index)  # Store both the twin vert and an adjacent vert for this twin
@@ -813,7 +813,7 @@ def gBL_UpdateBlenderVerts(sNameMesh):  # Update the Blender verts from the Clie
 #---------------------------------------------------------------------------    HEAD PROCESSING
 #---------------------------------------------------------------------------    
 
-def RemoveMatVerts(sNameMaterial):
+def RemoveMatVerts(sNameMaterial):  ###OBS?
     oMeshO = bpy.context.object
     
     for oMat in oMeshO.data.materials:
@@ -828,7 +828,7 @@ def RemoveMatVerts(sNameMaterial):
             bpy.ops.object.material_slot_remove()
     
     
-def IsolateHead():  # DAZ cannot export only the head if we select the 17K level of detail mesh.  We remove materials and faces we don't need here to leave only the head    
+def IsolateHead():  ###OBS? # DAZ cannot export only the head if we select the 17K level of detail mesh.  We remove materials and faces we don't need here to leave only the head    
     RemoveMatVerts("Neck")
     RemoveMatVerts("Torso")
     RemoveMatVerts("Nipple")

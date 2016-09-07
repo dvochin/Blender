@@ -305,7 +305,8 @@ def Util_CreateMirrorModifierX(oMeshO):
 	return oModMirror
 			
 def Util_TransferWeights(oMeshO, oMeshSrcO):
-	oMeshSrcO.hide = oMeshO.hide = False			###BUG on hide?
+	SelectAndActivate(oMeshO.name, True)
+	oMeshSrcO.hide = False			###BUG on hide??
 	oModTransfer = oMeshO.modifiers.new(name="DATA_TRANSFER", type="DATA_TRANSFER")
 	oModTransfer.object = oMeshSrcO
 	oModTransfer.use_vert_data = True
@@ -318,7 +319,7 @@ def Util_TransferWeights(oMeshO, oMeshSrcO):
 			
 def Util_SelectVertGroupVerts(oMeshO, sNameVertGrp):			# Select all the verts of the specified vertex group 
 	#=== Obtain access to mesh in edit mode, deselect and go into vert mode ===
-	###SelectAndActivate(oMeshO.name)			 ###IMPROVE? Select fist??
+	###SelectAndActivate(oMeshO.name)			 ###IMPROVE? Select fist??  ###IMPROVE: Move into CMesh!
 	bpy.ops.object.mode_set(mode='EDIT')
 	bpy.ops.mesh.select_all(action='DESELECT') 
 	bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')		 # We go to face mode and expand the verts selected.  This will select all faces that have at least one vert selected...
@@ -504,7 +505,11 @@ def Cleanup_VertGrp_RemoveNonBones(oMeshO, bCleanUpBones):	 # Remove non-bone ve
 		if (bWasHidden):
 			gBL_Util_Hide(oMeshO)
 		
-
+def Cleanup_RemoveMaterials(oMeshO):		# Remove all materials from mesh (to save memory)
+	while len(oMeshO.material_slots) > 0:
+		bpy.ops.object.material_slot_remove()
+	bpy.ops.object.material_slot_add()  	# Add a single default material (captures all the polygons of rim) so we can properly send the mesh over (crashes if zero material)
+	
 
 #---------------------------------------------------------------------------	
 #---------------------------------------------------------------------------	STREAM / SERIALIZATION

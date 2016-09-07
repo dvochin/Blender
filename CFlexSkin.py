@@ -1,3 +1,5 @@
+###NOW### OBS!  Merge?
+
 #- Init
 #  - We don't need to cap and create backmesh
 #  - Constructor for FlexSkin does everything...  separates, produces rim, thickens the mesh, creates its array for Unity to download 
@@ -5,7 +7,7 @@
 #- IDEA to find close geometry to any vert: Expand selection to faces then convert to vert sel again!
 #- Remember: pass in particle spacing!
 #- From Unity for FlexSkin: call ctor, obtain presentation mesh and FlexSkin arrays and complete.
-    #- The bits about ProcessTetraVerts skipped.
+    #- The bits about FindPinnedFlexParticles skipped.
 #- Remove old FlexSkin files everywhere
 
 import bpy
