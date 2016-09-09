@@ -538,7 +538,7 @@ def Stream_SerializeCollection(aCollection):
 	oBA += struct.pack('H', G.C_MagicNo_TranEnd)
 	return oBA
 
-def Stream_SendBone(oBA, oBone):				# Recursive function that sends a bone and the tree of bones underneath it in 'breadth first search' order.	 Information sent include bone name, position and number of children.
+def  Stream_SendBone(oBA, oBone):				# Recursive function that sends a bone and the tree of bones underneath it in 'breadth first search' order.	 Information sent include bone name, position and number of children.
 	Stream_SendStringPascal(oBA, oBone.name)		# Precise opposite of this function found in Unity's CBodeEd.ReadBone()
 	vecBone = G.VectorB2C(oBone.head_local)				  # Obtain the bone head and convert to client-space (LHS/RHS conversion)		 ###LEARN: 'head' appears to give weird coordinates I don't understand... head_local appears much more reasonable! (tail is the 'other end' of the bone (the part that rotates) while head is the pivot point we need
 	Stream_SendVector(oBA, vecBone)
