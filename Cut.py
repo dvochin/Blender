@@ -6,7 +6,7 @@ import bmesh
 from math import *
 from mathutils import *
 
-import gBlender
+from gBlender import *
 import G
 import Curve
 import Border
@@ -20,8 +20,8 @@ def Cut_ApplyCuts(sNameClothSource, sNameClothOutput, bCleanupBorders):     ###O
     print("\n======= Cut_ApplyCuts BEGIN =======")
 
     #=== Prepare for function by extracting needed objects from scene ===
-    oMeshO = gBlender.DuplicateAsSingleton(sNameClothSource, sNameClothOutput, G.C_NodeFolder_Game, True)
-    gBlender.Util_HideMesh(oMeshO)
+    oMeshO = DuplicateAsSingleton(sNameClothSource, sNameClothOutput, G.C_NodeFolder_Game, True)
+    Util_HideMesh(oMeshO)
     oMeshO.hide_render = False
     bpy.ops.object.mode_set(mode='EDIT')
     oCurves = bpy.data.objects[G.C_NodeName_Curve]
@@ -285,7 +285,7 @@ def Cut_CleanupBorder(oMeshO, oCurveO, aBorderLocatorVertPos):           # Compl
             if oVertNow == oVertFirst:          # If we're back at the starting vert, store the last (ie. maximum) lenght in start vert and exit
                 #print("- BorderLen: Vert %6d at len %6.4f  (FIRST)" % (oVertNow.index, nLenBorderCumulative))
                 oVertNow[oLayVertGrps][oVertGroup_Border.index] = nLenBorderCumulative / G.C_BorderLenIntoVertGrpWeightRatio
-                break;
+                break
     
         #=== Cleanup and return mesh to edit mode ===
         print("----- Cut_CleanupBorder() finishes on border '{}' for mesh '{}' -----".format(sCutName, oMeshO.name))
@@ -298,7 +298,7 @@ def Cut_CleanupBorder(oMeshO, oCurveO, aBorderLocatorVertPos):           # Compl
 #---------------------------------------------------------------------------    
 
 def gBL_ClothCut_ApplyCut(sNameBody, sNameCurve, nCenterX, nCenterY, nCenterZ):     # Client-side wrapup of Cut_ApplyCut() that apples the given cutter to a virgin new cloth mesh copied from source
-    oMeshClothCutO = gBlender.DuplicateAsSingleton(sNameBody + G.C_NameSuffix_ClothBase, sNameBody + G.C_NameSuffix_ClothCut, G.C_NodeFolder_Game, True)   # Copy the base mesh to reset the cut to start
+    oMeshClothCutO = DuplicateAsSingleton(sNameBody + G.C_NameSuffix_ClothBase, sNameBody + G.C_NameSuffix_ClothCut, G.C_NodeFolder_Game, True)   # Copy the base mesh to reset the cut to start
     oCurveO = bpy.data.objects[sNameCurve]
     aBorderLocatorVertPos = {}
     vecCurveCenterClient = Vector((nCenterX, nCenterY, nCenterZ))

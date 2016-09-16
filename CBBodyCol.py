@@ -6,7 +6,7 @@
 # from math import *
 # from mathutils import *
 # 
-# import gBlender
+# from gBlender import *
 # import G
 # import Client
 # 
@@ -20,8 +20,8 @@
 #     sNameCharacter = sNameMesh[:nPosSuffix]                 ####SOON: Get rid of this naming SHIT!
 #     
 #     #=== Obtain source mesh and cleanup ===
-#     oMeshBodyColClothO = gBlender.SelectAndActivate(sNameCharacter + G.C_NameSuffix_BodyColCloth)
-#     gBlender.Cleanup_VertGrp_RemoveNonBones(oMeshBodyColClothO, True)     # Also remove the non-bone extra vert groups so only vert groups meant for skinning remain (to avoid errors during serialization to client)
+#     oMeshBodyColClothO = SelectAndActivate(sNameCharacter + G.C_NameSuffix_BodyColCloth)
+#     Cleanup_VertGrp_RemoveNonBones(oMeshBodyColClothO, True)     # Also remove the non-bone extra vert groups so only vert groups meant for skinning remain (to avoid errors during serialization to client)
 #     bpy.ops.object.mode_set(mode='EDIT')
 #     bm = bmesh.from_edit_mesh(oMeshBodyColClothO.data)
 # 
@@ -58,13 +58,13 @@
 #     oBA = Client.gBL_GetMesh(oMeshBodyColClothO.name)
 # 
 #     #=== Send the additional definition arrays we created above ===
-#     gBlender.Stream_SerializeArray(oBA, aEdges.tobytes())
-#     gBlender.Stream_SerializeArray(oBA, aVertToVerts.tobytes())
+#     Stream_SerializeArray(oBA, aEdges.tobytes())
+#     Stream_SerializeArray(oBA, aVertToVerts.tobytes())
 #     
 #     #=== Add another 'end magic number' at the end of our stream to help catch deserialization errors ===
-#     oBA += Client.Stream_GetEndMagicNo();
+#     oBA += Client.Stream_GetEndMagicNo()
 #     
-#     #print("\n+++ CBBodyColCloth_GetMesh OK: " + oMeshBodyColClothO.name);
+#     #print("\n+++ CBBodyColCloth_GetMesh OK: " + oMeshBodyColClothO.name)
 # 
 #     return oBA                  # Return carefully-constructed serialized stream of data that client will deserialize to construct its own structures from our info.
 # 
@@ -84,17 +84,17 @@
 #     #===== Merge body and all clothing into one mesh to enable detection of body verts near clothing via Blender proportional editing =====
 #     oMeshBodyOrigO = bpy.data.objects[sNameSrcBody]
 #     #if bOnlyCreateNearClothing:
-#     #    oMeshClothO = gBlender.DuplicateAsSingleton(sNameCharacter + G.C_NameSuffix_ClothFit, "TEMP_ClothForBodyCol", G.C_NodeFolder_Game, False)                    ###DESIGN!!! How to specify cloth from client??
-#     oMeshBodyColO = gBlender.DuplicateAsSingleton(oMeshBodyOrigO.name, sNameSrcBody + G.C_NameSuffix_BodyCol, None, False)       ###REVIVE: G.C_NodeFolder_Temp
+#     #    oMeshClothO = DuplicateAsSingleton(sNameCharacter + G.C_NameSuffix_ClothFit, "TEMP_ClothForBodyCol", G.C_NodeFolder_Game, False)                    ###DESIGN!!! How to specify cloth from client??
+#     oMeshBodyColO = DuplicateAsSingleton(oMeshBodyOrigO.name, sNameSrcBody + G.C_NameSuffix_BodyCol, None, False)       ###REVIVE: G.C_NodeFolder_Temp
 #     oMeshBodyColO.show_wire = True
 #     ###CHECK? del(oMeshBodyColO[G.C_PropArray_MapSharedNormals])      # Source body mesh has shared mesh normals which would make serialization choke on BodyCol as that array is only good for source mesh body.
 # 
 #     #=== Remove the body mesh's unneeded head, hands and feet from the body to speed up this function ===
-#     gBlender.Util_SelectVertGroupVerts(oMeshBodyColO, G.C_Area_HeadHandFeet)        # Removes about 68% of the mesh so colliders are allocated where most needed.  (Also greatly speed up function!!)
+#     Util_SelectVertGroupVerts(oMeshBodyColO, G.C_Area_HeadHandFeet)        # Removes about 68% of the mesh so colliders are allocated where most needed.  (Also greatly speed up function!!)
 #     bpy.ops.mesh.delete(type='VERT')
-#     gBlender.Util_SelectVertGroupVerts(oMeshBodyColO, G.C_VertGrp_Detach + "Breasts")       # If breasts are on this mesh delete them... they are softbody simulated and require special in-PhysX colliders
+#     Util_SelectVertGroupVerts(oMeshBodyColO, G.C_VertGrp_Detach + "Breasts")       # If breasts are on this mesh delete them... they are softbody simulated and require special in-PhysX colliders
 #     bpy.ops.mesh.delete(type='VERT')
-#     gBlender.Util_SelectVertGroupVerts(oMeshBodyColO, G.C_VertGrp_Detach + "Penis")         # If penis is on this mesh delete it... it gets its own sophisticated collider chain
+#     Util_SelectVertGroupVerts(oMeshBodyColO, G.C_VertGrp_Detach + "Penis")         # If penis is on this mesh delete it... it gets its own sophisticated collider chain
 #     bpy.ops.mesh.delete(type='VERT')
 #     
 #     #=== Select all body verts so that we can tell them apart from all the cloth verts after the upcoming join ===    
@@ -178,7 +178,7 @@
 #     nRatioFacesToDecimate = nNumDesiredFaces / nFacesNow 
 #     oModDecimate.ratio = nRatioFacesToDecimate
 #     oModDecimate.use_collapse_triangulate = True
-#     gBlender.AssertFinished(bpy.ops.object.modifier_apply(modifier=oModDecimate.name))  ###LEARN: Have to specify 'modifier' or this won't work!        
+#     AssertFinished(bpy.ops.object.modifier_apply(modifier=oModDecimate.name))  ###LEARN: Have to specify 'modifier' or this won't work!        
 # 
 #     #=== Cleanup the freshly-created decimated mesh by removing verts that are too close to one-another and removing separated geometry ===
 #     bpy.ops.object.mode_set(mode='EDIT')
@@ -195,8 +195,8 @@
 # 
 #     #=== Mirror the just-decimated mesh so we obtain a beautiful symmetrical decimation ===
 #     bpy.ops.object.mode_set(mode='OBJECT')
-#     oModMirrorX = gBlender.Util_CreateMirrorModifierX(oMeshBodyColO)
-#     gBlender.AssertFinished(bpy.ops.object.modifier_apply(modifier=oModMirrorX.name))        
+#     oModMirrorX = Util_CreateMirrorModifierX(oMeshBodyColO)
+#     AssertFinished(bpy.ops.object.modifier_apply(modifier=oModMirrorX.name))        
 # 
 #     #=== Run the amazing LoopTools relax on the borders to greatly smooth out the jagged border so decimate doesn't allocate too many precious verts to define jagged border ===
 # #     bpy.ops.mesh.select_non_manifold(extend=False)        ###IMPROVE?: This can help but it also removes symmetry in some situations where selecting non-manifold also selects polys 
@@ -246,8 +246,8 @@
 #     bpy.ops.mesh.select_all(action='DESELECT')
 #     bpy.ops.object.mode_set(mode='OBJECT')
 #     oMeshBodyOrigO.hide = False            ###LEARN: Mesh MUST be visible for weights to transfer!
-#     gBlender.Util_TransferWeights(oMeshBodyColO, oMeshBodyOrigO)
-#     gBlender.Cleanup_VertGrp_RemoveNonBones(oMeshBodyColO, True)     # Also remove the non-bone extra vert groups so only vert groups meant for skinning remain (to avoid errors during serialization to client)
+#     Util_TransferWeights(oMeshBodyColO, oMeshBodyOrigO)
+#     Cleanup_VertGrp_RemoveNonBones(oMeshBodyColO, True)     # Also remove the non-bone extra vert groups so only vert groups meant for skinning remain (to avoid errors during serialization to client)
 #     
 #     #=== Print stats to see how close we got to the number of desired edges ===
 #     print("\n--- CBBodyCol_GetMesh() creates mesh with %d capsule colliders, %d verts, %d edges and %d faces ---" % (nNumCapsuleColliders, len(oMeshBodyColO.data.vertices), len(oMeshBodyColO.data.edges), len(oMeshBodyColO.data.polygons)))
@@ -264,7 +264,7 @@
 # #     aMapToBodyVerts = array.array('H')
 # #     aMapToBodyVertsOffset = array.array('f')
 # #     for oVert in oMeshBodyColO.data.vertices:
-# #         nVertClosest, nDistMin, vecVertClosest = gBlender.Util_FindClosestVert(oMeshBodyOrigO, oVert.co, .02)       ###TUNE?
+# #         nVertClosest, nDistMin, vecVertClosest = Util_FindClosestVert(oMeshBodyOrigO, oVert.co, .02)       ###TUNE?
 # #         if nVertClosest != -1:
 # #             vecDiff = oVert.co - vecVertClosest
 # #             aMapToBodyVerts         .append(nVertClosest)    
@@ -284,8 +284,8 @@
 #     oBA = Client.gBL_GetMesh(oMeshBodyColO.name)
 # 
 #     #=== Send the additional definition arrays we created in Generate call ===
-#     gBlender.Stream_SerializeArray(oBA, oMeshBodyColO['aEdges'])
-#     gBlender.Stream_SerializeArray(oBA, oMeshBodyColO['aVertToVerts'])
+#     Stream_SerializeArray(oBA, oMeshBodyColO['aEdges'])
+#     Stream_SerializeArray(oBA, oMeshBodyColO['aVertToVerts'])
 #     
 #     #=== Add another 'end magic number' at the end of our stream to help catch deserialization errors ===
 #     oBA += Client.Stream_GetEndMagicNo()

@@ -37,9 +37,9 @@ import CBody
 from math import *
 from mathutils import *
 
-import gBlender
+from gBlender import *
 import G
-
+import CObject
 
 
 #---------------------------------------------------------------------------    
@@ -52,10 +52,10 @@ import G
 #     print("\n=== gBL_Body_CreateForMorph() sNameSrcBody:'{}' sNameGameBody:'{}' sNameGameMorph: '{}' ===".format(sNameSrcBody, sNameGameBody, sNameGameMorph))
 # 
 #     #=== Obtain references to all the source meshes needed ===
-#     oMeshComboO = gBlender.DuplicateAsSingleton(sNameSrcBody, sNameGameMorph, G.C_NodeFolder_Game, False)  ###TODO!!! Rename to MeshCombo??      ###DESIGN: Base skinned mesh on _Morph or virgin body??            
+#     oMeshComboO = DuplicateAsSingleton(sNameSrcBody, sNameGameMorph, G.C_NodeFolder_Game, False)  ###TODO!!! Rename to MeshCombo??      ###DESIGN: Base skinned mesh on _Morph or virgin body??            
 # 
 #     #=== Cleanup the skinned mesh and ready it for Unity ===
-#     gBlender.Cleanup_VertGrp_RemoveNonBones(oMeshComboO, True)  # Remove the extra vertex groups that are not skinning related
+#     Cleanup_VertGrp_RemoveNonBones(oMeshComboO, True)  # Remove the extra vertex groups that are not skinning related
 #     Client_ConvertMesh(oMeshComboO, True)  # With the skinned body + skinned clothing mesh free of non-bone vertex groups, we can safely limit the # of bones per vertex to the Client limit of 4 and normalize all bone weights ===
 # #     bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)  # Limit mesh to four bones each   ###CHECK: Possible our 'non-bone' vertgrp take info away???
 # #     bpy.ops.object.vertex_group_normalize_all(lock_active=False)
@@ -86,7 +86,7 @@ import G
 #     #bpy.context.scene[sPropNameSrcGenitals] = sNameSrcGenitals
 # 
 #     #=== Duplicate the source body (kept in the most pristine condition possible) and delete unwanted parts of its mesh so that we may attach the user-specified compatible meshes in instead ===    
-#     oMeshBodyO = gBlender.DuplicateAsSingleton(sNameSrcBody, sNameGameBody, G.C_NodeFolder_Game, False)  # Creates the top-level body object named like "BodyA", "BodyB", that will accept the various genitals we tack on to the source body.
+#     oMeshBodyO = DuplicateAsSingleton(sNameSrcBody, sNameGameBody, G.C_NodeFolder_Game, False)  # Creates the top-level body object named like "BodyA", "BodyB", that will accept the various genitals we tack on to the source body.
 #     sNameVertGroupToCutout = None
 #     if sNameSrcGenitals.startswith("Vagina"):  # Woman has vagina and breasts (includes clothing area)
 #         sNameVertGroupToCutout = "_Cutout_Vagina"
@@ -94,12 +94,12 @@ import G
 #         sNameVertGroupToCutout = "_Cutout_Penis"
 #     if sNameVertGroupToCutout is not None:
 #         bpy.ops.object.mode_set(mode='EDIT')
-#         gBlender.Util_SelectVertGroupVerts(oMeshBodyO, sNameVertGroupToCutout)  # This vert group holds the verts that are to be soft-body simulated...
+#         Util_SelectVertGroupVerts(oMeshBodyO, sNameVertGroupToCutout)  # This vert group holds the verts that are to be soft-body simulated...
 #         bpy.ops.mesh.delete(type='FACE')  # ... and delete the mesh part we didn't want copied to output body
 #         bpy.ops.object.mode_set(mode='OBJECT')
 # 
 #     #=== Import and preprocess the genitals mesh and assemble into this mesh ===
-#     oMeshGenitalsO = gBlender.DuplicateAsSingleton(sNameSrcGenitals, "TEMP_Genitals", G.C_NodeFolder_Game, True)  ###TEMP!! Commit to file-based import soon!
+#     oMeshGenitalsO = DuplicateAsSingleton(sNameSrcGenitals, "TEMP_Genitals", G.C_NodeFolder_Game, True)  ###TEMP!! Commit to file-based import soon!
 # #     bpy.ops.import_scene.obj(filepath="D:/Src/E9/Unity/Assets/Resources/Textures/Woman/A/Vagina/Erotic9/A/Mesh.obj")        ###HACK!!!: Path & construction of full filename!
 # #     oMeshGenitalsO = bpy.context.selected_objects[0]        ###LEARN: object importer will deactivate everything and select only the newly imported object
 #     ###CHECK: Not needed? bpy.context.scene.objects.active = oMeshGenitalsO
@@ -109,7 +109,7 @@ import G
 #     oMeshBodyO.select = True
 #     bpy.context.scene.objects.active = oMeshBodyO
 #     bpy.ops.object.join()
-#     gBlender.Util_SelectVertGroupVerts(oMeshBodyO, sNameVertGroupToCutout)  # Reselect the just-removed genitals area from the original body, as the faces have just been removed this will therefore only select the rim of vertices where the new genitals are inserted (so that we may remove_doubles to merge only it)
+#     Util_SelectVertGroupVerts(oMeshBodyO, sNameVertGroupToCutout)  # Reselect the just-removed genitals area from the original body, as the faces have just been removed this will therefore only select the rim of vertices where the new genitals are inserted (so that we may remove_doubles to merge only it)
 #     bpy.ops.mesh.remove_doubles(threshold=0.000001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###LEARN: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
 #     bpy.ops.mesh.select_all(action='DESELECT')
 #     bpy.ops.object.mode_set(mode='OBJECT')
@@ -129,7 +129,7 @@ import G
 #         oMeshBodyO.vertex_groups["_Detach_Breasts_ORIGINAL"].name = "_Detach_Breasts"        
 # 
 #     #=== Prepare a ready-for-morphing client-side body. This one will be morphed by the user and be the basis for cloth fitting and play mode ===   
-#     oMeshMorphO = gBlender.DuplicateAsSingleton(oMeshBodyO.name, sNameGameBody + G.C_NameSuffix_Morph, G.C_NodeFolder_Game, True)  ###DESIGN!!! ###SOON!!
+#     oMeshMorphO = DuplicateAsSingleton(oMeshBodyO.name, sNameGameBody + G.C_NameSuffix_Morph, G.C_NodeFolder_Game, True)  ###DESIGN!!! ###SOON!!
 #     Client_ConvertMesh(oMeshMorphO, True)  # Client requires a tri-based mesh and verts that only have one UV. (e.g. no polys accross different seams/materials sharing the same vert)
 #     oMeshBodySrcO.hide = True  # Hide back the source body as more realized bodies are now shown.
 # 
@@ -154,24 +154,24 @@ import G
 # 
 #     #===== Begin the complex task of assembling the requested body =====    
 #     #=== Obtain references to all the source meshes needed ===
-#     oMeshMorphO = gBlender.SelectAndActivate(sNameGameBody + G.C_NameSuffix_Morph)  # Obtain reference to previously constructed body for morphing
+#     oMeshMorphO = SelectAndActivate(sNameGameBody + G.C_NameSuffix_Morph)  # Obtain reference to previously constructed body for morphing
 #     sNameBodyRim = sNameGameBody + G.C_NameSuffix_BodyRim
-#     gBlender.DeleteObject(sNameBodyRim)
-#     oMeshComboO = gBlender.DuplicateAsSingleton(oMeshMorphO.name, sNameGameBody + G.C_NameSuffix_BodySkin, G.C_NodeFolder_Game, False)  ###TODO!!! Rename to MeshCombo??      ###DESIGN: Base skinned mesh on _Morph or virgin body??            
+#     DeleteObject(sNameBodyRim)
+#     oMeshComboO = DuplicateAsSingleton(oMeshMorphO.name, sNameGameBody + G.C_NameSuffix_BodySkin, G.C_NodeFolder_Game, False)  ###TODO!!! Rename to MeshCombo??      ###DESIGN: Base skinned mesh on _Morph or virgin body??            
 #     nBodyMats = len(oMeshComboO.data.materials)  # Before we join additional clothing meshes with to body remember the number of materials so we can easily spot the vertices of clothing in big loop below
 # 
 # 
 #     #=== Prepare the cloth base by duplicating the requested bodysuit and converting for Client ===  ####OBS?  Only if cloth is split for some simulation with breasts soft body
 #     for sCloth in aCloths:
 #         if sCloth != "" and sCloth != "None":
-#             oMeshClothBaseO = gBlender.DuplicateAsSingleton(sCloth, sNameGameBody + G.C_NameSuffix_ClothBase, G.C_NodeFolder_Game, True)            
-#             gBlender.DuplicateAsSingleton(oMeshClothBaseO.name, sNameGameBody + G.C_NameSuffix_ClothCut, G.C_NodeFolder_Game, True)  ###HACK!: Just to enable gameplay mode all the way to play without going through cloth morph or cloth fit... revisit this crap!            
-#             gBlender.DuplicateAsSingleton(oMeshClothBaseO.name, sNameGameBody + G.C_NameSuffix_ClothFit, G.C_NodeFolder_Game, True)            
-#             oMeshClothO = gBlender.DuplicateAsSingleton(sNameGameBody + G.C_NameSuffix_ClothFit  , "_TEMP_ClothPart-Body", G.C_NodeFolder_Game, True)  ###DESIGN: Pass in cloth by array?  Support array iteration ###DESIGN: ###SOON: This is ALL clothing on the character, not just fit!
+#             oMeshClothBaseO = DuplicateAsSingleton(sCloth, sNameGameBody + G.C_NameSuffix_ClothBase, G.C_NodeFolder_Game, True)            
+#             DuplicateAsSingleton(oMeshClothBaseO.name, sNameGameBody + G.C_NameSuffix_ClothCut, G.C_NodeFolder_Game, True)  ###HACK!: Just to enable gameplay mode all the way to play without going through cloth morph or cloth fit... revisit this crap!            
+#             DuplicateAsSingleton(oMeshClothBaseO.name, sNameGameBody + G.C_NameSuffix_ClothFit, G.C_NodeFolder_Game, True)            
+#             oMeshClothO = DuplicateAsSingleton(sNameGameBody + G.C_NameSuffix_ClothFit  , "_TEMP_ClothPart-Body", G.C_NodeFolder_Game, True)  ###DESIGN: Pass in cloth by array?  Support array iteration ###DESIGN: ###SOON: This is ALL clothing on the character, not just fit!
 #         
 #             #=== Remove information from all-cloth Client doesn't need (such as the vertex groups used for border creation) ===
-#             gBlender.SelectAndActivate(oMeshClothO.name)
-#             gBlender.Util_ConvertToTriangles()
+#             SelectAndActivate(oMeshClothO.name)
+#             Util_ConvertToTriangles()
 #             if bpy.ops.object.vertex_group_remove.poll():
 #                 bpy.ops.object.vertex_group_remove(all=True)
 #         
@@ -179,16 +179,16 @@ import G
 #             oModEdgeSplit = oMeshClothO.modifiers.new('EDGE_SPLIT', 'EDGE_SPLIT')
 #             oModEdgeSplit.use_edge_sharp = True  # We only want edge split to split edges marked as sharp (done in border creation)
 #             oModEdgeSplit.use_edge_angle = False
-#             gBlender.AssertFinished(bpy.ops.object.modifier_apply(modifier=oModEdgeSplit.name))
+#             AssertFinished(bpy.ops.object.modifier_apply(modifier=oModEdgeSplit.name))
 #             
 #             #=== Transfer the skinning information from the skinned body mesh to the clothing.  Some vert groups are useful to move non-simulated area of cloth as skinned cloth, other _Detach_xxx vert groups are to define areas of the cloth that are simulated ===
-#             gBlender.SelectAndActivate(oMeshClothO.name)
+#             SelectAndActivate(oMeshClothO.name)
 #             oMeshMorphO.select = True
 #             oMeshMorphO.hide = False  ###LEARN: Mesh MUST be visible for weights to transfer!
 #             bpy.ops.object.vertex_group_transfer_weight()
 #         
 #             #=== Join the all-cloth onto the main skinned body to form the composite mesh that currently has all geometry for body and all clothing...  From this composite mesh we separate 'chunks' such as breasts are surrounding clothing, or penis or vagina for non-skinned simulation by the game engine ===
-#             gBlender.SelectAndActivate(oMeshComboO.name)
+#             SelectAndActivate(oMeshComboO.name)
 #             oMeshClothO.select = True
 #             bpy.ops.object.join()  # This will join the cloth and its properly-set 'detach chunk' vertex groups to the body with matching chunk vertex groups.
 #             oMeshClothO = None  # Past this point clothing mesh doesn't exist... only oMeshComboO which has entire body and all clothing
@@ -204,7 +204,7 @@ import G
 # 
 #     #===== For woman & vagina, perform pre-processing of the vagina-area of the mesh.  We must split that part of the mesh into the '_Detach_VaginaL' and '_Detach_VaginaR' for the main loop below to properly detach the left&right vagina meshes for proper PhysX softbody processing =====
 #     if sSex == "Woman":         ####OBS?? Go for non-softbody vagina now??
-#         gBlender.SelectAndActivate(oMeshComboO.name)
+#         SelectAndActivate(oMeshComboO.name)
 #         bpy.ops.object.mode_set(mode='EDIT')
 #         bmCombo = bmesh.from_edit_mesh(oMeshComboO.data)
 #         nVertGrpIndex_Vagina = oMeshComboO.vertex_groups.find(G.C_VertGrp_Area + "Vagina")  # Find the rough-cut vagina-area part of our combo mesh that previous 'transfer_weight()' has transfered from source skinned body to our combo mesh       
@@ -315,8 +315,8 @@ import G
 #     for sNameChunk in aNameChunks:
 #         print("--- Separating chunk " + sNameChunk)
 #         sNamePartChunk = sNameGameBody + G.C_VertGrp_Detach + sNameChunk
-#         gBlender.DeleteObject(sNamePartChunk)
-#         gBlender.SelectAndActivate(oMeshComboO.name)
+#         DeleteObject(sNamePartChunk)
+#         SelectAndActivate(oMeshComboO.name)
 #         bpy.ops.object.mode_set(mode='EDIT')
 #         bmCombo = bmesh.from_edit_mesh(oMeshComboO.data)
 # 
@@ -435,7 +435,7 @@ import G
 #     #===== Create the 'Skinned Rim' skinned mesh that Client can use to use 'BakeMesh()' on a heavily-simplified version of the main body mesh that contains only the 'rim' polygons that attach to all the detacheable chunks this code separates.  It is this 'Rim' skinned mesh that quickly calculates the position of all the pins and that therfore 'owns' the CPinSkinned and therefore the CPinTetra === 
 #     ####DESIGN: Vert topology changes at every split!  MUST map twinID to body verts once all cuts done ###NOW!!!
 #     #=== Iterate through the verts of the main skinned mesh (now that all chunks have been removed) to select all the twin verts so we can create the rim mesh
-#     gBlender.SelectAndActivate(oMeshComboO.name)
+#     SelectAndActivate(oMeshComboO.name)
 #     bpy.ops.object.mode_set(mode='EDIT')
 #     bpy.ops.mesh.select_all(action='DESELECT')
 #     bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
@@ -481,7 +481,7 @@ import G
 #             aMapTwinId2VertRim[nTwinID] = (oVert.index, oVertAdjacent.index)  # Store both the twin vert and an adjacent vert for this twin
 #             # print("TwinVert {:3d} = RimVert {:5d}-{:5d} at {:}".format(nTwinID, oVert.index, oVertAdjacent.index, oVert.co))
 #     bpy.ops.object.mode_set(mode='OBJECT')
-#     gBlender.Cleanup_VertGrp_RemoveNonBones(oMeshSkinColSrcO, True)  # Remove the extra vertex groups that are not skinning related
+#     Cleanup_VertGrp_RemoveNonBones(oMeshSkinColSrcO, True)  # Remove the extra vertex groups that are not skinning related
 #     
 #     #===== Now that rim is fully formed and the aMapTwinId2VertRim fully populated for to find real rim verts for any TwinID we can finally construct the aMapTwinVerts flat array for each detached part.  (each detached part (no matter if its softbody or cloth simulated) will thereby be able to fix its edge verts to the rim correctly during gameplay) (With both the main skinned mesh and the chunk part with the same set of 'twin ID' in their mesh vertices, we can finally match vertex ID of part to vertex ID of skinned main mesh)
 #     ###NOTE: This flattened is sent with 1) vertex ID on the separated chunk part, 2) Vertex ID of the 'twin vert' at the same location on the main skinned mesh and 3) an adjacent vert on the skinned mesh to #2 for normal Z-orientation
@@ -511,7 +511,7 @@ import G
 #         oMeshPartChunkO[G.C_PropArray_MapTwinVerts] = aMapTwinVerts.tobytes()  # Store the output map as an object property for later access when Client requests this part.  (We store as byte array to save memory as its only for future serialization to Client and Blender has no use for this info)
 # 
 #     #===== Cleanup the main skinned mesh =====
-#     gBlender.Cleanup_VertGrp_RemoveNonBones(oMeshComboO, True)  # Remove the extra vertex groups that are not skinning related
+#     Cleanup_VertGrp_RemoveNonBones(oMeshComboO, True)  # Remove the extra vertex groups that are not skinning related
 #     Client_ConvertMesh(oMeshComboO, True)  # With the skinned body + skinned clothing mesh free of non-bone vertex groups, we can safely limit the # of bones per vertex to the Client limit of 4 and normalize all bone weights ===
 # #     bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)  # Limit mesh to four bones each   ###CHECK: Possible our 'non-bone' vertgrp take info away???
 # #     bpy.ops.object.vertex_group_normalize_all(lock_active=False)
@@ -521,28 +521,28 @@ import G
 #     if (sNameSrcBody.startswith('Woman')):    
 #         sNameBreastColToBody    = sNameGameBody + G.C_NameSuffix_BreastCol + "-ToBody"                  # These were generated when morphing body was created and have been moved along morphing body.
 #         sNameBreastColToBreasts = sNameGameBody + G.C_NameSuffix_BreastCol + "-ToBreasts"               #... so the just-detached breasts are at the exact same position... but we need to 're-pair' to the just-detached breasts so collider can now moving along with softbody breasts
-#         gBlender.DuplicateAsSingleton(sNameBreastColToBody, sNameBreastColToBreasts, G.C_NodeFolder_Game, True)     # 'ToBody' breast collider already paired to body for static morphing.  Now re-pair a new instance of breast collider onto newly created detached softbody breasts
+#         DuplicateAsSingleton(sNameBreastColToBody, sNameBreastColToBreasts, G.C_NodeFolder_Game, True)     # 'ToBody' breast collider already paired to body for static morphing.  Now re-pair a new instance of breast collider onto newly created detached softbody breasts
 #         CBBodyCol.SlaveMesh_DoPairing(sNameBreastColToBreasts, sNameGameBody + "_Detach_Breasts", 0.000001)                     # Redo the pairing to the morph body so breast verts can follow body verts
 #     
 # #     CBBodyCol.SlaveMesh_Define(sNameBreastColToBreasts, sNameGameBody + , sNameMeshOutput, nVertTolerance):
 # #     //CBBodyCol.SlaveMesh_Define(sNameSrcBody + "-BreastCol-Source", sNameGameBody + "_Detach_Breasts", sNameGameBody + G.C_NameSuffix_BreastCol + "-ToBreasts", 0.001)
 #    
-#     #gBlender.gBL_Util_HideGameMeshes();     ###KEEP???
+#     #gBL_Util_HideGameMeshes()     ###KEEP???
 # 
 #     #===== Return success message to client.  It will now request each of the processed meshes this call prepared and ship them to various engines such as softbody, clothing or skinned =====
 #     ###OBS? return str(aNameChunksCreated)
 #     return ""
 
 def GameMode_ClothCut(sNameBody):  # Prepare for the cloth cut game mode -> Create a duplicate cloth mesh from its source
-    gBlender.DuplicateAsSingleton(sNameBody + G.C_NameSuffix_ClothBase, sNameBody + G.C_NameSuffix_ClothCut, G.C_NodeFolder_Game, True)
+    DuplicateAsSingleton(sNameBody + G.C_NameSuffix_ClothBase, sNameBody + G.C_NameSuffix_ClothCut, G.C_NodeFolder_Game, True)
     return G.DumpStr("OK: GameMode_ClothCut() copied base '{}' into cut '{}'".format(sNameBody + G.C_NameSuffix_ClothBase, sNameBody + G.C_NameSuffix_ClothCut))
 
 def GameMode_ClothFit(sNameBody):  # Prepare for the cloth fit game mode   
-    gBlender.DuplicateAsSingleton(sNameBody + G.C_NameSuffix_ClothCut, sNameBody + G.C_NameSuffix_ClothFit, G.C_NodeFolder_Game, True)
+    DuplicateAsSingleton(sNameBody + G.C_NameSuffix_ClothCut, sNameBody + G.C_NameSuffix_ClothFit, G.C_NodeFolder_Game, True)
     return G.DumpStr("OK: GameMode_ClothFit() copied cut '{}' into fit '{}'".format(sNameBody + G.C_NameSuffix_ClothCut, sNameBody + G.C_NameSuffix_ClothFit))
 
 def GameMode_ClothFit_End(sNameBody):  # Cleanup the Flex-simulated cloth.  Assumes Client uploaded its latest verts of this cloth before.
-    gBlender.SelectAndActivate(sNameBody + G.C_NameSuffix_ClothFit)
+    SelectAndActivate(sNameBody + G.C_NameSuffix_ClothFit)
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='SELECT')
     bpy.ops.mesh.vertices_smooth_laplacian(repeat=1, lambda_factor=0.005, lambda_border=0.000)  ###TUNE!
@@ -561,7 +561,7 @@ def Client_ConvertMesh(oMeshO, bSplitVertsAtUvSeams):  # Convert a Blender mesh 
     # bSplitVertsAtUvSeams will split verts at UV seams so Unity can properly render.  (Cloth currently unable to simulate this way) ####FIXME ####SOON
     
     #=== Separate all seam edges to create unique verts for each UV coordinate as Client requires ===
-    gBlender.SelectAndActivate(oMeshO.name)
+    SelectAndActivate(oMeshO.name)
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
     bpy.ops.mesh.select_all(action='SELECT')
@@ -570,9 +570,9 @@ def Client_ConvertMesh(oMeshO, bSplitVertsAtUvSeams):  # Convert a Blender mesh 
     bm = bmesh.from_edit_mesh(oMeshO.data)          
 
     if (len(oMeshO.data.edges) == 0):                   # Prevent split of UV if no edges.  (Prevents an error in seams_from_islands() for vert-only meshes (e.g. softbody pinning temp meshes)
-        bSplitVertsAtUvSeams = False;
+        bSplitVertsAtUvSeams = False
     if (len(oMeshO.material_slots) < 2):                # Prevent split of UV if less than two materials
-        bSplitVertsAtUvSeams = False;
+        bSplitVertsAtUvSeams = False
 
     #=== Iterate through all edges to select only the non-sharp seams (The sharp edges have been marked as sharp deliberately by border creation code).  We need to split these edges so Client-bound mesh can meet its (very inconvenient) one-normal-per-vertex requirement ===
     if (bSplitVertsAtUvSeams == True):
@@ -642,8 +642,8 @@ def Client_ConvertMesh(oMeshO, bSplitVertsAtUvSeams):  # Convert a Blender mesh 
 def gBL_GetMesh(sNameMesh):  # Called in the constructor of Unity's important CBMesh constructor to return the mesh (possibly skinned depending on mesh anme) + meta info the class needs to run.
     print("=== gBL_GetMesh() sending mesh '{}' ===".format(sNameMesh))
 
-    oMeshO = gBlender.SelectAndActivate(sNameMesh)
-    gBlender.Cleanup_VertGrp_RemoveNonBones(oMeshO, True)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
+    oMeshO = SelectAndActivate(sNameMesh)
+    Cleanup_VertGrp_RemoveNonBones(oMeshO, True)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
     Client_ConvertMesh(oMeshO, True)  # Client requires a tri-based mesh and verts that only have one UV. (e.g. no polys accross different seams/materials sharing the same vert)
 
     oMesh = oMeshO.data
@@ -672,7 +672,7 @@ def gBL_GetMesh(sNameMesh):  # Called in the constructor of Unity's important CB
                 if oTextureSlot:
                     sImgFilepathEnc = oTextureSlot.texture.image.filepath
                     # aSplitImgFilepath = oTextureSlot.texture.image.filepath.rsplit(sep='\\', maxsplit=1)    # Returns a two element list with last being the 'filename.ext' of the image and the first being the path to get there.  We only send Client filename.ext
-        gBlender.Stream_SendStringPascal(oBA, sImgFilepathEnc)
+        Stream_SendStringPascal(oBA, sImgFilepathEnc)
 
     oBA += Stream_GetEndMagicNo()  # Append a 'magic number' to help catch deserialization errors quickly
 
@@ -689,14 +689,14 @@ def gBL_GetMesh_SkinnedInfo(sNameMesh):          #=== Send skinning info to Unit
     print("=== gBL_GetMesh_SkinnedInfo() sending mesh '{}' ===".format(sNameMesh))
 
     #=== Unity can only process 4 bones per vert max.  Ensure cleanup ===
-    oMeshO = gBlender.SelectAndActivate(sNameMesh)
+    oMeshO = SelectAndActivate(sNameMesh)
 #     bpy.ops.object.mode_set(mode='EDIT')
 #     bpy.ops.mesh.select_all(action='SELECT')
 #     bpy.ops.object.vertex_group_limit_total(limit=4)
 #     bpy.ops.object.vertex_group_clean(group_select_mode='ALL')    # Clean up empty vert groups new Blender insists on creating during skin transfer
 #     bpy.ops.mesh.select_all(action='DESELECT')
 #     bpy.ops.object.mode_set(mode='OBJECT')
-    gBlender.Cleanup_VertGrp_RemoveNonBones(oMeshO, True)
+    Cleanup_VertGrp_RemoveNonBones(oMeshO, True)
     
     #=== Select mesh and obtain reference to needed mesh members ===
     oMesh = oMeshO.data
@@ -708,7 +708,7 @@ def gBL_GetMesh_SkinnedInfo(sNameMesh):          #=== Send skinning info to Unit
     oBA += struct.pack('H', G.C_MagicNo_TranBegin)  ###LEARN: Struct.Pack args: b=char B=ubyte h=short H=ushort, i=int I=uint, q=int64, Q=uint64, f=float, d=double, s=char[] ,p=PascalString[], P=void*
     oBA += struct.pack('B', len(oMeshO.vertex_groups))
     for oVertGrp in oMeshO.vertex_groups:
-        gBlender.Stream_SendStringPascal(oBA, oVertGrp.name)        
+        Stream_SendStringPascal(oBA, oVertGrp.name)        
  
     #=== Iterate through each vert to send skinning data.  These should have been trimmed down to four in prepare but Client will decipher and keep the best 4 nonetheless ===
     nErrorsBoneGroups = 0     
@@ -736,9 +736,9 @@ def gBL_GetMesh_Array_OBSOLETE(sNameMesh, sNameArray):        #=== Send Unity th
     oBA = bytearray()
     oBA += struct.pack('H', G.C_MagicNo_TranBegin)  ###LEARN: Struct.Pack args: b=char B=ubyte h=short H=ushort, i=int I=uint, q=int64, Q=uint64, f=float, d=double, s=char[] ,p=PascalString[], P=void*
 
-    oMeshO = gBlender.SelectAndActivate(sNameMesh)
+    oMeshO = SelectAndActivate(sNameMesh)
     aArray = oMeshO.get(sNameArray)
-    gBlender.Stream_SerializeArray(oBA, aArray)
+    Stream_SerializeArray(oBA, aArray)
     oBA += Stream_GetEndMagicNo()                   # Append a 'magic number' to help catch deserialization errors quickly
 
     return oBA
@@ -752,7 +752,7 @@ def gBL_GetBones(sNameMesh):  # Called by the CBodeEd (Unity's run-in-edit-mode 
     if (sNameMesh not in bpy.data.objects):
         return G.DumpStr("ERROR: gBL_GetBones() cannot find object '" + sNameMesh + "'")
 
-    oMeshO = gBlender.SelectAndActivate(sNameMesh)
+    oMeshO = SelectAndActivate(sNameMesh)
     if "Armature" not in oMeshO.modifiers:
         return G.DumpStr("ERROR: gBL_GetBones() cannot find armature modifier for '" + sNameMesh + "'")
     oArmature = oMeshO.modifiers["Armature"].object.data
@@ -762,7 +762,7 @@ def gBL_GetBones(sNameMesh):  # Called by the CBodeEd (Unity's run-in-edit-mode 
     oBA += struct.pack('H', G.C_MagicNo_TranBegin)  ###LEARN: Struct.Pack args: b=char B=ubyte h=short H=ushort, i=int I=uint, q=int64, Q=uint64, f=float, d=double, s=char[] ,p=PascalString[], P=void*
 
     #=== Send bone tree (without bone positions) Unity needs our order to map to its existing bone which remain the authority ===
-    gBlender.Stream_SendBone(oBA, oArmature.bones[0])  # Recursively send the bone tree starting at root node (0)
+    Stream_SendBone(oBA, oArmature.bones[0])  # Recursively send the bone tree starting at root node (0)
 
     oBA += Stream_GetEndMagicNo()  # Append a 'magic number' to help catch deserialization errors quickly
     print("--- gBL_GetBones() returning array of size " + str(len(oBA)))
@@ -787,7 +787,7 @@ def gBL_ReleaseMesh(sNameMesh):  # Release the python-side and blender-c-side st
 def gBL_UpdateClientVerts(sNameMesh):  # Update only the Client verts from the Blender verts.  Most of the magic happens in our modified Blender C code while calling update()
     if (sNameMesh not in bpy.data.objects):     ###NOW### ###BROKEN???
         return G.DumpStr("ERROR: gBL_UpdateClientVerts() cannot find object '" + sNameMesh + "'")
-    oMeshO = gBlender.SelectAndActivate(sNameMesh)
+    oMeshO = SelectAndActivate(sNameMesh)
     oMeshO.data.use_fake_user = False  ###NOTE: We use this mesh flag in our modified Blender C code to indicate 'load verts from client'.  Make sure this is off in this context
     oMeshO.data.update(True, True)  ###IMPORTANT: Our modified Blender C code traps the above flags to update its shared data structures with client...        
     return G.DumpStr("OK: gBL_UpdateClientVerts() has updated Client mesh verts on mesh '{}'".format(sNameMesh))
@@ -795,7 +795,7 @@ def gBL_UpdateClientVerts(sNameMesh):  # Update only the Client verts from the B
 def gBL_UpdateBlenderVerts(sNameMesh):  # Update the Blender verts from the Client verts.  Most of the magic happens in our modified Blender C code while calling update()
     if (sNameMesh not in bpy.data.objects):
         return G.DumpStr("ERROR: gBL_UpdateBlenderVerts() cannot find object '" + sNameMesh + "'")
-    oMeshO = gBlender.SelectAndActivate(sNameMesh)
+    oMeshO = SelectAndActivate(sNameMesh)
     oMeshO.data.use_fake_user = True        ###IMPORTANT: We turn on this flag to indicate to our Blender C code that we LOAD the verts from client (instead of sending arrays to client)  NOTE: We use this mesh flag in our modified Blender C code to indicate 'load verts from client'.
     oMeshO.data.update(True, True)          ###IMPORTANT: Our modified Blender C code traps the above flags to update its shared data structures with client...        
     oMeshO.data.use_fake_user = False       # Turn off the 'update Blender verts from Client' flag right away as it's created only for this call.
@@ -810,47 +810,6 @@ def gBL_UpdateBlenderVerts(sNameMesh):  # Update the Blender verts from the Clie
 
 
 #---------------------------------------------------------------------------    
-#---------------------------------------------------------------------------    HEAD PROCESSING
-#---------------------------------------------------------------------------    
-
-def RemoveMatVerts(sNameMaterial):  ###OBS?
-    oMeshO = bpy.context.object
-    
-    for oMat in oMeshO.data.materials:
-        if oMat.name.find(sNameMaterial) != -1:
-            nMatIndex = oMeshO.data.materials.find(oMat.name)
-            oMeshO.active_material_index = nMatIndex 
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.select_all(action='DESELECT')
-            bpy.ops.object.material_slot_select()
-            bpy.ops.mesh.delete(type='FACE')
-            bpy.ops.object.mode_set(mode='OBJECT')
-            bpy.ops.object.material_slot_remove()
-    
-    
-def IsolateHead():  ###OBS? # DAZ cannot export only the head if we select the 17K level of detail mesh.  We remove materials and faces we don't need here to leave only the head    
-    RemoveMatVerts("Neck")
-    RemoveMatVerts("Torso")
-    RemoveMatVerts("Nipple")
-    RemoveMatVerts("Hip")
-    RemoveMatVerts("Arm")
-    RemoveMatVerts("Foot")
-    RemoveMatVerts("Forearm")
-    RemoveMatVerts("Hand")
-    RemoveMatVerts("Leg")
-    RemoveMatVerts("Fingernail")
-    RemoveMatVerts("Toenail")
-    RemoveMatVerts("Cornea")
-    RemoveMatVerts("Sclera")
-    RemoveMatVerts("EyeSurface")
-    RemoveMatVerts("Iris")
-    RemoveMatVerts("Pupil")
-    RemoveMatVerts("Lacrimal")
-    RemoveMatVerts("Tear")
-    RemoveMatVerts("EyeSocket")
-    RemoveMatVerts("Eyebrow")
-    
-#---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    MAN MESH CLEANUP
 #---------------------------------------------------------------------------    
 #- From DAZ-exported man (no penis) with 'merge materials with common diffuse' on...
@@ -860,34 +819,34 @@ def IsolateHead():  ###OBS? # DAZ cannot export only the head if we select the 1
 #- Keep rotation as is (90x) on both root and mesh (like woman)
 
 def ManCleanup_RemoveExtraMaterials():  # Remove extra materials from DAZ-imported man    
-    #RemoveMatVerts("Cornea")
-    #RemoveMatVerts("Sclera")
-    RemoveMatVerts("EyeSurface")
-    #RemoveMatVerts("Iris")
-    #RemoveMatVerts("Pupil")
-    RemoveMatVerts("Lacrimal")
-    RemoveMatVerts("Tear")
-    RemoveMatVerts("EyeSocket")
-    RemoveMatVerts("Eyebrow")
-    RemoveMatVerts("Eyelash")
+    #Cleanup_RemoveMaterial("Cornea")
+    #Cleanup_RemoveMaterial("Sclera")
+    Cleanup_RemoveMaterial("EyeSurface")
+    #Cleanup_RemoveMaterial("Iris")
+    #Cleanup_RemoveMaterial("Pupil")
+    Cleanup_RemoveMaterial("Lacrimal")
+    Cleanup_RemoveMaterial("Tear")
+    Cleanup_RemoveMaterial("EyeSocket")
+    Cleanup_RemoveMaterial("Eyebrow")
+    Cleanup_RemoveMaterial("Eyelash")
 
     
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    CProp-based properties
 #---------------------------------------------------------------------------    
 
-def CProp_PropGet(sNameObject, sNameProp):
-    if sNameObject not in bpy.data.objects:
-        return G.DumpStr("ERROR: CProp_PropGet('{}', '{}') cannot find object {}".format(sNameObject, sNameProp, sNameObject))
-    oObject = bpy.data.objects[sNameObject]
-    return oObject.get(sNameProp)
-
-def CProp_PropSet(sNameObject, sNameProp, oValue):
-    if sNameObject not in bpy.data.objects:
-        return G.DumpStr("ERROR: CProp_PropSet('{}', '{}', {}) cannot find object {}".format(sNameObject, sNameProp, oValue, sNameObject))
-    oObject = bpy.data.objects[sNameObject]
-    oObject[sNameProp] = oValue
-    return "OK"
+# def CProp_PropGet(sNameObject, sNameProp):
+#     if sNameObject not in bpy.data.objects:
+#         return G.DumpStr("ERROR: CProp_PropGet('{}', '{}') cannot find object {}".format(sNameObject, sNameProp, sNameObject))
+#     oObject = bpy.data.objects[sNameObject]
+#     return oObject.get(sNameProp)
+# 
+# def CProp_PropSet(sNameObject, sNameProp, oValue):
+#     if sNameObject not in bpy.data.objects:
+#         return G.DumpStr("ERROR: CProp_PropSet('{}', '{}', {}) cannot find object {}".format(sNameObject, sNameProp, oValue, sNameObject))
+#     oObject = bpy.data.objects[sNameObject]
+#     oObject[sNameProp] = oValue
+#     return "OK"
     
     
 #---------------------------------------------------------------------------    
@@ -896,13 +855,13 @@ def CProp_PropSet(sNameObject, sNameProp, oValue):
 
 
 def CMorphChannel_GetMorphVerts(sNameMesh, sNameShapeKey):  # Called by CBMeshMorph to get the morphed verts on a given shape key and a given mesh.  Used to morph non-skinned meshes at runtime such as face eyelids and mouth open/close
-    oMeshO = gBlender.SelectAndActivate(sNameMesh)
+    oMeshO = SelectAndActivate(sNameMesh)
 
     #=== Find requested shape key to obtain morph data ===
     if sNameShapeKey in oMeshO.data.shape_keys.key_blocks:  ###NOTROBUST
         oMeshO.active_shape_key_index = oMeshO.data.shape_keys.key_blocks.find(sNameShapeKey)  ###LEARN: How to find a key's index in a collection!
     else:
-        return G.DumpStr("ERROR: CMorphChannel_GetMorphVerts() cannot find shape key " + sNameShapeKey);
+        return G.DumpStr("ERROR: CMorphChannel_GetMorphVerts() cannot find shape key " + sNameShapeKey)
 
     #=== Obtain access to shape key vert data ===        
     aKeys = oMeshO.data.shape_keys.key_blocks
@@ -919,18 +878,22 @@ def CMorphChannel_GetMorphVerts(sNameMesh, sNameShapeKey):  # Called by CBMeshMo
         if vecVert != vecVertKey:
             vecVertDelta = vecVertKey - vecVert
             # print("{}  #{} = {}".format(nMorphedVerts, oVert.index, vecVertDelta))
-            oBA += struct.pack('i', oVert.index);
-            gBlender.Stream_SendVector(oBA, vecVertDelta)
+            oBA += struct.pack('i', oVert.index)
+            Stream_SendVector(oBA, vecVertDelta)
             nMorphedVerts += 1
 
-    return oBA;
+    return oBA
     
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    TESTS
 #---------------------------------------------------------------------------    
 
+oObjectMeshShapeKeys = None
+
 def Test():
     bpy.ops.mesh.primitive_cube_add()
+    return "OK"
+    
     
 
 
@@ -942,3 +905,39 @@ def Test():
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    ####MOVE
 #---------------------------------------------------------------------------    
+
+
+
+
+
+
+
+
+
+###JUNK
+
+#---------------------------------------------------------------------------    
+#---------------------------------------------------------------------------    HEAD PROCESSING
+#---------------------------------------------------------------------------    
+# def IsolateHead():  ###OBS? # DAZ cannot export only the head if we select the 17K level of detail mesh.  We remove materials and faces we don't need here to leave only the head    
+#     Cleanup_RemoveMaterial("Neck")
+#     Cleanup_RemoveMaterial("Torso")
+#     Cleanup_RemoveMaterial("Nipple")
+#     Cleanup_RemoveMaterial("Hip")
+#     Cleanup_RemoveMaterial("Arm")
+#     Cleanup_RemoveMaterial("Foot")
+#     Cleanup_RemoveMaterial("Forearm")
+#     Cleanup_RemoveMaterial("Hand")
+#     Cleanup_RemoveMaterial("Leg")
+#     Cleanup_RemoveMaterial("Fingernail")
+#     Cleanup_RemoveMaterial("Toenail")
+#     Cleanup_RemoveMaterial("Cornea")
+#     Cleanup_RemoveMaterial("Sclera")
+#     Cleanup_RemoveMaterial("EyeSurface")
+#     Cleanup_RemoveMaterial("Iris")
+#     Cleanup_RemoveMaterial("Pupil")
+#     Cleanup_RemoveMaterial("Lacrimal")
+#     Cleanup_RemoveMaterial("Tear")
+#     Cleanup_RemoveMaterial("EyeSocket")
+#     Cleanup_RemoveMaterial("Eyebrow")
+    

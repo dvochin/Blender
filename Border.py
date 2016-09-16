@@ -4,7 +4,7 @@ import bmesh
 from math import *
 from mathutils import *
 
-import gBlender
+from gBlender import *
 import G
 
 G.C_BorderLenIntoVertGrpWeightRatio = 10.0        # Real-world distances are divided by this ratio to store border distances into vert groups for border-lenght storage
@@ -37,7 +37,7 @@ def Border_Create(oMeshO, oCurveO, nBorderWidth, nBorderHeight, nBorderRound, nT
             sCutName += C_SymmetrySuffixNames[nSymmetryRun]
         print("\n=== Border_Create() Generating cloth border '{}' for mesh '{}' ===".format(sCutName, oMeshO.name))
     
-        oVertGroup_Border = gBlender.Util_SelectVertGroupVerts(oMeshO, G.C_VertGrp_Border + sCutName)
+        oVertGroup_Border = Util_SelectVertGroupVerts(oMeshO, G.C_VertGrp_Border + sCutName)
         Border_Smooth()                                     # This mesh comes straight from cloth simulation.  Perform heavy smoothing of the border so that extrusions are not all over the place...
     
         #=== Extrude the border's edge without moving it and remove these new verts from the border vertex group ===    

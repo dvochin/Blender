@@ -1,8 +1,8 @@
 #     def SerializeCollection_aShapeVerts(self):
-#         return gBlender.Stream_SerializeCollection(self.aShapeVerts)
+#         return Stream_SerializeCollection(self.aShapeVerts)
 #     
 #     def SerializeCollection_aShapeParticleIndices(self):
-#         return gBlender.Stream_SerializeCollection(self.aShapeParticleIndices)
+#         return Stream_SerializeCollection(self.aShapeParticleIndices)
 #             
 #     def SerializeCollection_aShapeParticleCutoffs(self):
-#         return gBlender.Stream_SerializeCollection(self.aShapeParticleCutoffs)
+#         return Stream_SerializeCollection(self.aShapeParticleCutoffs)

@@ -5,7 +5,7 @@ from math import *
 from mathutils import *
 import struct
 
-import gBlender
+from gBlender import *
 import G
 import Client
 
@@ -68,7 +68,7 @@ class CCurve:
         
         self.oCurveSource = bpy.data.objects[sType]     # Obtain reference to the root object containing the recipe this curve is based on
 
-        gBlender.DeleteObject(self.sName)       ###LEARN: Previous caused bad blender crash with old bp        # The above caused that bad Blender C++ crash with the 'Gives UnicodeDecodeError: 'utf-8' codec can't decode byte 0xdd in position 0' error
+        DeleteObject(self.sName)       ###LEARN: Previous caused bad blender crash with old bp        # The above caused that bad Blender C++ crash with the 'Gives UnicodeDecodeError: 'utf-8' codec can't decode byte 0xdd in position 0' error
         bpy.ops.curve.primitive_bezier_curve_add()
         self.oCurveO = bpy.context.object
         self.oCurveO.parent = bpy.data.objects[G.C_NodeName_Curve]
@@ -83,8 +83,8 @@ class CCurve:
         self.oSpline.resolution_u = 24                      ###TODO!!!   # At this point we have a bezier curve with one spline containing two control points
 
         #=== Hide our yet-unformed curve and delete previous iteration of cutter plane ===
-        gBlender.Util_HideMesh(self.oCurveO)
-        gBlender.DeleteObject(self.oCurveO.name + G.C_NameSuffix_CutterPlane)
+        Util_HideMesh(self.oCurveO)
+        DeleteObject(self.oCurveO.name + G.C_NameSuffix_CutterPlane)
 
 
     def UpdateCutterCurve(self):
@@ -124,14 +124,14 @@ class CCurve:
         bpy.context.scene.cursor_location = Vector((0,0,0))     # All dependant code requires cursor to be at origin!
 
         #=== Create a duplicate of the user's curve and set its parent for cleaner node structure ===
-        self.oCutterO = gBlender.DuplicateAsSingleton(self.oCurveO.name, self.oCurveO.name + "-" + G.C_NodeName_Cutter, G.C_NodeFolder_Game, True)
+        self.oCutterO = DuplicateAsSingleton(self.oCurveO.name, self.oCurveO.name + "-" + G.C_NodeName_Cutter, G.C_NodeFolder_Game, True)
         self.oCutterO.parent = bpy.data.objects[G.C_NodeName_Cutter]           ###SOON: Curve quality!
     
         #=== Convert the spline curve to a mesh to 'bake' the few bezier points into a fanned-out version and 'shrinkwrap' to the basis mesh to get much closer to mesh surface than the user's curve === 
         bpy.ops.object.convert(target='MESH')            
         oModShrinkwrap = self.oCutterO.modifiers.new('SHRINKWRAP', 'SHRINKWRAP')
         oModShrinkwrap.target = self.oCloth.oMeshClothSource.oMeshO
-        gBlender.AssertFinished(bpy.ops.object.modifier_apply(modifier=oModShrinkwrap.name))
+        AssertFinished(bpy.ops.object.modifier_apply(modifier=oModShrinkwrap.name))
     
         #=== Convert back to a curve so that we can easily display a solid curve by adding a bevel object ===        
         bpy.ops.object.convert(target='CURVE')           # Re-convert to spline now that we have a 'baked' representation with about a hundred vertices.
@@ -142,16 +142,16 @@ class CCurve:
         self.oCutterO.data.resolution_u = 1
           
 #         #=== Create the 'CutterAsMesh' version rendered in Unity to represent our cutter curve ===
-#         self.oCutterAsMeshO = gBlender.DuplicateAsSingleton(self.oCutterO.name, self.oCutterO.name + "-CutterAsMesh", None, False)        ###DESIGN: Hide source a pain...
+#         self.oCutterAsMeshO = DuplicateAsSingleton(self.oCutterO.name, self.oCutterO.name + "-CutterAsMesh", None, False)        ###DESIGN: Hide source a pain...
 #         self.oCutterAsMeshO.parent = bpy.data.objects["CutterAsMesh"]
 #         self.oCutterAsMeshO.data.bevel_object = bpy.data.objects[G.C_NodeName_CurveBevelShape]
 #         bpy.ops.object.convert()                # Convert to mesh
 # 
 #         #=== Add a mirror modifier to the cutter mesh whether the curve is symmetrical or not so user sees cuts for both sides of the body ===
 #         if (self.bAboutBodyCenter == False):         ###DEVNOW!!!  Mirror all fucked up!
-#             oModMirrorX = gBlender.Util_CreateMirrorModifierX(self.oCutterAsMeshO)
-#             gBlender.AssertFinished(bpy.ops.object.modifier_apply(modifier=oModMirrorX.name))        
-#         gBlender.Util_ConvertToTriangles()      # Convert to triangles Client needs
+#             oModMirrorX = Util_CreateMirrorModifierX(self.oCutterAsMeshO)
+#             AssertFinished(bpy.ops.object.modifier_apply(modifier=oModMirrorX.name))        
+#         Util_ConvertToTriangles()      # Convert to triangles Client needs
         
    
 
@@ -205,7 +205,7 @@ class CCurve:
     
             #=== Create a temporary duplicate of the 'presentation curve' and remove its spline bevel so it becomes a usable flat curve again ===
             ###DEVF: Need to delete first??
-            oCutterBooleanO = gBlender.DuplicateAsSingleton(oCurveO.name, oCurveO.name + G.C_NameSuffix_CutterPlane, None, False)
+            oCutterBooleanO = DuplicateAsSingleton(oCurveO.name, oCurveO.name + G.C_NameSuffix_CutterPlane, None, False)
             oCutterBooleanO.parent = bpy.data.objects["CutterPlanes"]        ###WEAK
             oCutterBooleanO.data.bevel_object = None            # Remove the bevel object of the spline that was used to render with 'thickness' where the cut is to occur
             oCutterBooleanO.draw_type = "WIRE"
@@ -217,8 +217,8 @@ class CCurve:
                     oCutterBooleanO.modifiers.remove(oCutterBooleanO.modifiers[0])
 
             #=== Set the cutter's origin to the user-supplied center point and resize all border points so that all points of the curve are outside the mesh to be cut ===
-            aContextOverride = gBlender.AssembleOverrideContextForView3dOps()    ###IMPORTANT; For view3d settings to be active when this script code is called from the context of Client we *must* override the context to the one interactive Blender user uses.
-            gBlender.SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', False)
+            aContextOverride = AssembleOverrideContextForView3dOps()    ###IMPORTANT: For view3d settings to be active when this script code is called from the context of Client we *must* override the context to the one interactive Blender user uses.
+            SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', False)
             bpy.context.scene.cursor_location = vecCurveCenter      # Now set the fit curve origin to the user-supplied center for this user curve.  (This will therefore set the normals of each vertex on the curve to go from origin to each vertex = perfect for us to project out of cloth with shrink/fatten
             bpy.ops.object.mode_set(mode='EDIT')
             bpy.ops.curve.select_all(action='SELECT')
@@ -261,7 +261,7 @@ class CCurve:
             
     
             #=== Create a boolean modifier and apply it to remove the extra bit beyond the current cutter ===
-            gBlender.SelectAndActivate(oMeshO.name)
+            SelectAndActivate(oMeshO.name)
             oModBoolean = oMeshO.modifiers.new('BOOLEAN', 'BOOLEAN')
             oModBoolean.object = oCutterBooleanO
             if (bInvertCut):
@@ -269,7 +269,7 @@ class CCurve:
             else:
                 oModBoolean.operation = 'DIFFERENCE'            ###LEARN: Difference is the one we always want when cutting as the others appear useless!  Note that this is totally influenced by side of cutter normals!!
             #self.HALT
-            gBlender.AssertFinished(bpy.ops.object.modifier_apply(modifier=oModBoolean.name))  ###LEARN: Have to specify 'modifier' or this won't work!
+            AssertFinished(bpy.ops.object.modifier_apply(modifier=oModBoolean.name))  ###LEARN: Have to specify 'modifier' or this won't work!
             oCutterBooleanO.scale.x *= -1                            # Revert the cutter back to non-inverted if inverted for 2nd 'symmetry' run above
             
             #=== Boolean cut basically destroyed all info such as vert groups, vertID, vert and edge data... anything we could use to store what verts were assigned to each border ===
@@ -287,7 +287,7 @@ class CCurve:
             #print("-Cut: Locator Vert for border {} at {} and index {}".format(oCurveO.name, oVertLocatorOnBorder.co, oVertLocatorOnBorder.index))
             aBorderLocatorVertPos[sCutName] = oVertLocatorOnBorder.co.copy()    # Store for this border the 3D coordinates of this 'border locator vert' so we can reconstruct what verts form each border after all destructive boolean ops have occured.
 
-            gBlender.Util_HideMesh(oCutterBooleanO)
+            Util_HideMesh(oCutterBooleanO)
             
         #=== Boolean cut leaves quads and ngons on the border and triangles give us more control on what to delete -> Triangulate before border cleanup ===
         bpy.ops.mesh.select_all(action='SELECT')
@@ -296,7 +296,7 @@ class CCurve:
         bpy.ops.object.mode_set(mode='OBJECT')
 
         #=== Hide back internal objects to avoid cluttering display ===
-        gBlender.Util_HideMesh(self.oCutterO)
+        Util_HideMesh(self.oCutterO)
 
 
     def InvertNormals(self):
@@ -324,11 +324,11 @@ class CCurve:
 #         return "ERROR: gBL_Curve_GetCutterAsMesh() could not find curve object '{}' from request '{}'".format(sNameCurve, sNameCutterAsMesh)
 # 
 #     gBL_Curve_Rebuild(sNameCurve)              # Rebuild the curve and cutter so we can convert the cutter to a mesh and send to client.         
-#     oCutterAsMeshO = gBlender.DuplicateAsSingleton(sNameCutter, sNameCutterAsMesh, G.C_NodeFolder_Game, False)        ###DESIGN: Hide source a pain...
+#     oCutterAsMeshO = DuplicateAsSingleton(sNameCutter, sNameCutterAsMesh, G.C_NodeFolder_Game, False)        ###DESIGN: Hide source a pain...
 #     bpy.ops.object.convert()                # Convert to mesh
 #     oCutterAsMeshO.data.name = oCutterAsMeshO.name    # Set the name of the just-created mesh to the name of the object.
 #     oCutterAsMeshO.parent = bpy.data.objects[G.C_NamePrefix_CutterAsMesh]     # Set parent to its utility node folder to get it out of the way and to facilitate mass cleanup
-#     gBlender.Util_ConvertToTriangles()      # Convert to triangles Client needs
+#     Util_ConvertToTriangles()      # Convert to triangles Client needs
 #     return Client.gBL_GetMesh(oCutterAsMeshO.name)
 
 

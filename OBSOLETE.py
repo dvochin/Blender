@@ -13,7 +13,7 @@
 #     #=== Move the collider verts temporarily so proximity search won't find the same verts ===
 #     for nVertCldr in aVertsCldrI:
 #         oVert = oMeshBreastO.data.vertices[nVertCldr]
-#         oVert.co.x += 1.0;
+#         oVert.co.x += 1.0
 # 
 #     bpy.ops.object.mode_set(mode='EDIT')                    ###LEARN: For some weird reason the vert push we just did doesn't 'take' unless we enter & exit edit mode!!
 #     bpy.ops.object.mode_set(mode='OBJECT')
@@ -26,7 +26,7 @@
 #         oVert = oMeshBreastO.data.vertices[nVertCldr]
 #         vecVert = oVert.co.copy()
 #         vecVert.x -= 1.0                   # Remove the temp offset we applied in above loop
-#         nVertClosest, nDistMin, vecVertClosest = gBlender.Util_FindClosestVert(oMeshBreastO, vecVert, .000001)
+#         nVertClosest, nDistMin, vecVertClosest = Util_FindClosestVert(oMeshBreastO, vecVert, .000001)
 #         aMapBreastVertToColVerts_Cldr  .append(nVertCldr)
 #         aMapBreastVertToColVerts_Breast.append(nVertClosest)
 #         print("%3d -> %5d  %6.3f,%6.3f,%6.3f  ->  %6.3f,%6.3f,%6.3f = %6.4f" % (nVertCldr, nVertClosest, vecVert.x, vecVert.y, vecVert.z, vecVertClosest.x, vecVertClosest.y, vecVertClosest.z, nDistMin))
@@ -35,7 +35,7 @@
 #     #=== Return the collider verts to their original positions ===
 #     for nVertCldr in aVertsCldrI:
 #         oVert = oMeshBreastO.data.vertices[nVertCldr]
-#         oVert.co.x -= 1.0;
+#         oVert.co.x -= 1.0
 # 
 #     bpy.ops.object.mode_set(mode='EDIT')                    ###LEARN: For some weird reason the vert push we just did doesn't 'take' unless we enter & exit edit mode!!
 #     bpy.ops.mesh.select_all(action='DESELECT')
@@ -56,9 +56,9 @@
 #     for oVertGrp in oMeshO.vertex_groups:
 #         if oVertGrp.name.startswith(G.C_VertGrp_Morph):
 #             sNameMorph = oVertGrp.name[len(G.C_VertGrp_Morph):] 
-#             gBlender.Stream_SendStringPascal(oBA, sNameMorph)
+#             Stream_SendStringPascal(oBA, sNameMorph)
 #             #=== Calculate the center of this vertex group by iterating over its vertices ===
-#             vecCenter = Vector();
+#             vecCenter = Vector()
 #             nVertsInMorphGroup = 0
 #             for oVert in bm.verts:
 #                 if oVertGrp.index in oVert[oLayVertGrps]:
@@ -66,7 +66,7 @@
 #                     nVertsInMorphGroup += 1
 #             vecCenter /= nVertsInMorphGroup
 #             #print("-Morph '{}' at {}".format(sNameMorph, vecCenter))
-#             gBlender.Stream_SendVector(oBA, G.VectorB2C(vecCenter))            # We send Blender 3D coord to Client so we must convert space
+#             Stream_SendVector(oBA, G.VectorB2C(vecCenter))            # We send Blender 3D coord to Client so we must convert space
 #     return oBA              # Return raw byte array back to client so it can deserialize our binary message
 
 

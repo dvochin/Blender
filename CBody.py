@@ -62,7 +62,7 @@ from math import *
 from mathutils import *
 from bpy.props import *
 
-import gBlender
+from gBlender import *
 import SourceReloader
 import G
 import CSoftBody
@@ -71,7 +71,7 @@ import CCloth
 import CMesh
 import Client
 import CFlexSkin
-
+import CObject
 
 
 
@@ -94,7 +94,7 @@ class CBody:
         self.oMeshAssembled     = None                      # The 'assembled mesh'.  Fully assembled with proper genitals.  Basis of oMeshMorph                  
         self.oMeshMorph         = None                      # The 'morphing mesh'.   Orinally copied from oMeshAssembled and morphed to the user's preference.  Basis of oMeshBody
         self.oMeshBody          = None                      # The 'body' skinned mesh.   Orinally copied from oMeshMorph.  Has softbody parts (like breasts and penis) removed. 
-        self.oMeshFace          = None                      # The 'face mesh'  Simply referenced here to service Unity's request for it  
+        ####self.oMeshFace          = None                      # The 'face mesh'  Simply referenced here to service Unity's request for it  
         self.oMeshSrcBreast     = None                      # Our copy of source separated breast.  Used for breast morphs
 
         self.aSoftBodies        = {}                        # Dictionary of CSoftBody objects representing softbody-simulated meshes.  (Contains items such as "BreastL", "BreastR", "Penis", to point to the object responsible for their meshes)
@@ -106,12 +106,12 @@ class CBody:
         
         print("\n=== CBody()  nBodyID:{}  sMeshPrefix:'{}'  sMeshSource:'{}'  sSex:'{}'  sGenitals:'{}' ===".format(self.nBodyID, self.sMeshPrefix, self.sMeshSource, self.sSex, self.sGenitals))
     
-  
+    
         self.oMeshSource = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource,            bpy.data.objects[self.sMeshSource])            ###DEV: Special ctor??
-        self.oMeshFace   = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource + "-Face",  bpy.data.objects[self.sMeshSource + "-Face"])
+        ###BROKENN self.oMeshFace   = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource + "-Face",  bpy.data.objects[self.sMeshSource + "-Face"])
 
         ###HACK!!!!!!        
-        self.oMeshFlexCldr = CMesh.CMesh.CreateFromExistingObject("WomanA-FlexCollider-020",  bpy.data.objects["WomanA-FlexCollider-020"])      ###DEVF        #self.oFlexCloth = CMesh.CMesh.CreateFromExistingObject("BodySuit",  bpy.data.objects["BodySuit"])      ###DEVF
+        ###BROKENN self.oMeshFlexCldr = CMesh.CMesh.CreateFromExistingObject("WomanA-FlexCollider-020",  bpy.data.objects["WomanA-FlexCollider-020"])      ###DEVF        #self.oFlexCloth = CMesh.CMesh.CreateFromExistingObject("BodySuit",  bpy.data.objects["BodySuit"])      ###DEVF
 
     
         #=== Duplicate the source body (kept in the most pristine condition possible) as the assembled body. Delete unwanted parts and attach the user-specified genital mesh instead ===
@@ -125,7 +125,7 @@ class CBody:
             sNameVertGroupToCutout = "_Cutout_Penis"
         if sNameVertGroupToCutout is not None:
             bpy.ops.object.mode_set(mode='EDIT')
-            gBlender.Util_SelectVertGroupVerts(self.oMeshAssembled.oMeshO, sNameVertGroupToCutout)     # This vert group holds the verts that are to be soft-body simulated...
+            Util_SelectVertGroupVerts(self.oMeshAssembled.oMeshO, sNameVertGroupToCutout)     # This vert group holds the verts that are to be soft-body simulated...
             bpy.ops.mesh.delete(type='FACE')                    # ... and delete the mesh part we didn't want copied to output body
             bpy.ops.object.mode_set(mode='OBJECT')
     
@@ -137,7 +137,7 @@ class CBody:
             bpy.ops.object.shade_smooth()  ###IMPROVE: Fix the diffuse_intensity to 100 and the specular_intensity to 0 so in Blender the genital texture blends in with all our other textures at these settings
          
             #=== Transfer weight from body to add-on genitals ===
-            gBlender.Util_TransferWeights(oMeshGenitals.oMeshO, self.oMeshSource.oMeshO)      #bpy.ops.object.vertex_group_transfer_weight()
+            Util_TransferWeights(oMeshGenitals.oMeshO, self.oMeshSource.oMeshO)      #bpy.ops.object.vertex_group_transfer_weight()
          
             #=== Join the genitals  with the output main body mesh and weld vertices together to form a truly contiguous mesh that will be lated separated by later segments of code into various 'detachable parts' ===           
             self.oMeshAssembled.oMeshO.select = True
@@ -150,23 +150,23 @@ class CBody:
             bpy.ops.object.mode_set(mode='OBJECT')
 
         ####LEARN: Screws up ConvertMesh royally!  self.oMeshAssembled.data.uv_textures.active_index = 1       # Join call above selects the uv texture of the genitals leaving most of the body untextured.  Revert to full body texture!   ###IMPROVE: Can merge genitals texture into body's??
-        ###gBlender.Util_SelectVertGroupVerts(self.oMeshAssembled.oMeshO, sNameVertGroupToCutout)  # Reselect the just-removed genitals area from the original body, as the faces have just been removed this will therefore only select the rim of vertices where the new genitals are inserted (so that we may remove_doubles to merge only it)
+        ###Util_SelectVertGroupVerts(self.oMeshAssembled.oMeshO, sNameVertGroupToCutout)  # Reselect the just-removed genitals area from the original body, as the faces have just been removed this will therefore only select the rim of vertices where the new genitals are inserted (so that we may remove_doubles to merge only it)
         #bpy.ops.mesh.remove_doubles(threshold=0.000001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###LEARN: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
 
         #=== Create the custom data layer storing assembly vert index.  Enables traversal from Assembly / Morph meshes to Softbody parts 
-        gBlender.DataLayer_CreateVertIndex(self.oMeshAssembled.GetName(), G.C_DataLayer_VertsAssy)
+        DataLayer_CreateVertIndex(self.oMeshAssembled.GetName(), G.C_DataLayer_VertsAssy)
         
         #=== Prepare a ready-for-morphing body for Unity.  Also create the 'body' mesh that will have parts detached from it where softbodies are ===
         self.oMeshMorph = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + 'Morph', self.oMeshAssembled)   
 
         #=== Create map of source verts to morph verts ===  (Enables some morphs such as Breast morphs to be applied to morphing mesh)
-        bmMorph = self.oMeshMorph.Open();
+        bmMorph = self.oMeshMorph.Open()
         oLayVertsSrc = bmMorph.verts.layers.int[G.C_DataLayer_VertsSrc]
         for oVert in bmMorph.verts:
             if (oVert[oLayVertsSrc] >= G.C_OffsetVertIDs):
                 nVertOrig = oVert[oLayVertsSrc] - G.C_OffsetVertIDs        # Remove the offset pushed in during creation
                 self.aMapVertsSrcToMorph[nVertOrig] = oVert.index       
-        self.oMeshMorph.Close();
+        self.oMeshMorph.Close()
 
         #=== Create our own local copy of the breast mesh for breast morphs ===
         if (sSex != "Man"):
@@ -179,6 +179,7 @@ class CBody:
         self.Breasts_ApplyMorph('RESIZE', 'Nipple', 'Center', 'Wide', (nSize,nSize,nSize,0), None)     ###NOW###  ###HACK!
 
         self.oMeshBody  = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + 'Body' , self.oMeshMorph)  ###CHECK!! ###DESIGN???   
+
 
 
     def CreateSoftBody(self, sSoftBodyPart, nSoftBodyFlexColliderShrinkRatio):
@@ -202,7 +203,7 @@ class CBody:
     def Morph_UpdateDependentMeshes(self):
         "Update all the softbodies connected to this body.  Needed after an operation on self.oMeshMorph"
         for oSoftBody in self.aSoftBodies.values():
-            oSoftBody.Morph_UpdateDependentMeshes();
+            oSoftBody.Morph_UpdateDependentMeshes()
    
    
     
@@ -239,7 +240,7 @@ class CBody:
         if sBreastMorphPivotPt not in bpy.data.objects:
             return "ERROR: Could not find BreastMorphPivotPt = " + sBreastMorphPivotPt 
         oBreastMorphPivotPt = bpy.data.objects[sBreastMorphPivotPt] 
-        gBlender.SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', False)
+        SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', False)
         bpy.context.scene.cursor_location = oBreastMorphPivotPt.location
     
         if sOpRange == "Wide":          ###TUNE
@@ -262,7 +263,7 @@ class CBody:
         bpy.ops.object.vertex_group_select()
     
         ###NOTE: Important coordinate conversion done in Client on a case-by-case for move/rotate/scale...  (Coordinates we receive here a purely Blender global with our z-up)  
-        aContextOverride = gBlender.AssembleOverrideContextForView3dOps()    ###IMPORTANT; For view3d settings to be active when this script code is called from the context of Client we *must* override the context to the one interactive Blender user uses.
+        aContextOverride = AssembleOverrideContextForView3dOps()    ###IMPORTANT: For view3d settings to be active when this script code is called from the context of Client we *must* override the context to the one interactive Blender user uses.
         if sOpMode == 'ROTATION':
             aResult = bpy.ops.transform.rotate(aContextOverride, value=vecOpValue, axis=vecOpAxis, proportional='ENABLED', proportional_size=nOpSize, proportional_edit_falloff='SMOOTH')  ###SOON?: Why only x works and bad axis??
         else:        
@@ -290,7 +291,7 @@ class CBody:
         aVertsBodyMorph = self.oMeshMorph.oMeshO.data.vertices
     
         #=== 'Bake' all the shape keys in their current position into one and extract its verts ===
-        gBlender.SelectAndActivate(self.oMeshSrcBreast.GetName())
+        SelectAndActivate(self.oMeshSrcBreast.GetName())
         aKeys = self.oMeshSrcBreast.oMeshO.data.shape_keys.key_blocks
         bpy.ops.object.shape_key_add(from_mix=True)         ###LEARN: How to 'bake' the current shape key mix into one.  (We delete it at end of this function)
         nKeys = len(aKeys)
@@ -330,7 +331,7 @@ class CBody:
     
         sNameSlaveMeshSlave = self.sMeshSource + "-" + sTypeOfSlaveMesh + "-Slave"          ###IMPROVE: Create a function that assembles this name!
     
-        oMeshSlaveO = gBlender.SelectAndActivate(sNameSlaveMeshSlave)
+        oMeshSlaveO = SelectAndActivate(sNameSlaveMeshSlave)
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action='DESELECT')
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
@@ -348,14 +349,14 @@ class CBody:
     
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
-        gBlender.Util_HideMesh(oMeshSlaveO)
+        Util_HideMesh(oMeshSlaveO)
     
         return ""
 
     ###DEV
 #     def SlaveMesh_GetVertMapSlaveToMaster(self, sNameMeshSlave):    # Return the map of vert-to-vert to Unity so it can restore slave-mesh verts to position of master-mesh verts.  SlaveMesh_DefineMasterSlaveRelationship() must have been called before this function
 #         #=== Open the mesh and obtain BMesh and previously-constructed map in custom properties ===
-#         oMeshSlaveO = gBlender.SelectAndActivate(sNameMeshSlave)
+#         oMeshSlaveO = SelectAndActivate(sNameMeshSlave)
 #         bpy.ops.object.mode_set(mode='EDIT')
 #         bpy.ops.mesh.select_all(action='DESELECT')
 #         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
@@ -373,8 +374,8 @@ class CBody:
 #      
 #         #=== Send outgoing map back to Unity so it can set slave mesh to master mesh at gametime ===
 #         oBA = bytearray()
-#         gBlender.Stream_SerializeArray(oBA, aMapSlaveMeshSlaveToMaster.tobytes())
-#         oBA += Client.Stream_GetEndMagicNo();
+#         Stream_SerializeArray(oBA, aMapSlaveMeshSlaveToMaster.tobytes())
+#         oBA += Client.Stream_GetEndMagicNo()
 #         return oBA
 
     ###BROKEN: Related to vert traversal from source to morph body, or to destination softbody??
@@ -419,18 +420,18 @@ def SlaveMesh_DefineMasterSlaveRelationship(sNameBodySrc, sTypeOfSlaveMesh, nVer
     sNameSlaveMeshSlave  = sNameBodySrc + "-" + sTypeOfSlaveMesh + "-Slave"         # This is the mesh that will be compled to the master mesh so we can mo
     
     #=== Copy the source mesh to a new mesh that will represent both left & right side of the body ===
-    gBlender.DataLayer_RemoveLayers(sNameSlaveMeshSource)           # Design-time mesh should not have any layers.
-    oMeshO = gBlender.DuplicateAsSingleton(sNameSlaveMeshSource, sNameSlaveMeshSlave, None, True)       # Create the mirrored mesh.  This is the one that will store the SlaveMesh info and be used for processing
+    DataLayer_RemoveLayers(sNameSlaveMeshSource)           # Design-time mesh should not have any layers.
+    oMeshO = DuplicateAsSingleton(sNameSlaveMeshSource, sNameSlaveMeshSlave, None, True)       # Create the mirrored mesh.  This is the one that will store the SlaveMesh info and be used for processing
 
     #=== 'Mirror' the source mesh so it represents both the left and right side of the body.  (Source only has left) ===
     if (bMirror):
-        oModMirrorX = gBlender.Util_CreateMirrorModifierX(oMeshO)
-        gBlender.AssertFinished(bpy.ops.object.modifier_apply(modifier=oModMirrorX.name))
+        oModMirrorX = Util_CreateMirrorModifierX(oMeshO)
+        AssertFinished(bpy.ops.object.modifier_apply(modifier=oModMirrorX.name))
     
     #=== Create mirrored mesh copy and fetch bmesh for editing ===
-    oMeshCopyO   = gBlender.DuplicateAsSingleton(sNameSlaveMeshSlave, sNameSlaveMeshSlave + "_TEMPCOPY_SlaveMesh", G.C_NodeFolder_Temp, False)       # Create a temporary copy of mesh to be slaved so we can edit as we go
-    oMeshMasterO = gBlender.SelectAndActivate(sNameBodySrc)
-    oMeshSlaveO  = gBlender.SelectAndActivate(sNameSlaveMeshSlave)
+    oMeshCopyO   = DuplicateAsSingleton(sNameSlaveMeshSlave, sNameSlaveMeshSlave + "_TEMPCOPY_SlaveMesh", G.C_NodeFolder_Temp, False)       # Create a temporary copy of mesh to be slaved so we can edit as we go
+    oMeshMasterO = SelectAndActivate(sNameBodySrc)
+    oMeshSlaveO  = SelectAndActivate(sNameSlaveMeshSlave)
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='DESELECT')
     bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
@@ -446,7 +447,7 @@ def SlaveMesh_DefineMasterSlaveRelationship(sNameBodySrc, sTypeOfSlaveMesh, nVer
     for oVert in oMeshCopyO.data.vertices:                              # We iterate through copy mesh because Util_FindClosestVert() below must operate in object mode and we need to store info in the source mesh
         nVert = oVert.index
         vecVert = oVert.co.copy()
-        nVertClosest, nDistMin, vecVertClosest = gBlender.Util_FindClosestVert(oMeshMasterO, vecVert, nVertTolerance)
+        nVertClosest, nDistMin, vecVertClosest = Util_FindClosestVert(oMeshMasterO, vecVert, nVertTolerance)
         if nVertClosest != -1:
             #print("%3d -> %5d  %6.3f,%6.3f,%6.3f  ->  %6.3f,%6.3f,%6.3f = %8.6f" % (nVert, nVertClosest, vecVert.x, vecVert.y, vecVert.z, vecVertClosest.x, vecVertClosest.y, vecVertClosest.z, nDistMin))
             oVertBM = bm.verts[nVert]                       # Obtain reference to our vert's through bmesh
@@ -457,17 +458,17 @@ def SlaveMesh_DefineMasterSlaveRelationship(sNameBodySrc, sTypeOfSlaveMesh, nVer
     
     #=== Close the mesh and delete copy ====
     bpy.ops.object.mode_set(mode='OBJECT')
-    gBlender.DeleteObject(oMeshCopyO.name)              # Delete the temporary mesh  ###PROBLEM!!! When Unity calls this DeleteObject destroys two meshes!!!
+    DeleteObject(oMeshCopyO.name)              # Delete the temporary mesh  ###PROBLEM!!! When Unity calls this DeleteObject destroys two meshes!!!
 
     #=== Skin the slave mesh to the original mesh if required ===    
     if (bSkin):         ###IMPROVE: Remove existing skin info?
-        oMeshSlaveO = gBlender.SelectAndActivate(sNameSlaveMeshSlave)
+        oMeshSlaveO = SelectAndActivate(sNameSlaveMeshSlave)
         oMeshSourceO = bpy.data.objects[sNameBodySrc]
-        gBlender.Util_HideMesh(oMeshSourceO)
-        gBlender.Util_TransferWeights(oMeshSlaveO, oMeshSourceO)      #bpy.ops.object.vertex_group_transfer_weight()
+        Util_HideMesh(oMeshSourceO)
+        Util_TransferWeights(oMeshSlaveO, oMeshSourceO)      #bpy.ops.object.vertex_group_transfer_weight()
     
     bpy.ops.object.select_all(action='DESELECT')
-    gBlender.Util_HideMesh(oMeshO)
+    Util_HideMesh(oMeshO)
 
 
 

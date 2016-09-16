@@ -16,7 +16,7 @@ from math import *
 from mathutils import *
 from bpy.props import *
 
-import gBlender
+from gBlender import *
 import SourceReloader
 import G
 
@@ -31,6 +31,7 @@ import Cut
 import Breasts
 import Penis
 import CMesh
+import BodyPrep
 # import CBBodyCol
 from operator import itemgetter
 
@@ -75,7 +76,7 @@ class gBL_reload_source_files(bpy.types.Operator):
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
         SourceReloader.ImportSource_ReloadFiles()
-        gBlender.gBL_Initialize()                            ###NOTE: Initialize normally called from OnLoad()  Manually call here to simulate load
+        gBL_Initialize()                            ###NOTE: Initialize normally called from OnLoad()  Manually call here to simulate load
         return {"FINISHED"}
 
 class gBL_remove_game_meshes(bpy.types.Operator):
@@ -84,11 +85,11 @@ class gBL_remove_game_meshes(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        gBlender.gBL_Util_RemoveGameMeshes()                ###BUG!!!: Must clear cached scene properties!
-        gBlender.Util_RemoveProperty(bpy.context.scene, 'A-sNameSrcBody')
-        gBlender.Util_RemoveProperty(bpy.context.scene, 'A-sNameSrcGenitals')
-        gBlender.Util_RemoveProperty(bpy.context.scene, 'B-sNameSrcBody')
-        gBlender.Util_RemoveProperty(bpy.context.scene, 'B-sNameSrcGenitals')
+        gBL_Util_RemoveGameMeshes()                ###BUG!!!: Must clear cached scene properties!
+        Util_RemoveProperty(bpy.context.scene, 'A-sNameSrcBody')
+        Util_RemoveProperty(bpy.context.scene, 'A-sNameSrcGenitals')
+        Util_RemoveProperty(bpy.context.scene, 'B-sNameSrcBody')
+        Util_RemoveProperty(bpy.context.scene, 'B-sNameSrcGenitals')
         return {"FINISHED"}
 
 class gBL_hide_game_meshes(bpy.types.Operator):
@@ -97,7 +98,7 @@ class gBL_hide_game_meshes(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        gBlender.gBL_Util_HideGameMeshes()        
+        gBL_Util_HideGameMeshes()        
         return {"FINISHED"}
 
 class gBL_temp1(bpy.types.Operator):
@@ -106,7 +107,8 @@ class gBL_temp1(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        gBlender.Body_InitialPrep("WomanA")
+        self.oObjectMeshShapeKeys = CObject.CObjectMeshShapeKeys("Body Mesh Shape Keys", bpy.data.objects["WomanA"])
+        #Body_InitialPrep("WomanA")
         return {"FINISHED"}
 
 class gBL_temp2(bpy.types.Operator):
@@ -162,20 +164,22 @@ class gBL_temp6(bpy.types.Operator):
 
 class gBL_temp7(bpy.types.Operator):
     bl_idname = "gbl.temp7"
-    bl_label = "7: ClothGame"
+    bl_label = "7: ImportFirst"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBody._aBodies[0].aCloths["MyShirt"].PrepareClothForGame()
+        #CBody._aBodies[0].aCloths["MyShirt"].PrepareClothForGame()
+        BodyPrep.FirstImport_ProcessRawDazImport("Genesis3Female", "WomanA")
         return {"FINISHED"}
 
 class SlaveMesh_DefineMasterSlaveRelationship(bpy.types.Operator):
     bl_idname = "gbl.temp8"
-    bl_label = "8: SlvCreate"
+    bl_label = "8: ImportShape"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BreastCol", 0.000001)
+        BodyPrep.ImportShape_AddImportedBodyToGameBody("Genesis3Female", "WomanA")
+        #CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BreastCol", 0.000001)
         return {"FINISHED"}
 
 class gBL_temp9(bpy.types.Operator):
@@ -193,7 +197,7 @@ class gBL_temp9(bpy.types.Operator):
         oMeshOrifice = CMesh.CMesh.CreateFromExistingObject("Test-Vagina-Start")     ###HACK!!!!!!
         bmOrifice = oMeshOrifice.Open()
 
-        gBlender.Util_SelectVertGroupVerts(oMeshOrifice.oMeshO, "Opening")
+        Util_SelectVertGroupVerts(oMeshOrifice.oMeshO, "Opening")
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
 
         aEdgesToDelete = []
@@ -324,7 +328,7 @@ bpy.utils.register_module(__name__)
 #     bl_options = {'REGISTER', 'UNDO'}
 #     def invoke(self, context, event):
 #         self.report({"INFO"}, "GBOP: " + self.bl_label)
-#         ###oMeshBodyO = gBlender.SelectAndActivate(G.C_NameBaseCharacter + G.C_NameSuffix_Morph)        ###IMPROVE?
+#         ###oMeshBodyO = SelectAndActivate(G.C_NameBaseCharacter + G.C_NameSuffix_Morph)        ###IMPROVE?
 #         ###Breasts.BodyInit_CreateCutoffBreastFromSourceBody(oMeshBodyO)
 #         return {"FINISHED"}
 # 
@@ -366,8 +370,8 @@ bpy.utils.register_module(__name__)
 
         #Penis.gBL_Penis_CalcColliders("PenisM-Erotic9-A-Big")
         #Client.CBMeshMorph_GetMorphVerts('Face', 'Face-MouthOpen')
-        #oMeshBodyO = gBlender.SelectAndActivate("BodyA_Detach_Breasts")
-        #oMeshBodyO = gBlender.SelectAndActivate("WomanA")
+        #oMeshBodyO = SelectAndActivate("BodyA_Detach_Breasts")
+        #oMeshBodyO = SelectAndActivate("WomanA")
         #oBody = CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big')
         #oBody = CBody(0, 'WomanA', 'Woman', 'Vagina-Erotic9-A', 5000)
 
@@ -386,7 +390,7 @@ bpy.utils.register_module(__name__)
         #CBBodyCol.CBSoftBreasts_GetColliderSourceMeshInfo("BodyA")
         #CBBodyCol.CBBodyCol_Generate("ManA", 1000)
         ##Client.gBL_Cloth_SplitIntoSkinnedAndSimulated("BodySuit-Top_ClothSimulated", "BodySuit-Top", "WomanA", "_ClothSkinnedArea_Top")
-        ##Client.Client_ConvertMesh(gBlender.SelectAndActivate("WomanA_Morph"), True)
+        ##Client.Client_ConvertMesh(SelectAndActivate("WomanA_Morph"), True)
         #CBBodyCol.SlaveMesh_SetupMasterSlave("BodyA-BreastCol-ToBreasts", "BodyA_Detach_Breasts", 0.000001)
         #Breasts.Breasts_ApplyMorph('WomanA', 'WomanA', 'RESIZE', 'Nipple', 'Center', 'Wide', (1.6,1.6,1.6,0), None)
 

@@ -391,7 +391,7 @@ def Util_RemoveProperty(o, sNameProp):		# Safely removes a property from an obje
 def Util_PrintMeshVerts(sDebugMsg, sNameMesh, sNameLayer=None):
 	print("\n=== PrintMeshVert for mesh '{}' and layer '{}' for '{}'".format(sNameMesh, sNameLayer, sDebugMsg))
 	oMeshO = SelectAndActivate(sNameMesh, True)
-	bm = bmesh.new();
+	bm = bmesh.new()
 	bm.from_mesh(oMeshO.data)
 	if (sNameLayer != None):
 		oLayer = bm.verts.layers.int[sNameLayer]
@@ -509,6 +509,27 @@ def Cleanup_RemoveMaterials(oMeshO):		# Remove all materials from mesh (to save 
 	while len(oMeshO.material_slots) > 0:
 		bpy.ops.object.material_slot_remove()
 	bpy.ops.object.material_slot_add()  	# Add a single default material (captures all the polygons of rim) so we can properly send the mesh over (crashes if zero material)
+
+def Cleanup_RemoveMaterial(oMeshO, sNameMaterialPrefix):		# Remove from oMeshO all material (and their associated verts) that starts with 'sNameMaterialPrefix'
+	for oMat in oMeshO.data.materials:
+		if oMat.name.startswith(sNameMaterialPrefix):
+			nMatIndex = oMeshO.data.materials.find(oMat.name)
+			oMeshO.active_material_index = nMatIndex 
+			bpy.ops.object.mode_set(mode='EDIT')
+			bpy.ops.mesh.select_all(action='DESELECT')
+			bpy.ops.object.material_slot_select()
+			bpy.ops.mesh.delete(type='FACE')
+			bpy.ops.object.mode_set(mode='OBJECT')
+			bpy.ops.object.material_slot_remove()
+
+
+def Cleanup_VertGrp_Remove(oMeshO, sNameVertGrp):			# Removes vertex group 'sNameVertGrp' from specified mesh.  Assumes mesh is selected and opened in edit mode
+	nVertGrpIndex = oMeshO.vertex_groups.find(sNameVertGrp)
+	if (nVertGrpIndex == -1):
+		return "ERROR: Cleanup_VertGrp_Remove() could not find vertex group '" + sNameVertGrp + "'"
+	oMeshO.vertex_groups.active_index = nVertGrpIndex
+	bpy.ops.object.vertex_group_remove()
+
 	
 
 #---------------------------------------------------------------------------	
@@ -590,7 +611,7 @@ def DataLayer_RemoveLayerInt(sNameObject, sNameLayer):
 # 		oLayer = bm.verts.layers.int[nLayer]
 # 		if (oLayer.name == sNameLayer):
 # 			bm.verts.layers.int.remove(oLayer)
-# 			return;
+# 			return
 	bpy.ops.object.mode_set(mode='OBJECT')
 
 def DataLayer_EnumerateInt_DEBUG(sNameObject, sMessage):
@@ -616,6 +637,7 @@ def DataLayer_CreateVertIndex(sNameMesh, sNameLayer):
 	for oVert in bm.verts:
 		oVert[oLayVertsSrc] = oVert.index + G.C_OffsetVertIDs          # We apply an offset so we can differentiate between newly added verts 
 	bpy.ops.object.mode_set(mode='OBJECT')
+
 
 #---------------------------------------------------------------------------	
 #---------------------------------------------------------------------------	####MOVE?

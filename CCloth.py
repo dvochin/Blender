@@ -7,7 +7,7 @@ from math import *
 from mathutils import *
 from bpy.props import *
 
-import gBlender
+from gBlender import *
 import G
 import CBody
 import CMesh
@@ -23,7 +23,7 @@ class CCloth:
         print("=== CCloth.ctor()  oBody = '{}'  sNameCloth = '{}'  sClothType = '{}'  sNameClothSrc = '{}'  sVertGrp_ClothSkinArea = '{}'  ===".format(oBody.sMeshPrefix, sNameCloth, sClothType, sNameClothSrc, sVertGrp_ClothSkinArea))
 
         self.oBody                  = oBody             # The back-reference to the owning body.
-        self.sNameCloth             = sNameCloth;       # The human-readable name of this cloth.  Is whatever Unity wants to set it.  Acts as key in owning CBody.aCloths[]
+        self.sNameCloth             = sNameCloth       # The human-readable name of this cloth.  Is whatever Unity wants to set it.  Acts as key in owning CBody.aCloths[]
         self.sClothType             = sClothType        # Is one of { 'Shirt', 'Underwear', etc } and determines the cloth collider mesh source.  Must match previously-defined meshes created for each body!   ###IMPROVE: Define all choices
         self.sNameClothSrc          = sNameClothSrc     # The Blender name of the mesh we cut from.  (e.g. 'Bodysuit')
         self.sVertGrp_ClothSkinArea = sVertGrp_ClothSkinArea    # The name in self.oBody of the vertex group detailing the area where cloth verts are skinned instead of cloth-simulated
@@ -54,7 +54,7 @@ class CCloth:
 
         #=== Delete previous iteration if it exists ===
         sNameClothCut       = self.oBody.sMeshPrefix + self.sNameCloth + "-Cut"
-        gBlender.DeleteObject(sNameClothCut)
+        DeleteObject(sNameClothCut)
         
 
         
@@ -86,7 +86,7 @@ class CCloth:
     
         #=== Transfer the skinning information from the skinned body mesh to the clothing.  _ClothSkinArea_xxx vert groups are to define various areas of the cloth that are skinned and not simulated ===
         self.oBody.oMeshMorph.oMeshO.hide = False         ###LEARN: Mesh MUST be visible for weights to transfer!
-        gBlender.Util_TransferWeights(self.oMeshClothSimulated.oMeshO, self.oBody.oMeshMorph.oMeshO)      ###IMPROVE: Insert apply statement in this function?
+        Util_TransferWeights(self.oMeshClothSimulated.oMeshO, self.oBody.oMeshMorph.oMeshO)      ###IMPROVE: Insert apply statement in this function?
     
         #=== With the body's skinning info transfered to the cloth, select the the requested vertices contained in the 'skinned verts' vertex group.  These will 'pin' the cloth on the body while the other verts are simulated ===
         bmClothSim = self.oMeshClothSimulated.Open()
@@ -129,7 +129,7 @@ class CCloth:
             #print("- NewVertID {:4d} was {:4d} at {:}".format(oVert.index, oVert[oLayVertOrigID], oVert.co))
         
         #=== Post-process the skinned-part to be ready for Unity ===
-        gBlender.Cleanup_VertGrp_RemoveNonBones(self.oMeshClothSkinned.oMeshO, True)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
+        Cleanup_VertGrp_RemoveNonBones(self.oMeshClothSkinned.oMeshO, True)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
         Client.Client_ConvertMesh(self.oMeshClothSkinned.oMeshO, False)                   ###NOTE: Call with 'False' to NOT separate verts at UV seams  ####PROBLEM!!!: This causes UV at seams to be horrible ####SOON!!!
         self.oMeshClothSkinned.Close()
         
@@ -153,8 +153,8 @@ class CCloth:
 #     
 #         #=== Transfer the skinning information from the skinned body mesh to the clothing.  Some vert groups are useful to move non-simulated area of cloth as skinned cloth, other _ClothSkinArea_xxx vert groups are to define areas of the cloth that are skinned and not simulated ===
 #         self.oBody.oMeshMorph.oMeshO.hide = False         ###LEARN: Mesh MUST be visible for weights to transfer!
-#         gBlender.Util_TransferWeights(self.oMeshClothSimulated.oMeshO, self.oBody.oMeshMorph.oMeshO)
-#         gBlender.Cleanup_VertGrp_RemoveNonBones(self.oBody.oMeshMorph.oMeshO, True)
+#         Util_TransferWeights(self.oMeshClothSimulated.oMeshO, self.oBody.oMeshMorph.oMeshO)
+#         Cleanup_VertGrp_RemoveNonBones(self.oBody.oMeshMorph.oMeshO, True)
 #     
 #         #=== With the body's skinning info transfered to the cloth, select the the requested vertices contained in the 'skinned verts' vertex group.  These will 'pin' the cloth on the body while the other verts are simulated ===
 #         bmClothSim = self.oMeshClothSimulated.Open()
@@ -214,7 +214,7 @@ class CCloth:
 #         self.oMeshClothSkinned = CMesh.CMesh.CreateFromExistingObject(sNameClothSkinned)
 #             
 #         #=== Post-process the skinned-part to be ready for Unity ===
-#         gBlender.Cleanup_VertGrp_RemoveNonBones(self.oMeshClothSkinned.oMeshO, True)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
+#         Cleanup_VertGrp_RemoveNonBones(self.oMeshClothSkinned.oMeshO, True)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
 #         Client.Client_ConvertMesh(self.oMeshClothSkinned.oMeshO, False)                   ###NOTE: Call with 'False' to NOT separate verts at UV seams  ####PROBLEM!!!: This causes UV at seams to be horrible ####SOON!!!
 #         ####DEV: Done here??                   
 #     
@@ -261,7 +261,7 @@ class CCloth:
 
 
 #     def SerializeCollection_aMapClothVertsSimToSkin(self):
-#         return gBlender.Stream_SerializeCollection(self.aMapClothVertsSimToSkin)
+#         return Stream_SerializeCollection(self.aMapClothVertsSimToSkin)
 
     def SerializeCollection_aMapPinnedParticles(self):
-        return gBlender.Stream_SerializeCollection(self.aMapPinnedParticles)
+        return Stream_SerializeCollection(self.aMapPinnedParticles)

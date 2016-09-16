@@ -19,7 +19,7 @@ from math import *
 from mathutils import *
 from bpy.props import *
 
-import gBlender
+from gBlender import *
 import G
 import CBody
 import CMesh
@@ -39,7 +39,7 @@ class CFlexSkin:        ###OBS: Now part of CSoftBody
         
         #=== Prepare naming of the meshes we'll create and ensure they are not in Blender ===
         sNameFlexSkin = self.oBody.sMeshPrefix + "FS-" + self.sFlexSkinPart         # Create name for to-be-created detach mesh and open the body mesh
-        gBlender.DeleteObject(sNameFlexSkin)
+        DeleteObject(sNameFlexSkin)
  
 #         #=== Obtain the to-be-detached vertex group of name 'self.sFlexSkinPart' from the combo mesh that originally came from the source body ===
 #         nVertGrpIndex_DetachPart = self.oBody.oMeshBody.oMeshO.vertex_groups.find(G.C_VertGrp_Detach + self.sFlexSkinPart)  # vertex_group_transfer_weight() above added vertex groups for each bone.  Fetch the vertex group for this detach area so we can enhance its definition past the bone transfer (which is much too tight)     ###DESIGN: Make area-type agnostic
@@ -88,13 +88,13 @@ class CFlexSkin:        ###OBS: Now part of CSoftBody
         self.oMeshFlexSkin.Close()
 
     def SerializeCollection_aShapeVerts(self):
-        return gBlender.Stream_SerializeCollection(self.aShapeVerts)
+        return Stream_SerializeCollection(self.aShapeVerts)
     
     def SerializeCollection_aShapeParticleIndices(self):
-        return gBlender.Stream_SerializeCollection(self.aShapeParticleIndices)
+        return Stream_SerializeCollection(self.aShapeParticleIndices)
             
     def SerializeCollection_aShapeParticleCutoffs(self):
-        return gBlender.Stream_SerializeCollection(self.aShapeParticleCutoffs)
+        return Stream_SerializeCollection(self.aShapeParticleCutoffs)
             
             
             
@@ -117,7 +117,7 @@ class CFlexSkin:        ###OBS: Now part of CSoftBody
 #         
 #         #=== Prepare naming of the meshes we'll create and ensure they are not in Blender ===
 #         sNameFlexSkin = self.oBody.sMeshPrefix + "FS-" + self.sFlexSkinPart         # Create name for to-be-created detach mesh and open the body mesh
-#         gBlender.DeleteObject(sNameFlexSkin)
+#         DeleteObject(sNameFlexSkin)
 #  
 #         #=== Obtain the to-be-detached vertex group of name 'self.sFlexSkinPart' from the combo mesh that originally came from the source body ===
 #         nVertGrpIndex_DetachPart = self.oBody.oMeshBody.oMeshO.vertex_groups.find(G.C_VertGrp_Detach + self.sFlexSkinPart)  # vertex_group_transfer_weight() above added vertex groups for each bone.  Fetch the vertex group for this detach area so we can enhance its definition past the bone transfer (which is much too tight)     ###DESIGN: Make area-type agnostic
@@ -158,8 +158,8 @@ class CFlexSkin:        ###OBS: Now part of CSoftBody
 # 
 # 
 #     def SerializeCollection_aVertsEdge(self):
-#         return gBlender.Stream_SerializeCollection(self.aShapeVerts)
+#         return Stream_SerializeCollection(self.aShapeVerts)
 #     
 #     def SerializeCollection_aVertsNonEdge(self):
-#         return gBlender.Stream_SerializeCollection(self.aShapeParticleIndices)
+#         return Stream_SerializeCollection(self.aShapeParticleIndices)
 #                         

@@ -6,19 +6,19 @@ import array
 from math import *
 from mathutils import *
 
-import gBlender
+from gBlender import *
 import G
 
 #---------------------------------------------------------------------------    Box Collider Creation From Mesh - Originally for Fluid World
 
 def CreateBoxCollidersFromMesh_All():  ###MOVE
-    gBlender.SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', True)
+    SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', True)
     
     #=== Convert mesh objects to box colliders and serialize ===
     oNodeFolder = bpy.data.objects["(World)"]
     aObjSrc = [oObj for oObj in oNodeFolder.children if oObj.hide == False]
     for oMeshOrigO in aObjSrc:
-        oMeshWorkO = gBlender.DuplicateAsSingleton(oMeshOrigO.name, oMeshOrigO.name + "_TempMesh", None, False)
+        oMeshWorkO = DuplicateAsSingleton(oMeshOrigO.name, oMeshOrigO.name + "_TempMesh", None, False)
         bpy.ops.object.convert()
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action='SELECT')
@@ -27,7 +27,7 @@ def CreateBoxCollidersFromMesh_All():  ###MOVE
         bpy.ops.mesh.select_all(action='DESELECT')
         bpy.ops.object.mode_set(mode='OBJECT')
         CreateBoxCollidersFromMesh(oMeshWorkO, oMeshOrigO)
-        gBlender.DeleteObject(oMeshWorkO.name)
+        DeleteObject(oMeshWorkO.name)
     
 def CreateBoxCollidersFromMesh(oMeshWorkO, oMeshOrigO):  # Break down a mesh into a collection of 2D rectangles that will represent the mesh as plane/box colliders in PhysX
     #=== Obtain bmesh reference to the source mesh so we can iterate through its face and create bounding rotated 2D rectangles for each face ===
@@ -79,7 +79,7 @@ def CreateBoxCollidersFromMesh(oMeshWorkO, oMeshOrigO):  # Break down a mesh int
         vecVert1 = oEdgeLongest.verts[1].co  
         vecLongEdge = ((vecVert1 - vecVert0) * matPlaneFaceNormal).normalized()  # This is the long edge vector in the space of the rotated plane
         vecLongEdge.z = 0  # We reset the 'height' of edge vector so as to lie flat along x,y so twist quaternion will only rotate about z
-        quatTwistZ = G.C_VectorForward.rotation_difference(vecLongEdge);  # Calculate the quaternion that can take the global forward vector to the rotation of the (flat) long edge...  This is how much we need to 'twist' matPlaneFaceNormal to get matPlaneFaceNormalTwistedZ
+        quatTwistZ = G.C_VectorForward.rotation_difference(vecLongEdge)  # Calculate the quaternion that can take the global forward vector to the rotation of the (flat) long edge...  This is how much we need to 'twist' matPlaneFaceNormal to get matPlaneFaceNormalTwistedZ
         quatFaceNormalTwistedZ = quatFaceNormal * quatTwistZ 
         matPlaneFaceNormalTwistedZ = quatFaceNormalTwistedZ.to_matrix().to_4x4()  # Apply the twist quaternion to the untwisted matrix to get the twisted matrix.  This matrix can now take a flat plane lying on x,y to this face with it being 'twisted' so our long edge is parallel to cardinal axes. (So we can calculate 2D bounds and yield smaller rectangle)
         

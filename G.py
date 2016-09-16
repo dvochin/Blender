@@ -1,6 +1,7 @@
 #=============================================================================== COMMON COMMANDS
 # CBody.CBody_GetBody(0).aSoftBodies['Breasts'].aMapSavedRimNormals
-# import gBlender; gBlender.DataLayer_EnumerateInt_DEBUG("WomanA", "CmdLine")
+# from gBlender import *
+# DataLayer_EnumerateInt_DEBUG("WomanA", "CmdLine")
 # bpy.ops.object.mode_set(mode='EDIT')
 # bpy.ops.object.mode_set(mode='OBJECT')
 # bpy.ops.mesh.select_all(action='SELECT')
@@ -9,8 +10,8 @@
 # bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
 # bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='FACE')
 # bm = bmesh.from_edit_mesh(oMeshO.data)
-# import bmesh; bm = bmesh.from_edit_mesh(bpy.context.object.data)
-# import bmesh; bm = bmesh.new(); bm.from_mesh(bpy.context.object.data)                                       
+# import bmesh    bm = bmesh.from_edit_mesh(bpy.context.object.data)
+# import bmesh    bm = bmesh.new(); bm.from_mesh(bpy.context.object.data)                                       
 # oModBoolean = oMeshO.modifiers.new('BOOLEAN', 'BOOLEAN')
 # AssertFinished(bpy.ops.object.modifier_apply(modifier=oModBoolean.name))  ###LEARN: Have to specify 'modifier' or this won't work!
 # aVerts = [oVert for oVert in bmBody.verts if oVert.select]
@@ -26,25 +27,25 @@
 #===============================================================================
 
 ###DISCUSSION: 
-### NEXT ###
+#=== TODAY ===
 
-### TODO ###
+#=== NEXT ===
 
-### LATER ###
+#=== TODO ===
 
-### DESIGN ###
+#=== REMINDERS ===
 
-### IDEAS ###
+#=== NEEDS ===
 
-### LEARNED ###
+#=== DESIGN ===
 
-### PROBLEMS ###
+#=== IDEAS ===
 
-### PROBLEMS: ASSETS ###
+#=== LEARNED ===
 
-### PROBLEMS??? ###
-    
-### WISHLIST ###
+#=== PROBLEMS ===
+
+#=== WISHLIST ===
 
 
 import bpy
@@ -167,16 +168,20 @@ class CGlobals:
 
 
 def VectorB2C(vec):           
-    return Vector((-vec[0], vec[1], vec[2]))      
+    ###NOW### return Vector((-vec[0], vec[1], vec[2]))      
+    return Vector((-vec[0], vec[2], vec[1]))      
 
 def VectorC2B(vec):                    # Same as Util_VectorB2C but copied nonetheless for code readability            
-    return Vector((-vec[0], vec[1], vec[2]))
+    #return Vector((-vec[0], vec[1], vec[2]))
+    return Vector((-vec[0], vec[2], vec[1]))      
 
 def VectorB2C4(vec):           
-    return Vector((-vec[0], vec[1], vec[2], vec[3]))
+    #return Vector((-vec[0], vec[1], vec[2], vec[3]))
+    return Vector((-vec[0], vec[2], vec[1], vec[3]))      
 
 def VectorC2B4(vec):            
-    return Vector((-vec[0], vec[1], vec[2], vec[3]))
+    #return Vector((-vec[0], vec[1], vec[2], vec[3]))
+    return Vector((-vec[0], vec[2], vec[1], vec[3]))      
 
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    DEBUG UTILITIES

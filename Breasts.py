@@ -6,7 +6,7 @@ import CBody
 from math import *
 from mathutils import *
 
-import gBlender
+from gBlender import *
 import G
 import Client
 
@@ -22,10 +22,10 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
     
     ####IMPROVE: One of the 'prepare functions' that only needs to run when source body changes
     sNameBreast = sNameBodySrc + G.C_NameSuffix_Breast
-    gBlender.DeleteObject(sNameBreast)
-    #gBlender.DataLayer_RemoveLayers(oMeshBodyO.name)           # Remove previous custom data layers just to make sure we refer to the right one  ####CHECK!  Can delete something we need???
+    DeleteObject(sNameBreast)
+    #DataLayer_RemoveLayers(oMeshBodyO.name)           # Remove previous custom data layers just to make sure we refer to the right one  ####CHECK!  Can delete something we need???
     
-    oMeshBodyO = gBlender.SelectAndActivate(sNameBodySrc)
+    oMeshBodyO = SelectAndActivate(sNameBodySrc)
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='DESELECT')
     bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
@@ -48,7 +48,7 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
     aVertsBreastL = [oVert for oVert in bmBody.verts if oVert.select]
 
     #=== Find the closest vert to every vert in aVerts1 in aVerts2.  Assumes mesh is *mathematically symmetrical*! ===
-    aVertsMirrorX = gBlender.Util_FindClosestMirrorVertInGroups(bmBody, aVertsBreastL, aVertsBreastR)       
+    aVertsMirrorX = Util_FindClosestMirrorVertInGroups(bmBody, aVertsBreastL, aVertsBreastR)       
     bmBody.verts.index_update()
 
     #=== Iterate through the left breast vertices to store the original vertex IDs of the corresponding left & right vertices before we separate ===    
@@ -70,7 +70,7 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
 
     #=== Enter bmesh edit mode on the breast and obtain array of edge verts ===
     bpy.ops.object.mode_set(mode='EDIT')
-    aMapDistToEdges, nDistMax_AllInnerVerts = gBlender.Util_GetMapDistToEdges() 
+    aMapDistToEdges, nDistMax_AllInnerVerts = Util_GetMapDistToEdges() 
     bpy.ops.mesh.select_all(action='DESELECT')
     bmBreast = bmesh.from_edit_mesh(oMeshBreastO.data)
 #     bpy.ops.mesh.select_non_manifold()
@@ -103,7 +103,7 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
     if len(aVertNippleL) > 1:
         raise Exception("###EXCEPTION: BodyInit_CreateCutoffBreastFromSourceBody(): Too many verts for nipple!")      ###PROBLEM?: Weird bug when generating bodies is some of our vert groups get more verts!  WTF???
     #print("=== Nipple Vert = ", aVertNippleL)
-    aMapDistToNipples, aDistToNippleMax = gBlender.Util_CalcSurfDistanceBetweenTwoVertGroups(bmBreast, bmBreast.verts, aVertNippleL)
+    aMapDistToNipples, aDistToNippleMax = Util_CalcSurfDistanceBetweenTwoVertGroups(bmBreast, bmBreast.verts, aVertNippleL)
 
     #=== Remove all vertex groups except those related to breast morphing or collider sub-mesh ===
     for oVertGrp in oMeshBreastO.vertex_groups:
@@ -124,7 +124,7 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
 #     #=== Move the collider verts temporarily so proximity search won't find the same verts ===
 #     for nVertCldr in aVertsCldrI:
 #         oVert = oMeshBreastO.data.vertices[nVertCldr]
-#         oVert.co.x += 1.0;
+#         oVert.co.x += 1.0
 # 
 #     bpy.ops.object.mode_set(mode='EDIT')                    ###LEARN: For some weird reason the vert push we just did doesn't 'take' unless we enter & exit edit mode!!
 #     bpy.ops.object.mode_set(mode='OBJECT')
@@ -137,7 +137,7 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
 #         oVert = oMeshBreastO.data.vertices[nVertCldr]
 #         vecVert = oVert.co.copy()
 #         vecVert.x -= 1.0                   # Remove the temp offset we applied in above loop
-#         nVertClosest, nDistMin, vecVertClosest = gBlender.Util_FindClosestVert(oMeshBreastO, vecVert, .000001)
+#         nVertClosest, nDistMin, vecVertClosest = Util_FindClosestVert(oMeshBreastO, vecVert, .000001)
 #         aMapBreastVertToColVerts_Cldr  .append(nVertCldr)
 #         aMapBreastVertToColVerts_Breast.append(nVertClosest)
 #         print("%3d -> %5d  %6.3f,%6.3f,%6.3f  ->  %6.3f,%6.3f,%6.3f = %6.4f" % (nVertCldr, nVertClosest, vecVert.x, vecVert.y, vecVert.z, vecVertClosest.x, vecVertClosest.y, vecVertClosest.z, nDistMin))
@@ -146,7 +146,7 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
 #     #=== Return the collider verts to their original positions ===
 #     for nVertCldr in aVertsCldrI:
 #         oVert = oMeshBreastO.data.vertices[nVertCldr]
-#         oVert.co.x -= 1.0;
+#         oVert.co.x -= 1.0
 # 
 #     bpy.ops.object.mode_set(mode='EDIT')                    ###LEARN: For some weird reason the vert push we just did doesn't 'take' unless we enter & exit edit mode!!
 #     bpy.ops.mesh.select_all(action='DESELECT')
@@ -194,6 +194,6 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
             print("ERROR in breast vertex remapping!  {:5d} != {:5d}".format(oVertBreast.index, nVertBodyBreastL))      ####PROBLEM: Collider verts not matching??  Because of left / right???
     bpy.ops.object.mode_set(mode='OBJECT')
     
-    gBlender.DataLayer_RemoveLayerInt(sNameBodySrc, G.C_DataLayer_SourceBreastVerts)      # Remove the temporary data layer from source body (no longer needed after breast mesh split)
+    DataLayer_RemoveLayerInt(sNameBodySrc, G.C_DataLayer_SourceBreastVerts)      # Remove the temporary data layer from source body (no longer needed after breast mesh split)
 
-    gBlender.Util_HideMesh(oMeshBreastO)
+    Util_HideMesh(oMeshBreastO)

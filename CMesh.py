@@ -20,7 +20,7 @@ from math import *
 from mathutils import *
 from bpy.props import *
 
-import gBlender
+from gBlender import *
 import SourceReloader
 import G
 import Client
@@ -29,9 +29,9 @@ import Client
 
 
 class CMesh:
-    def __init__(self, sNameMesh, oMeshO, oMeshParent = None):
-        ###IMPROVE?  Won't work in CreateFromDuplicate! gBlender.DeleteObject(sNameMesh)                # Make sure this mesh does not exist already (all given names globally uniqye by design)
-        self.oMeshO         = oMeshO
+    def __init__(self, sNameMesh, oMeshParent = None):
+        ###IMPROVE?  Won't work in CreateFromDuplicate! DeleteObject(sNameMesh)                # Make sure this mesh does not exist already (all given names globally uniqye by design)
+        self.oMeshO         = sNameMesh
         self.oMeshParent    = oMeshParent          # Our immediate CMesh parent mesh.  The one we update our verts from after morphing ###NOW### Confusion between morphing parent (still used?) and node parent
         self.bDeleteUponDestroy = True             # By default we delete our Blender object when we get destroyed
         self.SetName(sNameMesh)
@@ -41,12 +41,12 @@ class CMesh:
     #def __del__(self):        ###DEV
         ####BROKEN!!!  Game deletes objects even if they are still reference!  e.g. self.oMeshBody sometimes!!!!!!!!
         #if (self.bDeleteUponDestroy):
-        #    gBlender.DeleteObject(self.oMeshO.name)
+        #    DeleteObject(self.sNameMesh.name)
 
     @classmethod
     def CreateFromDuplicate(cls, sNameMesh, oMeshSrc):
         "Create mesh by duplicating oMeshSrc"
-        oMesh = gBlender.DuplicateAsSingleton(oMeshSrc.GetName(), sNameMesh, oMeshSrc.oMeshO.parent.name, False)
+        oMesh = DuplicateAsSingleton(oMeshSrc.GetName(), sNameMesh, oMeshSrc.oMeshO.parent.name, False)
         if (oMesh == None):
             raise Exception("###EXCEPTION: CMesh.CreateFromDuplicate() could not duplicate mesh " + oMeshSrc.oMeshO.parent.name)
         oInstance = cls(sNameMesh, oMesh, oMeshSrc)
@@ -65,7 +65,7 @@ class CMesh:
         return oInstance
 
     def Open(self):
-        gBlender.SelectAndActivate(self.oMeshO.name)         ###DEV: Best way by name??        ###IMPROVE: Remember hidden flag??
+        SelectAndActivate(self.oMeshO.name)         ###DEV: Best way by name??        ###IMPROVE: Remember hidden flag??
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')  # Make sure we're in vert mode
         self.bmLastOpen = bmesh.from_edit_mesh(self.oMeshO.data)          ###DEV: Store as member?
@@ -86,7 +86,7 @@ class CMesh:
         except:
             print("#WARNING#: CMesh.ExitFromEditMode() could not update_edit_mesh() on mesh " + self.GetName())
         self.bmLastOpen = None
-        gBlender.Util_UnselectMesh(self.oMeshO)
+        Util_UnselectMesh(self.oMeshO)
         
 
     def UpdateBMeshTables(self):
@@ -99,7 +99,7 @@ class CMesh:
             self.bmLastOpen.faces.ensure_lookup_table()
     
     def Hide(self):
-        gBlender.Util_HideMesh(self.oMeshO)         ###TODO: Merge all that stuff in gBlender into CMesh!
+        Util_HideMesh(self.oMeshO)         ###TODO: Merge all that stuff in gBlender into CMesh!
 
     def SetName(self, sNameMesh):
         self.oMeshO.name = self.oMeshO.data.name = sNameMesh       ###LEARN: We *must* apply name twice to make sure we get this name (Would get something like 'MyName.001' if 'MyName' was already defined
@@ -109,10 +109,10 @@ class CMesh:
         return self.oMeshO.name 
 
     def SetParent(self, sNameParent):           
-        gBlender.SetParent(self.oMeshO.name, sNameParent)       ###MOVE: Merge in here?
+        SetParent(self.oMeshO.name, sNameParent)       ###MOVE: Merge in here?
 
     def Destroy(self):
-        gBlender.DeleteObject(self.GetName())       ###CHECK
+        DeleteObject(self.GetName())       ###CHECK
         self.oMeshO = None
         
 #    def GetMeshFromUnity(self):     ###DEV???

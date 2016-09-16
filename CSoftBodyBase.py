@@ -7,7 +7,7 @@ from math import *
 from mathutils import *
 from bpy.props import *
 
-import gBlender
+from gBlender import *
 import G
 from CBody import *
 from CMesh import *
@@ -43,7 +43,7 @@ class CSoftBodyBase():
         oLayTwinID = bmBody.verts.layers.int.new(G.C_DataLayer_TwinID)  # Create a temp custom data layer to store IDs of rim verts so we remap easily when softbody is detached from main body.    ###LEARN???: This call causes BMesh references to be lost, so do right after getting bmesh reference
 
         #=== Obtain the vertex group of name 'self.sSoftBodyPart' from the source body mesh so we can detach into our softbody mesh ===
-        gBlender.Util_SelectVertGroupVerts(self.oBody.oMeshBody.oMeshO, G.C_VertGrp_Detach + self.sSoftBodyPart)
+        Util_SelectVertGroupVerts(self.oBody.oMeshBody.oMeshO, G.C_VertGrp_Detach + self.sSoftBodyPart)
 
         #=== Find the edge verts of the softbody submesh so that we can determine the verts that will become edge verts between the two split meshes ===
         bpy.ops.mesh.region_to_loop()           # This will select only the edge verts at the boundary of the softbody vertex group selected above (find the edge verts)
@@ -55,7 +55,7 @@ class CSoftBodyBase():
                     nNextTwinID += 1
     
         #=== Reselect the softbody faces so we can split below ===
-        gBlender.Util_SelectVertGroupVerts(self.oBody.oMeshBody.oMeshO, G.C_VertGrp_Detach + self.sSoftBodyPart)
+        Util_SelectVertGroupVerts(self.oBody.oMeshBody.oMeshO, G.C_VertGrp_Detach + self.sSoftBodyPart)
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='FACE')           # We perform the split by faces so edge verts remain in both mesh
 
         #=== Split and separate the softbody mesh from the body mesh.  (Body gets that geometry removed and is what is rendered in game) ===
@@ -98,8 +98,8 @@ class CSoftBodyBase():
         self.oBody.oMeshBody.Close()
         
         #=== Cleanup the rim mesh by removing all materials and non-bones vertex groups ===
-        gBlender.Cleanup_RemoveMaterials(self.oMeshSoftBodyRim.oMeshO)
-        gBlender.Cleanup_VertGrp_RemoveNonBones(self.oMeshSoftBodyRim.oMeshO, True)  # Remove the extra vertex groups (not skinning related)
+        Cleanup_RemoveMaterials(self.oMeshSoftBodyRim.oMeshO)
+        Cleanup_VertGrp_RemoveNonBones(self.oMeshSoftBodyRim.oMeshO, True)  # Remove the extra vertex groups (not skinning related)
         self.oMeshSoftBodyRim.Hide()
 
 
@@ -140,7 +140,7 @@ class CSoftBodyBase():
 
 
     def SerializeCollection_aMapRimVerts(self):               ###IMPROVE: Fanning out by function the best way?
-        return gBlender.Stream_SerializeCollection(self.aMapRimVerts) 
+        return Stream_SerializeCollection(self.aMapRimVerts) 
 
     def SerializeCollection_aMapPinnedParticles(self):
-        return gBlender.Stream_SerializeCollection(self.aMapPinnedParticles)
+        return Stream_SerializeCollection(self.aMapPinnedParticles)

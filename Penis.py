@@ -6,7 +6,7 @@ import array
 from math import *
 from mathutils import *
 
-import gBlender
+from gBlender import *
 import G
 
 
@@ -21,7 +21,7 @@ def gBL_Penis_CalcColliders(sNameMeshPenis):            # Calculates the dimensi
     ###NOTE: Naming convention: 'width' of penis is left-to-right = X, 'thickness' is up to down = Y, 'lenght' is forward to back = Z (xyz on unrotated body verts (e.g. body 'lying down on back' in Blender)
     
     ###bpy.ops.mesh.select_non_manifold()
-    oMeshPenisO = gBlender.SelectAndActivate(sNameMeshPenis)
+    oMeshPenisO = SelectAndActivate(sNameMeshPenis)
     bpy.ops.object.mode_set(mode='EDIT')
     bmPenis = bmesh.from_edit_mesh(oMeshPenisO.data)
     ##aVertsPenis = [oVert for oVert in bmPenis.verts if oVert.select]
@@ -85,7 +85,7 @@ def gBL_Penis_CalcColliders(sNameMeshPenis):            # Calculates the dimensi
 #     bpy.ops.mesh.primitive_capsule_add(segments=16, rings=5, radius=nPenisRadius, length=nPenisLength)      
 #     oCapsuleO = bpy.context.object
 #     sNameCapsule = oMeshPenisO.name + G.C_NameSuffix_PenisShaftCollider
-#     gBlender.DeleteObject(sNameCapsule)
+#     DeleteObject(sNameCapsule)
 #     oCapsuleO.name = oCapsuleO.data.name = sNameCapsule
 #     oCapsuleO.name = oCapsuleO.data.name = sNameCapsule
 #     oCapsuleO.parent = oMeshPenisO
