@@ -29,9 +29,9 @@ import Client
 
 
 class CMesh:
-    def __init__(self, sNameMesh, oMeshParent = None):
+    def __init__(self, sNameMesh, oMeshO, oMeshParent = None):
         ###IMPROVE?  Won't work in CreateFromDuplicate! DeleteObject(sNameMesh)                # Make sure this mesh does not exist already (all given names globally uniqye by design)
-        self.oMeshO         = sNameMesh
+        self.oMeshO         = oMeshO
         self.oMeshParent    = oMeshParent          # Our immediate CMesh parent mesh.  The one we update our verts from after morphing ###NOW### Confusion between morphing parent (still used?) and node parent
         self.bDeleteUponDestroy = True             # By default we delete our Blender object when we get destroyed
         self.SetName(sNameMesh)

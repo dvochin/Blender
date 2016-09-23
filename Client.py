@@ -749,9 +749,6 @@ def gBL_GetMesh_Array_OBSOLETE(sNameMesh, sNameArray):        #=== Send Unity th
 def gBL_GetBones(sNameMesh):  # Called by the CBodeEd (Unity's run-in-edit-mode code for CBody) to update the position of the bones for the selected Unity template.  Non destructive call that assumes existing bones are already there with much extra information such as ragdoll colliders, components on bones, etc.)
     # This call only updates bones position and creates bones if they are missing.  Rotation isn't touched and extraneous bones have to be deleted in Unity if needed.
     print("\n=== gBL_GetBones('{}') ===".format(sNameMesh))
-    if (sNameMesh not in bpy.data.objects):
-        return G.DumpStr("ERROR: gBL_GetBones() cannot find object '" + sNameMesh + "'")
-
     oMeshO = SelectAndActivate(sNameMesh)
     if "Armature" not in oMeshO.modifiers:
         return G.DumpStr("ERROR: gBL_GetBones() cannot find armature modifier for '" + sNameMesh + "'")
@@ -762,7 +759,10 @@ def gBL_GetBones(sNameMesh):  # Called by the CBodeEd (Unity's run-in-edit-mode 
     oBA += struct.pack('H', G.C_MagicNo_TranBegin)  ###LEARN: Struct.Pack args: b=char B=ubyte h=short H=ushort, i=int I=uint, q=int64, Q=uint64, f=float, d=double, s=char[] ,p=PascalString[], P=void*
 
     #=== Send bone tree (without bone positions) Unity needs our order to map to its existing bone which remain the authority ===
-    Stream_SendBone(oBA, oArmature.bones[0])  # Recursively send the bone tree starting at root node (0)
+    SelectAndActivate(oMeshO.parent.name)       # Select mesh parent so we can read armature
+    bpy.ops.object.mode_set(mode='EDIT')
+    Stream_SendBone(oBA, oArmature.edit_bones[0])   # Recursively send the bone tree starting at root node (0) 
+    bpy.ops.object.mode_set(mode='OBJECT')
 
     oBA += Stream_GetEndMagicNo()  # Append a 'magic number' to help catch deserialization errors quickly
     print("--- gBL_GetBones() returning array of size " + str(len(oBA)))

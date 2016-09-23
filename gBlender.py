@@ -537,7 +537,10 @@ def Cleanup_VertGrp_Remove(oMeshO, sNameVertGrp):			# Removes vertex group 'sNam
 #---------------------------------------------------------------------------	
 
 def Stream_SendVector(oBA, vec):  ###LEARN: Proper way to pack Pascal string
-	oBA += struct.pack('fff', vec[0], vec[1], vec[2])  ###IMPROVE: Can safely send whole array?
+	oBA += struct.pack('fff', vec.x, vec.y, vec.z)
+
+def Stream_SendQuaternion(oBA, quat):  ###LEARN: Proper way to pack Pascal string
+	oBA += struct.pack('ffff', quat.x, quat.y, quat.z, quat.w)
 
 def Stream_SendStringPascal(oBA, sContent):	 ###LEARN: Proper way to pack Pascal string
 	sContentEncoded = sContent.encode()
@@ -561,8 +564,9 @@ def Stream_SerializeCollection(aCollection):
 
 def  Stream_SendBone(oBA, oBone):				# Recursive function that sends a bone and the tree of bones underneath it in 'breadth first search' order.	 Information sent include bone name, position and number of children.
 	Stream_SendStringPascal(oBA, oBone.name)		# Precise opposite of this function found in Unity's CBodeEd.ReadBone()
-	vecBone = G.VectorB2C(oBone.head_local)				  # Obtain the bone head and convert to client-space (LHS/RHS conversion)		 ###LEARN: 'head' appears to give weird coordinates I don't understand... head_local appears much more reasonable! (tail is the 'other end' of the bone (the part that rotates) while head is the pivot point we need
-	Stream_SendVector(oBA, vecBone)
+	Stream_SendVector(oBA, G.VectorB2C(oBone.head))	# Obtain the bone head and convert to client-space (LHS/RHS conversion)		 ###LEARN: 'head' appears to give weird coordinates I don't understand... head_local appears much more reasonable! (tail is the 'other end' of the bone (the part that rotates) while head is the pivot point we need
+	Stream_SendQuaternion(oBA, oBone.matrix.to_quaternion())	# Send the bone orientation quaternion.  Needed to properly rotate bones about the axis they were designed for.  ###IMPROVE: Not rotated for Unity axis!  HOW??
+	print("-SendBone '{}'   {}   {}".format(oBone.name, oBone.head, oBone.matrix.to_quaternion()))
 	oBA += struct.pack('B', len(oBone.children))
 	for oBoneChild in oBone.children:
 		Stream_SendBone(oBA, oBoneChild)

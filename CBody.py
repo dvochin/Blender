@@ -117,37 +117,39 @@ class CBody:
         #=== Duplicate the source body (kept in the most pristine condition possible) as the assembled body. Delete unwanted parts and attach the user-specified genital mesh instead ===
         self.oMeshAssembled = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + "Assembled", self.oMeshSource)     # Creates the top-level body object named like "BodyA", "BodyB", that will accept the various genitals we tack on to the source body.
         self.oMeshAssembled.SetParent(G.C_NodeFolder_Game)    
-        sNameVertGroupToCutout = None
-        if self.sGenitals.startswith("Vagina"):         # Woman has vagina and breasts
-            print("###### VAGINA CUTOUT BROKEN!!!")     ###NOW### Repair to old vagina being out-of-main body?
-            ###BROKEN!!!!!!! sNameVertGroupToCutout = "_Cutout_Vagina"
-        elif self.sGenitals.startswith("Penis"):        # Man & Shemale have penis
-            sNameVertGroupToCutout = "_Cutout_Penis"
-        if sNameVertGroupToCutout is not None:
-            bpy.ops.object.mode_set(mode='EDIT')
-            Util_SelectVertGroupVerts(self.oMeshAssembled.oMeshO, sNameVertGroupToCutout)     # This vert group holds the verts that are to be soft-body simulated...
-            bpy.ops.mesh.delete(type='FACE')                    # ... and delete the mesh part we didn't want copied to output body
-            bpy.ops.object.mode_set(mode='OBJECT')
-    
-        #=== Import and preprocess the genitals mesh and assemble into this mesh ===
-        if (self.sGenitals.startswith("Vagina") == False):      ###V ###CHECK!!!
-            oMeshGenitalsSource = CMesh.CMesh.CreateFromExistingObject(self.sGenitals)          ###WEAK: Create another ctor?
-            oMeshGenitals = CMesh.CMesh.CreateFromDuplicate("TEMP_Genitals", oMeshGenitalsSource)
-            bpy.context.scene.objects.active = oMeshGenitals.oMeshO
-            bpy.ops.object.shade_smooth()  ###IMPROVE: Fix the diffuse_intensity to 100 and the specular_intensity to 0 so in Blender the genital texture blends in with all our other textures at these settings
-         
-            #=== Transfer weight from body to add-on genitals ===
-            Util_TransferWeights(oMeshGenitals.oMeshO, self.oMeshSource.oMeshO)      #bpy.ops.object.vertex_group_transfer_weight()
-         
-            #=== Join the genitals  with the output main body mesh and weld vertices together to form a truly contiguous mesh that will be lated separated by later segments of code into various 'detachable parts' ===           
-            self.oMeshAssembled.oMeshO.select = True
-            bpy.context.scene.objects.active = self.oMeshAssembled.oMeshO
-            bpy.ops.object.join()                   ###IMPROVE: Make into a function?
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.select_all(action='SELECT')      # Deselect all verts in assembled mesh
-            bpy.ops.mesh.remove_doubles(threshold=0.0001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###LEARN: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
-            bpy.ops.mesh.select_all(action='DESELECT')      # Deselect all verts in assembled mesh
-            bpy.ops.object.mode_set(mode='OBJECT')
+
+        ###OBS?
+#         sNameVertGroupToCutout = None
+#         if self.sGenitals.startswith("Vagina"):         # Woman has vagina and breasts
+#             print("###### VAGINA CUTOUT BROKEN!!!")     ###NOW### Repair to old vagina being out-of-main body?
+#             ###BROKEN!!!!!!! sNameVertGroupToCutout = "_Cutout_Vagina"
+#         elif self.sGenitals.startswith("Penis"):        # Man & Shemale have penis
+#             sNameVertGroupToCutout = "_Cutout_Penis"
+#         if sNameVertGroupToCutout is not None:
+#             bpy.ops.object.mode_set(mode='EDIT')
+#             Util_SelectVertGroupVerts(self.oMeshAssembled.oMeshO, sNameVertGroupToCutout)     # This vert group holds the verts that are to be soft-body simulated...
+#             bpy.ops.mesh.delete(type='FACE')                    # ... and delete the mesh part we didn't want copied to output body
+#             bpy.ops.object.mode_set(mode='OBJECT')
+#     
+#         #=== Import and preprocess the genitals mesh and assemble into this mesh ===
+#         if (self.sGenitals.startswith("Vagina") == False):      ###V ###CHECK!!!
+#             oMeshGenitalsSource = CMesh.CMesh.CreateFromExistingObject(self.sGenitals)          ###WEAK: Create another ctor?
+#             oMeshGenitals = CMesh.CMesh.CreateFromDuplicate("TEMP_Genitals", oMeshGenitalsSource)
+#             bpy.context.scene.objects.active = oMeshGenitals.oMeshO
+#             bpy.ops.object.shade_smooth()  ###IMPROVE: Fix the diffuse_intensity to 100 and the specular_intensity to 0 so in Blender the genital texture blends in with all our other textures at these settings
+#          
+#             #=== Transfer weight from body to add-on genitals ===
+#             Util_TransferWeights(oMeshGenitals.oMeshO, self.oMeshSource.oMeshO)      #bpy.ops.object.vertex_group_transfer_weight()
+#          
+#             #=== Join the genitals  with the output main body mesh and weld vertices together to form a truly contiguous mesh that will be lated separated by later segments of code into various 'detachable parts' ===           
+#             self.oMeshAssembled.oMeshO.select = True
+#             bpy.context.scene.objects.active = self.oMeshAssembled.oMeshO
+#             bpy.ops.object.join()                   ###IMPROVE: Make into a function?
+#             bpy.ops.object.mode_set(mode='EDIT')
+#             bpy.ops.mesh.select_all(action='SELECT')      # Deselect all verts in assembled mesh
+#             bpy.ops.mesh.remove_doubles(threshold=0.0001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###LEARN: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
+#             bpy.ops.mesh.select_all(action='DESELECT')      # Deselect all verts in assembled mesh
+#             bpy.ops.object.mode_set(mode='OBJECT')
 
         ####LEARN: Screws up ConvertMesh royally!  self.oMeshAssembled.data.uv_textures.active_index = 1       # Join call above selects the uv texture of the genitals leaving most of the body untextured.  Revert to full body texture!   ###IMPROVE: Can merge genitals texture into body's??
         ###Util_SelectVertGroupVerts(self.oMeshAssembled.oMeshO, sNameVertGroupToCutout)  # Reselect the just-removed genitals area from the original body, as the faces have just been removed this will therefore only select the rim of vertices where the new genitals are inserted (so that we may remove_doubles to merge only it)
@@ -160,23 +162,25 @@ class CBody:
         self.oMeshMorph = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + 'Morph', self.oMeshAssembled)   
 
         #=== Create map of source verts to morph verts ===  (Enables some morphs such as Breast morphs to be applied to morphing mesh)
-        bmMorph = self.oMeshMorph.Open()
-        oLayVertsSrc = bmMorph.verts.layers.int[G.C_DataLayer_VertsSrc]
-        for oVert in bmMorph.verts:
-            if (oVert[oLayVertsSrc] >= G.C_OffsetVertIDs):
-                nVertOrig = oVert[oLayVertsSrc] - G.C_OffsetVertIDs        # Remove the offset pushed in during creation
-                self.aMapVertsSrcToMorph[nVertOrig] = oVert.index       
-        self.oMeshMorph.Close()
+        ###OBS??
+#         bmMorph = self.oMeshMorph.Open()
+#         oLayVertsSrc = bmMorph.verts.layers.int[G.C_DataLayer_VertsSrc]
+#         for oVert in bmMorph.verts:
+#             if (oVert[oLayVertsSrc] >= G.C_OffsetVertIDs):
+#                 nVertOrig = oVert[oLayVertsSrc] - G.C_OffsetVertIDs        # Remove the offset pushed in during creation
+#                 self.aMapVertsSrcToMorph[nVertOrig] = oVert.index       
+#         self.oMeshMorph.Close()
 
         #=== Create our own local copy of the breast mesh for breast morphs ===
-        if (sSex != "Man"):
-            oMeshSrcBreast = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource + "-Breast")          ###WEAK: Create another ctor?
-            self.oMeshSrcBreast = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + "Breast", oMeshSrcBreast)        
-            self.oMeshSrcBreast.SetParent(G.C_NodeFolder_Game)
-            self.oMeshSrcBreast.Hide()    
-
-        nSize = 1.75
-        self.Breasts_ApplyMorph('RESIZE', 'Nipple', 'Center', 'Wide', (nSize,nSize,nSize,0), None)     ###NOW###  ###HACK!
+        ###OBS
+#         if (sSex != "Man"):
+#             oMeshSrcBreast = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource + "-Breast")          ###WEAK: Create another ctor?
+#             self.oMeshSrcBreast = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + "Breast", oMeshSrcBreast)        
+#             self.oMeshSrcBreast.SetParent(G.C_NodeFolder_Game)
+#             self.oMeshSrcBreast.Hide()    
+# 
+#         nSize = 1.75
+#         self.Breasts_ApplyMorph('RESIZE', 'Nipple', 'Center', 'Wide', (nSize,nSize,nSize,0), None)     ###NOW###  ###HACK!
 
         self.oMeshBody  = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + 'Body' , self.oMeshMorph)  ###CHECK!! ###DESIGN???   
 
@@ -479,7 +483,7 @@ def SlaveMesh_DefineMasterSlaveRelationship(sNameBodySrc, sTypeOfSlaveMesh, nVer
 def CBody_Create(nBodyID, sMeshSource, sSex, sGenitals):
     "Proxy for CBody ctor as we can only return primitives back to Unity"
     oBody = CBody(nBodyID, sMeshSource, sSex, sGenitals)
-    return str(oBody.nBodyID)           # Strings is one of the only things we can return to Unity
+    return str(oBody.nBodyID)     ###OBS?      # Strings is one of the only things we can return to Unity
 
 def CBody_GetBody(nBodyID):
     "Easy accessor to simplify Unity's access to bodies by ID"

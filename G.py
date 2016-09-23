@@ -169,19 +169,19 @@ class CGlobals:
 
 def VectorB2C(vec):           
     ###NOW### return Vector((-vec[0], vec[1], vec[2]))      
-    return Vector((-vec[0], vec[2], vec[1]))      
+    return Vector((-vec[0], vec[2], -vec[1]))                ###NOW###: Doesn't match C++!!!!      
 
 def VectorC2B(vec):                    # Same as Util_VectorB2C but copied nonetheless for code readability            
     #return Vector((-vec[0], vec[1], vec[2]))
-    return Vector((-vec[0], vec[2], vec[1]))      
+    return Vector((-vec[0], vec[2], -vec[1]))      
 
 def VectorB2C4(vec):           
     #return Vector((-vec[0], vec[1], vec[2], vec[3]))
-    return Vector((-vec[0], vec[2], vec[1], vec[3]))      
+    return Vector((-vec[0], vec[2], -vec[1], vec[3]))      
 
 def VectorC2B4(vec):            
     #return Vector((-vec[0], vec[1], vec[2], vec[3]))
-    return Vector((-vec[0], vec[2], vec[1], vec[3]))      
+    return Vector((-vec[0], vec[2], -vec[1], vec[3]))      
 
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    DEBUG UTILITIES
@@ -216,3 +216,19 @@ def Debug_RemoveMarkers():
 def DumpStr(sMsg):          # Simple utility dumper that constructs string, prints it to console and returs it (enables one line to dump to console and return)
     print(sMsg)
     return sMsg
+
+
+
+#---------------------------------------------------------------------------    
+#---------------------------------------------------------------------------    BLENDER CONFIGURATION
+#---------------------------------------------------------------------------    
+
+###CHECK: Can crash Blender if NDOF not connected??
+bpy.context.user_preferences.inputs.ndof_sensitivity = 6
+bpy.context.user_preferences.inputs.ndof_orbit_sensitivity = 3
+bpy.context.user_preferences.inputs.ndof_deadzone = 0
+bpy.context.user_preferences.inputs.ndof_show_guide = True
+bpy.context.user_preferences.inputs.ndof_view_navigate_method = 'ORBIT'
+bpy.context.user_preferences.inputs.ndof_view_rotate_method = 'TURNTABLE'
+
+

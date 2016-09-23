@@ -4,8 +4,14 @@
     #- Expand CObject and CProp into Blender
     #- CObject has specialized subclasses such as CObjectDynamic and CObjectDynamicShapeKeys
     #- CBody owns a CObjectDynamicShapeKeys and exports to Unity.
+    #- Bad naming of root node?
+# Remember 90 degree roll applied to both elbows!
 
 
+#=== PROBLEMS ===
+#- Finger and toes have slightly discordant orientations...
+#- Feet axis is poor 
+#- Neck upper and lower and head should have same orientation?
 
 #=== NEXT ===
 
@@ -55,8 +61,6 @@
 #- Previous breast morphing needs heavy pre-computation... Can this be redone by quickly 'walking the quads' to blend to base as we morph?
 
 #=== LEARNED ===
-
-#=== PROBLEMS ===
 
 #=== WISHLIST ===
 
@@ -114,8 +118,8 @@ def FirstImport_ProcessRawDazImport(sNameDazImportMesh, sNameMeshPrefix):
     oRootNodeO.rotation_euler.x = 0
     oRootNodeO.scale = Vector((1,1,1))
     
-    #=== Obtain reference to armature === 
-    oArm = oMeshOriginalO.modifiers[0].object.data        ###WEAK Just select the first modifier.  it is armature.
+    #=== Obtain reference to armature ===
+    oArm = oMeshOriginalO.modifiers["Armature"].object.data
     oArm.name = sNameMeshPrefix + "-Armature"
     
     #=== Rotate the armature bones to nullify node rotation above and rescale to return bones to meter units (and nullify re-scaling above) ===
@@ -164,15 +168,76 @@ def FirstImport_ProcessRawDazImport(sNameDazImportMesh, sNameMeshPrefix):
         vecTail = aBonesSumOfChildHeadPos[oBone] / aBonesCountOfChildBones[oBone]
         oBone.tail = vecTail   
 
+    #=== Ensure key bone chains are properly linked ===  (Loop above sets bone tail to center of average of children.  This is fine for most purposes EXCEPT the key spine bones)
+    ConnectParentTailToHeadOfMostImportantChild1(oArmBones, "chestUpper",   "chestLower")
+    ConnectParentTailToHeadOfMostImportantChild1(oArmBones, "chestLower",   "abdomenUpper")
+    ConnectParentTailToHeadOfMostImportantChild1(oArmBones, "abdomenUpper", "abdomenLower")
+    ConnectParentTailToHeadOfMostImportantChild1(oArmBones, "abdomenLower", "hip")                  ###CHECK: abdomenUpper -> abdomenLower -> hip -> pelvis do a 360 loop!  ###NOW### What to do???
+    ConnectParentTailToHeadOfMostImportantChild1(oArmBones, "hip",          "pelvis")
+    ConnectParentTailToHeadOfMostImportantChild1(oArmBones, "head",         "upperFaceRig")         ###CHECK: Safe to do?  Rotation side to side would be off-angle to what is intuitive.  ###IMPROVE: Manually set tail upward??
+    ConnectParentTailToHeadOfMostImportantChild2(oArmBones, "Foot",         "Metatarsals")
+    ConnectParentTailToHeadOfMostImportantChild2(oArmBones, "Metatarsals",  "Toe")
+    ConnectParentTailToHeadOfMostImportantChild2(oArmBones, "ForearmTwist", "Hand")
+    
+    #=== Bone chain above fixes a lot of problems but some very short bones still have very poor orientations.  Fix small bones by key bone vectors ===
+    OrientSmallBoneFromParents1(oArmBones, "abdomenLower",   "chestUpper", "pelvis")     # abdomentLower -> hip -> pelvis form a 360 loop that horribly corrupt Y-axis twist!  Fix orientation from most important torso chain
+    OrientSmallBoneFromParents1(oArmBones, "hip",            "chestUpper", "pelvis")
+    OrientSmallBoneFromParents1(oArmBones, "pelvis",         "chestUpper", "pelvis")
+    OrientSmallBoneFromParents1(oArmBones, "head",           "neckLower",  "head")        # Make both neck bones and head bone point in the same direction so it's easy to orient head
+    OrientSmallBoneFromParents1(oArmBones, "neckUpper",      "neckLower",  "head")
+    OrientSmallBoneFromParents1(oArmBones, "neckLower",      "neckLower",  "head")
+    OrientSmallBoneFromParents2(oArmBones, "Hand",           "ForearmTwist", "Hand")     # Hand is a very short bone that needs to be based on its parent
+    OrientSmallBoneFromParents2(oArmBones, "Toe",            "Metatarsals", "Toe")       # Toe is poorly oriented toward average of toes.  Set orientation like its parent
+
+    #=== Apply manual roll to some bones that would deform very poorly with PhysX's configurable joint limits of only having X axis being assymetrical ===
+    ManuallyAdjustRoll2(oArmBones, "ForearmBend", 90)           # Forearm by default has important elbow bend along Z axis (Needs to be on X-axis for assymetrical X-axis with PhysX configurable joint)
+    ManuallyAdjustRoll2(oArmBones, "Foot", 25)
+    ManuallyAdjustRoll2(oArmBones, "Metatarsals", 17)
+    ManuallyAdjustRoll2(oArmBones, "Toe", 17)                   ###IMPROVE: Orient toward up instead of these hardcoded angles!!
+
+    #=== Exit edit mode and hide rig ===
     bpy.ops.object.mode_set(mode='OBJECT')
     oRootNodeO.hide = True
     SelectAndActivate(oMeshOriginalO.name, True)
 
+
+#---------------------------------------------------------------------------    FIRST-IMPORT BONE ADJUSTERS
+
+def ConnectParentTailToHeadOfMostImportantChild1(oArmBones, sNameBoneParent, sNameBoneChild):      # Ensures a perfectly linked chain of bones by setting a parent's tail to the head of its 'most important' child (e.g. upperChest tail to head of lowerChest)
+    oBoneParent = oArmBones[sNameBoneParent]
+    oBoneChild  = oArmBones[sNameBoneChild]
+    oBoneParent.tail = oBoneChild.head              # Parent will now flow right into its most important child (thereby providing intuitive deformation when rotated)
+
+def ConnectParentTailToHeadOfMostImportantChild2(oArmBones, sNameBoneParent, sNameBoneChild):      # Split the 'ConnectParentTailToHeadOfMostImportantChild1' to both left and right body sides.
+    ConnectParentTailToHeadOfMostImportantChild1(oArmBones, "l"+sNameBoneParent, "l"+sNameBoneChild)
+    ConnectParentTailToHeadOfMostImportantChild1(oArmBones, "r"+sNameBoneParent, "r"+sNameBoneChild)
+
+def OrientSmallBoneFromParents1(oArmBones, sNameSmallBone, sNameParent1, sNameParent2):
+    oBoneParent1    = oArmBones[sNameParent1]
+    oBoneParent2    = oArmBones[sNameParent2]
+    oBoneSmall      = oArmBones[sNameSmallBone]
+    vecParent = oBoneParent2.head - oBoneParent1.head
+    oBoneSmall.tail = oBoneSmall.head + (vecParent * 0.25)      # Set the tail to be starting from the head plus some distance of parent vector 
+
+def OrientSmallBoneFromParents2(oArmBones, sNameSmallBone, sNameParent1, sNameParent2):  # Split the 'OrientSmallBoneFromParents1' to both left and right body sides.
+    OrientSmallBoneFromParents1(oArmBones, "l"+sNameSmallBone, "l"+sNameParent1, "l"+sNameParent2)
+    OrientSmallBoneFromParents1(oArmBones, "r"+sNameSmallBone, "r"+sNameParent1, "r"+sNameParent2)
     
+def ManuallyAdjustRoll1(oArmBones, sNameBone, nRoll):
+    oArmBones[sNameBone].roll = radians(nRoll)
+
+def ManuallyAdjustRoll2(oArmBones, sNameBone, nRoll):
+    ManuallyAdjustRoll1(oArmBones, "l"+sNameBone,  nRoll)
+    ManuallyAdjustRoll1(oArmBones, "r"+sNameBone, -nRoll)
+    
+
+
+#---------------------------------------------------------------------------    LEFT / RIGHT SYMMETRY
+
 def FirstImport_VerifyBoneSymmetry(oMeshBodyO):    
     #=== Iterate through all left bones to see if their associated right bone is positioned properly ===
     print("\n\n=== FirstImport_VerifyBoneSymmetry() ===")
-    oArm = oMeshBodyO.modifiers[0].object.data
+    oArm = oMeshBodyO.modifiers["Armature"].object.data
     SelectAndActivate(oMeshBodyO.parent.name, True)            ###LEARN: Armature editing is done through the mesh's parent object
     oArmBones = oArm.edit_bones    
     nAdjustments = 0
@@ -210,11 +275,16 @@ def FirstImport_VerifyBoneSymmetry(oMeshBodyO):
 
 
 
+#---------------------------------------------------------------------------    IMPORT COMMONS
 
 def Import_FirstCleanupOfDazImport(sNameDazImportMesh, sNameMeshNew):
     #=== Rename, rotate and rescale meshes verts (to nullify node rotation, rescaling above) ===
     sNameDazImportMeshShape = sNameDazImportMesh + ".Shape"
     oMeshImportedO = Import_RenameRotateAndRescaleMesh(sNameDazImportMeshShape, sNameMeshNew)
+    oMeshImportedO.show_all_edges = True
+
+    #=== Obtain reference to armature and name properly ===
+    oMeshImportedO.modifiers[0].name = "Armature"       # Ensure first modifier is called what we need throughout codebase (FBX sets only one modifier = Armature) 
 
     #=== Remove the root node's children that are NOT the expected mesh names (Deletes unwanted DAZ nodes) ===
     oRootNodeO = SelectAndActivate(oMeshImportedO.parent.name, True)     # Select parent node (owns the bone rig)
@@ -297,7 +367,7 @@ def ImportShape_AddImportedBodyToGameBody(sNameDazImportMesh, sNameMeshPrefix):
     oRootNodeImportedToDelete = oMeshDazImportO.parent 
 
     #=== Clean up the armature and the newly imported mesh's parent node (containing armature) === 
-    oModArm = oMeshDazImportO.modifiers[0]                  ###WEAK Just select the first modifier.  it is armature.
+    oModArm = oMeshDazImportO.modifiers["Armature"]
     oModArm.object = None                                   # Unlink existing armature modifier to the importated armature (that we're about to delete)
     sNameParent = oMeshDazImportO.parent.name
     oMeshDazImportO.parent = None                           ###LEARN: Must clear parent in sub-nodes before deleting parent or mesh will be inacessible!
@@ -334,7 +404,7 @@ def ImportShape_AddImportedBodyToGameBody(sNameDazImportMesh, sNameMeshPrefix):
     #=== Delete the imported rig (imported mesh now properly connected to the good rig) ===
     DeleteObject(oRootNodeImportedToDelete.name)
 
-   
+    #===== Rest of shape import depends if there already is a first shape or not... =====
     if sNameMeshPrefix in bpy.data.objects:
         #=== Add a shape key into the gameready mesh of the just-imported mesh ===
         print("\n=== NOTE: ImportShape() finds basis mesh.  Adding imported mesh as a shape key to basis mesh.  Please rename newly-created shapekey.\n")
@@ -358,5 +428,27 @@ def ImportShape_AddImportedBodyToGameBody(sNameDazImportMesh, sNameMeshPrefix):
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    RUNTIME BODY CONVERSION
 #---------------------------------------------------------------------------    
+
+###TEST: Testing code for bone rotation sent to Unity
+# oMeshBodyO = __import__('gBlender').SelectAndActivate("WomanA");
+# oArm = oMeshBodyO.modifiers["Armature"].object.data;
+# __import__('gBlender').SelectAndActivate(oMeshBodyO.parent.name);
+# bpy.ops.object.mode_set(mode='EDIT');
+# b = oArm.edit_bones['lThumb1'];
+# 
+# bpy.data.objects['DummyObject'].location = b.head;
+# bpy.data.objects['DummyObject'].rotation_euler = b.matrix.to_euler()
+# 
+# bpy.data.objects['DummyObject'].rotation_quaternion = b.matrix.to_quaternion()
+# 
+# 
+# 
+# bpy.data.objects['DummyObject'].matrix_world = oArm.edit_bones['lThumb2'].matrix
+# 
+# b = oArm.edit_bones['lForearmTwist'];
+# 
+# 
+# 
+# 
 
 
