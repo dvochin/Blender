@@ -94,14 +94,17 @@ class CSoftBody(CSoftBodyBase):
         bpy.ops.mesh.select_loose()                             # Select the loose geometry...  (This will only select Unity's particle)
         bpy.ops.mesh.select_all(action='INVERT')                #... and invert it (leaving only the backmesh selected (for upcoming nearby selection)
         #=== Move the rim verts with the close particles some distance so we can quickly separate the particles close to rim verts ===        
-        C_TempMove = 10                                         ###IMPROVE: Possible to do this with the 'transfer mesh' modifier?  Ask forum question!
+        C_TempMove = 5                                         ###IMPROVE: Possible to do this with the 'transfer mesh' modifier?  Ask forum question!
         bpy.ops.transform.transform(mode='TRANSLATION', value=(0, C_TempMove, 0, 0), proportional='ENABLED', proportional_size=nDistParticlesFromBackmesh, proportional_edit_falloff='CONSTANT')  # Move the rim verts with propportional editing so the particles near rim are moved too.  This is how we separate them
         #=== Delete all particles that are too far from rim ===
         bpy.ops.mesh.select_all(action='DESELECT')
-        for oVert in bmPinnedParticles.verts:  # Select all body verts far from clothing (Separated by translation operation above)                                  
-            if oVert.co.z > -C_TempMove / 2:  ###WEAK!! Stupid 90 degree rotation rearing its ugly head again...
+        for oVert in bmPinnedParticles.verts:       # Select all body verts that remained close to where they were before progressive move (Separated by translation operation above)                                  
+            if oVert.co.y < (C_TempMove / 2):       # Verts that didn't make it halfway were not close enough and are no longer needed
                 oVert.select_set(True)
         bpy.ops.mesh.delete(type='VERT')    # Delete all particles that were too far from backmesh.  (These will be softbody-simulated and the others pinned)
+        if len(bmPinnedParticles.verts) == 0:
+            raise Exception("###EXCEPTION in CSoftBody.FindPinnedFlexParticles()  Cannot find pinned particles for softbody " + self.sSoftBodyPart)
+        
         #=== Move back the remaining rim and 'close particles to their original position.  At this point only particles near rim remain ===
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.transform.transform(mode='TRANSLATION', value=(0, -C_TempMove, 0, 0))  # Move the clothing verts with proportional enabled with a constant curve.  This will also move the body verts near any clothing ###TUNE
@@ -142,7 +145,7 @@ class CSoftBody(CSoftBodyBase):
         oMeshD = bpy.data.meshes.new(sNameMeshUnity2Blender)
         oMeshO = bpy.data.objects.new(oMeshD.name, oMeshD)
         print("== CreateMesh_Unity2Blender() for mesh '{}' and verts {} ==".format(sNameMeshUnity2Blender, nVerts))
-        oMeshO.rotation_euler.x = radians(90)          # Rotate temp mesh 90 degrees like every other mesh.  ###IMPROVE: Get rid of 90 rotation EVERYWHERE!!
+        #oMeshO.rotation_euler.x = radians(90)            # Old rotation needed before Vic7
         bpy.context.scene.objects.link(oMeshO)
         aVerts = []
         for nVert in range(nVerts):
@@ -244,7 +247,7 @@ class CSoftBody(CSoftBodyBase):
 #         #=== Delete all particles that are too far from rim ===
 #         bpy.ops.mesh.select_all(action='DESELECT')
 #         for oVert in bmRim.verts:  # Select all body verts far from clothing (Separated by translation operation above)                                  
-#             if oVert.co.z > -C_TempMove / 2:  ###WEAK!! Stupid 90 degree rotation rearing its ugly head again...
+#             if oVert.co.z > -C_TempMove / 2:
 #                 oVert.select_set(True)
 #         bpy.ops.mesh.delete(type='VERT')  # Delete all particles that were too far from rim.  (These will be softbody-simulated and the others pinned)
 #         #=== Move back the remaining rim and 'close particles to their original position.  At this point only particles near rim remain ===

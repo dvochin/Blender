@@ -107,8 +107,8 @@ class gBL_temp1(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        self.oObjectMeshShapeKeys = CObject.CObjectMeshShapeKeys("Body Mesh Shape Keys", bpy.data.objects["WomanA"])
-        #Body_InitialPrep("WomanA")
+        #self.oObjectMeshShapeKeys = CObject.CObjectMeshShapeKeys("Body Mesh Shape Keys", bpy.data.objects["WomanA"])
+        Body_InitialPrep("WomanA")
         return {"FINISHED"}
 
 class gBL_temp2(bpy.types.Operator):
@@ -139,7 +139,7 @@ class gBL_temp4(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBody._aBodies[0].CreateSoftBody("Penis", 0.1)
+        CBody._aBodies[0].CreateSoftBody("BreastL", 0.1)
         #CBody._aBodies[0].CreateCloth("MyShirt", "Shirt", "BodySuit", "_ClothSkinnedArea_Top")      ###One of the body suits?
         #CBody._aBodies[0].aCloths["MyShirt"].aCurves[0].oCurveO
         return {"FINISHED"}

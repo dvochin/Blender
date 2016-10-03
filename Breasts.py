@@ -19,6 +19,9 @@ import Client
 
 def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):      
     "Separates the left-breast from source mesh and create the important 'blend group' to protect breast border during morph operations as well as the mapping between breast verts to body verts for left&right breasts"
+
+    return          ###BROKEN: New body and focus on blending
+
     
     ####IMPROVE: One of the 'prepare functions' that only needs to run when source body changes
     sNameBreast = sNameBodySrc + G.C_NameSuffix_Breast
@@ -36,13 +39,13 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
     bmBody.verts.index_update()
 
     #=== Capture the vertex sets of both left and right breasts in arrays ===
-    oVertGrp_BreastR = oMeshBodyO.vertex_groups["_Area_BreastR"]
+    oVertGrp_BreastR = oMeshBodyO.vertex_groups["_Detach_BreastR"]              ###CHECK: Was 'Area'
     oMeshBodyO.vertex_groups.active_index = oVertGrp_BreastR.index
     bpy.ops.object.vertex_group_select()
     aVertsBreastR = [oVert for oVert in bmBody.verts if oVert.select]
     bpy.ops.mesh.select_all(action='DESELECT')
 
-    oVertGrp_BreastL = oMeshBodyO.vertex_groups["_Area_BreastL"]
+    oVertGrp_BreastL = oMeshBodyO.vertex_groups["_Detach_BreastL"]
     oMeshBodyO.vertex_groups.active_index = oVertGrp_BreastL.index
     bpy.ops.object.vertex_group_select()
     aVertsBreastL = [oVert for oVert in bmBody.verts if oVert.select]
@@ -132,7 +135,7 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
 #     #=== Find the matching vert between breast and its collider submesh ===
 #     print("=== Finding vert-to-vert mapping between breast collider and breast ===")
 #     aMapBreastVertToColVerts_Cldr = []              # Create two arrays that will store the map between collider verts and breast verts.
-#     aMapBreastVertToColVerts_Breast = []            
+#     aMapBreastVertToColVerts_Breast = []                
 #     for nVertCldr in aVertsCldrI:
 #         oVert = oMeshBreastO.data.vertices[nVertCldr]
 #         vecVert = oVert.co.copy()

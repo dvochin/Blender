@@ -121,6 +121,7 @@ def FirstImport_ProcessRawDazImport(sNameDazImportMesh, sNameMeshPrefix):
     #=== Obtain reference to armature ===
     oArm = oMeshOriginalO.modifiers["Armature"].object.data
     oArm.name = sNameMeshPrefix + "-Armature"
+    oArm.name = sNameMeshPrefix + "-Armature"
     
     #=== Rotate the armature bones to nullify node rotation above and rescale to return bones to meter units (and nullify re-scaling above) ===
     SelectAndActivate(oRootNodeO.name, True)           
@@ -136,6 +137,16 @@ def FirstImport_ProcessRawDazImport(sNameDazImportMesh, sNameMeshPrefix):
     oArmBones['abdomenUpper'].parent    = oArmBones['chestLower']
     oArmBones['abdomenLower'].parent    = oArmBones['abdomenUpper']
     oArmBones['hip'].parent             = oArmBones['abdomenLower']
+    oArmBones['lBigToe'].parent         = oArmBones['lToe']         # Re-parent all toe bones to Toe so that it can act as master transform in Unity
+    oArmBones['rBigToe'].parent         = oArmBones['rToe']
+    oArmBones['lSmallToe1'].parent      = oArmBones['lToe']
+    oArmBones['rSmallToe1'].parent      = oArmBones['rToe']
+    oArmBones['lSmallToe2'].parent      = oArmBones['lToe']
+    oArmBones['rSmallToe2'].parent      = oArmBones['rToe']
+    oArmBones['lSmallToe3'].parent      = oArmBones['lToe']
+    oArmBones['rSmallToe3'].parent      = oArmBones['rToe']
+    oArmBones['lSmallToe4'].parent      = oArmBones['lToe']
+    oArmBones['rSmallToe4'].parent      = oArmBones['rToe']
     bpy.ops.object.mode_set(mode='OBJECT')
     #oArmBones.remove(oArmBones['Genesis3FemaleGenitalia'])        # Remove extra bones we don't need
 

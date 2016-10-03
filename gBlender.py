@@ -151,7 +151,7 @@ def SetParent(sNameObject, sNameParent):
 	if sNameParent is not None:							# 'store' the new object at the provided location in Blender's nodes
 		if sNameParent not in bpy.data.objects:
 			raise Exception("###EXCEPTION: SetParent() could not locate parent node " + sNameParent)
-		###oNewO.parent = bpy.data.objects[sNameParent]		   ###LEARN: Parenting an object this way would reset the transform applied to object = disaster!  (Client-side meshes lose their 90 deg orientation and become 100x bigger!)
+		###oNewO.parent = bpy.data.objects[sNameParent]		   ###LEARN: Parenting an object this way would reset the transform applied to object = disaster!  ###CHECK  No longer valid?
 		oParentO = bpy.data.objects[sNameParent]
 		oParentO.hide = oParentO.hide_select = False
 		oParentO.select = True
