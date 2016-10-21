@@ -103,12 +103,12 @@ class gBL_hide_game_meshes(bpy.types.Operator):
 
 class gBL_temp1(bpy.types.Operator):
     bl_idname = "gbl.temp1"
-    bl_label = "1: BodyInit"
+    bl_label = "1: BodyBase"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        #self.oObjectMeshShapeKeys = CObject.CObjectMeshShapeKeys("Body Mesh Shape Keys", bpy.data.objects["WomanA"])
-        Body_InitialPrep("WomanA")
+        CBodyBase_Create(0, 'WomanA', 'WomanA','JUNK')
+        #Body_InitialPrep("WomanA")
         return {"FINISHED"}
 
 class gBL_temp2(bpy.types.Operator):
@@ -117,7 +117,8 @@ class gBL_temp2(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context , event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        oBody = CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big')
+        CBodyBase_GetBodyBase(0).OnChangeBodyMode('Play')
+        #oBody = CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big')
         #oBody = CBody(0, 'WomanA', 'Woman', 'Vagina-Erotic9-A')
         #oBody.CreateFlexSkin("TestFlexSkin", 10)
         return {"FINISHED"}
@@ -125,23 +126,24 @@ class gBL_temp2(bpy.types.Operator):
 class gBL_temp3(bpy.types.Operator):
     bl_idname = "gbl.temp3"
     #bl_label = "3: BreastOp"
-    bl_label = "3: BreastOp"
+    bl_label = "3: X"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBody._aBodies[0].Breasts_ApplyMorph('RESIZE', 'Nipple', 'Center', 'Wide', (1.6,1.6,1.6,0), None)
+        #CBody._aBodyBases[0].Breasts_ApplyMorph('RESIZE', 'Nipple', 'Center', 'Wide', (1.6,1.6,1.6,0), None)
         return {"FINISHED"}
 
 class gBL_temp4(bpy.types.Operator):
     bl_idname = "gbl.temp4"
-    bl_label = "4: SoftBody"
+    bl_label = "4: ClothCreate"
     #bl_label = "4: Cloth"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBody._aBodies[0].CreateSoftBody("BreastL", 0.1)
-        #CBody._aBodies[0].CreateCloth("MyShirt", "Shirt", "BodySuit", "_ClothSkinnedArea_Top")      ###One of the body suits?
-        #CBody._aBodies[0].aCloths["MyShirt"].aCurves[0].oCurveO
+        CBodyBase_GetBodyBase(0).CreateCloth("MyShirt", "Shirt", "BodySuit", "_ClothSkinnedArea_ShoulderTop")
+        #CBody._aBodyBases[0].CreateSoftBody("BreastL", 0.1)        
+        #CBody._aBodyBases[0].CreateCloth("MyShirt", "Shirt", "BodySuit", "_ClothSkinnedArea_Top")      ###One of the body suits?
+        #CBody._aBodyBases[0].aCloths["MyShirt"].aCurves[0].oCurveO
         return {"FINISHED"}
 
 class gBL_temp5(bpy.types.Operator):
@@ -150,7 +152,7 @@ class gBL_temp5(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBody._aBodies[0].aCloths["MyShirt"].UpdateCutterCurves()
+        CBodyBase_GetBodyBase(0).aCloths['MyShirt'].UpdateCutterCurves()
         return {"FINISHED"}
 
 class gBL_temp6(bpy.types.Operator):
@@ -159,8 +161,10 @@ class gBL_temp6(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBody._aBodies[0].aCloths["MyShirt"].CutClothWithCutterCurves()
+        CBodyBase_GetBodyBase(0).aCloths['MyShirt'].CutClothWithCutterCurves()
         return {"FINISHED"}
+
+
 
 class gBL_temp7(bpy.types.Operator):
     bl_idname = "gbl.temp7"
@@ -168,7 +172,7 @@ class gBL_temp7(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        #CBody._aBodies[0].aCloths["MyShirt"].PrepareClothForGame()
+        #CBody._aBodyBases[0].aCloths["MyShirt"].PrepareClothForGame()
         BodyPrep.FirstImport_ProcessRawDazImport("Genesis3Female", "WomanA")
         return {"FINISHED"}
 
@@ -188,63 +192,117 @@ class gBL_temp9(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        #CBody._aBodies[0].SlaveMesh_ResyncWithMasterMesh("BreastCol")
+        #CBody._aBodyBases[0].SlaveMesh_ResyncWithMasterMesh("BreastCol")
         #CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big', 5000)
 
+        #NOW:
+        # Can quickly find UVs from position...
+        # 1. Create code to create 1-unit curves.
+        # 2. Create code to rasterize a curve
+        # 3. Invoke our code to find closest UV tri.
+        # 4. Add code to triangulate, and convert to 3D
+        # 5. Visualize 3D curve
+
+
+
+        # create a kd-tree from a mesh
+        #from bpy import context
+        obj = bpy.context.object
+        obj = SelectAndActivate("BodySuit")
+        
+        # 3d cursor relative to the object data
+        #co_find = context.scene.cursor_location * obj.matrix_world.inverted()
+        
+        mesh = obj.data
+        size = len(mesh.polygons)
+        kd = kdtree.KDTree(size)
+        
+        #for i, v in enumerate(mesh.vertices):
+        #    kd.insert(v.co, i)
+
+        for oPoly in mesh.polygons:
+            uvs = [mesh.uv_layers.active.data[li] for li in oPoly.loop_indices]
+            vecFaceCenter = Vector((0,0,0))
+            for oUV in uvs:
+                vecFaceCenter.x += oUV.uv.x
+                vecFaceCenter.y += oUV.uv.y
+            vecFaceCenter /= len(uvs)
+            kd.insert(vecFaceCenter, oPoly.index)
+        
+        kd.balance()
+        
+        
+        # Find the closest point to the center
+        co_find = (0.25, 0.50, 0)
+        co, index, dist = kd.find(co_find)
+        print("Close to center:", co, index, dist)
+        
+        
+        # Find the closest 10 points to the 3d cursor
+        print("Close 10 points")
+        for (co, index, dist) in kd.find_n(co_find, 10):
+            print("    ", co, index, dist)
+        
+        
+        # Find points within a radius of the 3d cursor
+#         print("Close points within 0.5 distance")
+#         co_find = context.scene.cursor_location
+#         for (co, index, dist) in kd.find_range(co_find, 0.5):
+#             print("    ", co, index, dist)
 
         
-        #=== Obsolete Code to delete edge rings ===
-        oMeshOrifice = CMesh.CMesh.CreateFromExistingObject("Test-Vagina-Start")     ###HACK!!!!!!
-        bmOrifice = oMeshOrifice.Open()
-
-        Util_SelectVertGroupVerts(oMeshOrifice.oMeshO, "Opening")
-        bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
-
-        aEdgesToDelete = []
-        for oEdge in bmOrifice.edges:
-            if (oEdge.select == True):
-                oEdgeCurrent = oEdge
-                oFaceCurrent = oEdgeCurrent.link_faces[0]
-                if (len(oEdgeCurrent.link_faces) != 1):
-                    raise Exception("###EXCEPTION in SelectRing. Starting edge had more than one face!".format(len(oEdgeCurrent.link_faces)))
-
-                while (True):
-                    print("Opposite edge search: Looking for opposite of edge {} by avoiding verts {} and {}".format(oEdgeCurrent, oEdgeCurrent.verts[0], oEdgeCurrent.verts[1]))
-                    if (len(oFaceCurrent.edges) != 4):
-                        print("SelectRing: Found a face with {} edges!  Halting this column search.".format(len(oFaceCurrent.edges)))
-                        break
-
-                    #=== Find the opposite edge to edge 'oEdgeCurrent' on face 'oFaceCurrent' by finding the first edge with two different verts ===
-                    oEdgeOppositeFound = None
-                    for oEdgeOppositeSearch in oFaceCurrent.edges:
-                        if ((oEdgeCurrent.verts[0] != oEdgeOppositeSearch.verts[0]) and (oEdgeCurrent.verts[0] != oEdgeOppositeSearch.verts[1]) and (oEdgeCurrent.verts[1] != oEdgeOppositeSearch.verts[0]) and (oEdgeCurrent.verts[1] != oEdgeOppositeSearch.verts[1])):
-                            print("Opposite edge search:  Found edge {} with vert {} and {}".format(oEdgeOppositeSearch, oEdgeOppositeSearch.verts[0], oEdgeOppositeSearch.verts[1]))
-                            oEdgeOppositeFound = oEdgeOppositeSearch
-                            break
-                    if (oEdgeOppositeFound != None):
-                        oEdgeCurrent = oEdgeOppositeFound
-                    else:
-                        raise Exception("###EXCEPTION in SelectRing: Could not find opposite to edge {}.".format(oEdgeCurrent)) # No reason this would ever happen given that we've just checked above if this face is a quad
-                    aEdgesToDelete.append(oEdgeCurrent)
-                    
-                    #=== Find the other face on edge oEdgeCurrent to continue iteration along the quads ===
-                    if (len(oEdgeCurrent.link_faces) == 2):
-                        if (oFaceCurrent == oEdgeCurrent.link_faces[0]):
-                            oFaceCurrent = oEdgeCurrent.link_faces[1]
-                        else:
-                            oFaceCurrent = oEdgeCurrent.link_faces[0]
-                    else:
-                        print("SelectRing: Edge had {} faces (expected two) = end of ring search for this column.".format(len(oEdgeCurrent.link_faces)))
-                        break
-                        
-
-        #=== Delete the ring edges tagged above ===
-        bpy.ops.mesh.select_all(action='DESELECT') 
-        for oEdge in aEdgesToDelete:
-            oEdge.select_set(True)
-        #bpy.ops.mesh.delete(type='EDGES')
-            
-        #oMeshOrifice.Close()
+#         #=== Obsolete Code to delete edge rings ===
+#         oMeshOrifice = CMesh.CMesh.CreateFromExistingObject("Test-Vagina-Start")     ###HACK!!!!!!
+#         bmOrifice = oMeshOrifice.Open()
+# 
+#         Util_SelectVertGroupVerts(oMeshOrifice.GetMesh(), "Opening")
+#         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
+# 
+#         aEdgesToDelete = []
+#         for oEdge in bmOrifice.edges:
+#             if (oEdge.select == True):
+#                 oEdgeCurrent = oEdge
+#                 oFaceCurrent = oEdgeCurrent.link_faces[0]
+#                 if (len(oEdgeCurrent.link_faces) != 1):
+#                     raise Exception("###EXCEPTION in SelectRing. Starting edge had more than one face!".format(len(oEdgeCurrent.link_faces)))
+# 
+#                 while (True):
+#                     print("Opposite edge search: Looking for opposite of edge {} by avoiding verts {} and {}".format(oEdgeCurrent, oEdgeCurrent.verts[0], oEdgeCurrent.verts[1]))
+#                     if (len(oFaceCurrent.edges) != 4):
+#                         print("SelectRing: Found a face with {} edges!  Halting this column search.".format(len(oFaceCurrent.edges)))
+#                         break
+# 
+#                     #=== Find the opposite edge to edge 'oEdgeCurrent' on face 'oFaceCurrent' by finding the first edge with two different verts ===
+#                     oEdgeOppositeFound = None
+#                     for oEdgeOppositeSearch in oFaceCurrent.edges:
+#                         if ((oEdgeCurrent.verts[0] != oEdgeOppositeSearch.verts[0]) and (oEdgeCurrent.verts[0] != oEdgeOppositeSearch.verts[1]) and (oEdgeCurrent.verts[1] != oEdgeOppositeSearch.verts[0]) and (oEdgeCurrent.verts[1] != oEdgeOppositeSearch.verts[1])):
+#                             print("Opposite edge search:  Found edge {} with vert {} and {}".format(oEdgeOppositeSearch, oEdgeOppositeSearch.verts[0], oEdgeOppositeSearch.verts[1]))
+#                             oEdgeOppositeFound = oEdgeOppositeSearch
+#                             break
+#                     if (oEdgeOppositeFound != None):
+#                         oEdgeCurrent = oEdgeOppositeFound
+#                     else:
+#                         raise Exception("###EXCEPTION in SelectRing: Could not find opposite to edge {}.".format(oEdgeCurrent)) # No reason this would ever happen given that we've just checked above if this face is a quad
+#                     aEdgesToDelete.append(oEdgeCurrent)
+#                     
+#                     #=== Find the other face on edge oEdgeCurrent to continue iteration along the quads ===
+#                     if (len(oEdgeCurrent.link_faces) == 2):
+#                         if (oFaceCurrent == oEdgeCurrent.link_faces[0]):
+#                             oFaceCurrent = oEdgeCurrent.link_faces[1]
+#                         else:
+#                             oFaceCurrent = oEdgeCurrent.link_faces[0]
+#                     else:
+#                         print("SelectRing: Edge had {} faces (expected two) = end of ring search for this column.".format(len(oEdgeCurrent.link_faces)))
+#                         break
+#                         
+# 
+#         #=== Delete the ring edges tagged above ===
+#         bpy.ops.mesh.select_all(action='DESELECT') 
+#         for oEdge in aEdgesToDelete:
+#             oEdge.select_set(True)
+#         #bpy.ops.mesh.delete(type='EDGES')
+#             
+#         #oMeshOrifice.Close()
       
         
         
@@ -377,10 +435,10 @@ bpy.utils.register_module(__name__)
 
         #Client.IsolateHead()
         #print(Client.gBL_GetBones('WomanA'))
-        #Client.Client_ConvertMesh(bpy.data.objects["BodyA_BodyCol"], True)
+        #Client.Client_ConvertMeshForUnity(bpy.data.objects["BodyA_BodyCol"], True)
         #CBBodyCol.SlaveMesh_SetupMasterSlatve("BodyA-BreastCol-ToBody", "BodyA_Morph", 0.000001)
         #CBodyColBreast_GetColliderInfo("")
-        #CBody._aBodies[0].CreateTempMesh(100)
+        #CBody._aBodyBases[0].CreateTempMesh(100)
 
         #Client.ManCleanup_RemoveExtraMaterials()
         #Client.DumpShapeKey()
@@ -390,7 +448,7 @@ bpy.utils.register_module(__name__)
         #CBBodyCol.CBSoftBreasts_GetColliderSourceMeshInfo("BodyA")
         #CBBodyCol.CBBodyCol_Generate("ManA", 1000)
         ##Client.gBL_Cloth_SplitIntoSkinnedAndSimulated("BodySuit-Top_ClothSimulated", "BodySuit-Top", "WomanA", "_ClothSkinnedArea_Top")
-        ##Client.Client_ConvertMesh(SelectAndActivate("WomanA_Morph"), True)
+        ##Client.Client_ConvertMeshForUnity(SelectAndActivate("WomanA_Morph"), True)
         #CBBodyCol.SlaveMesh_SetupMasterSlave("BodyA-BreastCol-ToBreasts", "BodyA_Detach_Breasts", 0.000001)
         #Breasts.Breasts_ApplyMorph('WomanA', 'WomanA', 'RESIZE', 'Nipple', 'Center', 'Wide', (1.6,1.6,1.6,0), None)
 

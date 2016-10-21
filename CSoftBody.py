@@ -26,7 +26,6 @@ class CSoftBody(CSoftBodyBase):
         self.nSoftBodyFlexColliderShrinkRatio  = nSoftBodyFlexColliderShrinkRatio # The multiplier applied to the global G.nFlexParticleSpacing.  Used to 'shrink' the 'self.oMeshFlexCollider' mesh from the presentation mesh so that collisions appear to occur on the surface of the visible meshes.
 
         self.oMeshFlexCollider      = None              # The 'Flex collision' mesh is a 'slightly shrunken' version of 'self.oMeshSoftBody' in order so that Flex simulates a smaller mesh so that the appearance mesh appears to collide at the presentation depth (even though this is impossibly to do by Flex)    
-        self.oMeshSoftBodyRimBackmesh = None            # The 'backmesh' mesh is a filled-in version of the self.oMeshSoftBodyRim_Orig rim mesh for the purpose of finding Flex particles that should be pinned instead of simulated 
         self.oMeshUnity2Blender     = None              # The 'Unity-to-Blender' mesh created by CreateUnity2BlenderMesh().  Used by Unity to pass in geometry for Blender processing (e.g. Softbody particle skinning and pinning)   
 
 
@@ -56,19 +55,25 @@ class CSoftBody(CSoftBodyBase):
 
         #===== FLEX COLLISION MESH CREATION =====
         #=== Create the 'collision mesh' as a 'shrunken version' of appearance mesh (about vert normals) ===
-        self.oMeshFlexCollider = CMesh.CreateFromDuplicate(self.oMeshSoftBody.oMeshO.name + G.C_NameSuffix_FlexCollider, self.oMeshSoftBody)
+        self.oMeshFlexCollider = CMesh.CreateFromDuplicate(self.oMeshSoftBody.GetMesh().name + G.C_NameSuffix_FlexCollider, self.oMeshSoftBody)
         self.oMeshFlexCollider.SetParent(self.oMeshSoftBody.GetName())
         self.oMeshFlexCollider.Open()
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.transform.shrink_fatten(value=self.nSoftBodyFlexColliderShrinkRatio * G.CGlobals._nFlexParticleSpacing)      # Shrink presentation mesh by the particle distance multiplied by the shrink ratio provided for this softbody
         self.oMeshFlexCollider.Close()
     
-
+    
+    def DoDestroy(self):
+        super(self.__class__, self).DoDestroy()         ###LEARN: How to call base class method
+        self.oMeshFlexCollider.DoDestroy()
+        self.oMeshUnity2Blender.DoDestroy()   
   
-    def FindPinnedFlexParticles(self, nDistParticlesFromBackmesh):        
+  
+  
+    def FindPinnedFlexParticles(self, nDistSoftBodyParticlesFromBackmesh):        
         # FindPinnedFlexParticles: Process the Flex-created particles and create softbody rim mesh.  Updates our rim mesh currently containing only rim (for normals).  This mesh will be responsible to 'pin' some softbody particles to the skinned body so softbody doesn't 'fly out'
         # Note: Unity must have created the self.oMeshUnity2Blender mesh before calling this (pushing its Flex-generated verts)
-        print("-- CSoftBody.FindPinnedFlexParticles() on body '{}' and softbody '{}' with distance {} --".format(self.oBody.sMeshPrefix, self.sSoftBodyPart, nDistParticlesFromBackmesh))
+        print("-- CSoftBody.FindPinnedFlexParticles() on body '{}' and softbody '{}' with distance {} --".format(self.oBody.oBodyBase.sMeshPrefix, self.sSoftBodyPart, nDistSoftBodyParticlesFromBackmesh))
 
         #=== Open the temp mesh Unity requested in CreateTempMesh() and push in a data layer with vert index.  This will prevent us from losing access to Unity's particles as we process this mesh toward the softbody rim ===        
         oMeshUnity2BlenderTEMPCOPY = CMesh.CreateFromDuplicate("TEMPFORJOIN-Unity2Blender", self.oMeshUnity2Blender)        # Create a temporary copy of Unity2Blender mesh because we need to destroy our copy and Unity owns its copy and must release it on its own
@@ -84,9 +89,9 @@ class CSoftBody(CSoftBodyBase):
         self.oMeshPinnedParticles.SetParent(self.oMeshSoftBody.GetName())
          
         SelectAndActivate(oMeshUnity2BlenderTEMPCOPY.GetName())       # First select and activate mesh that will be destroyed (temp mesh)    (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
-        self.oMeshPinnedParticles.oMeshO.hide = False
-        self.oMeshPinnedParticles.oMeshO.select = True                         # Now select...
-        bpy.context.scene.objects.active = self.oMeshPinnedParticles.oMeshO    #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
+        self.oMeshPinnedParticles.GetMesh().hide = False
+        self.oMeshPinnedParticles.GetMesh().select = True                         # Now select...
+        bpy.context.scene.objects.active = self.oMeshPinnedParticles.GetMesh()    #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
         bpy.ops.object.join()                                           #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
         oMeshUnity2BlenderTEMPCOPY = None                               # Above join destroyed the copy mesh so set our variable to None
         #=== Select the rim verts in the joined mesh ===
@@ -95,7 +100,7 @@ class CSoftBody(CSoftBodyBase):
         bpy.ops.mesh.select_all(action='INVERT')                #... and invert it (leaving only the backmesh selected (for upcoming nearby selection)
         #=== Move the rim verts with the close particles some distance so we can quickly separate the particles close to rim verts ===        
         C_TempMove = 5                                         ###IMPROVE: Possible to do this with the 'transfer mesh' modifier?  Ask forum question!
-        bpy.ops.transform.transform(mode='TRANSLATION', value=(0, C_TempMove, 0, 0), proportional='ENABLED', proportional_size=nDistParticlesFromBackmesh, proportional_edit_falloff='CONSTANT')  # Move the rim verts with propportional editing so the particles near rim are moved too.  This is how we separate them
+        bpy.ops.transform.transform(mode='TRANSLATION', value=(0, C_TempMove, 0, 0), proportional='ENABLED', proportional_size=nDistSoftBodyParticlesFromBackmesh, proportional_edit_falloff='CONSTANT')  # Move the rim verts with propportional editing so the particles near rim are moved too.  This is how we separate them
         #=== Delete all particles that are too far from rim ===
         bpy.ops.mesh.select_all(action='DESELECT')
         for oVert in bmPinnedParticles.verts:       # Select all body verts that remained close to where they were before progressive move (Separated by translation operation above)                                  
@@ -118,20 +123,20 @@ class CSoftBody(CSoftBodyBase):
         #===== CREATE THE MAP OF PINNED FLEX PARTICLES: Responsible to move simulated Flex particles to the position of their coresponding skinned vert  =====
         #=== Iterate through particles to fill in its map traversal ===
         oLayParticles = bmPinnedParticles.verts.layers.int[G.C_DataLayer_Particles]
-        self.aMapPinnedParticles = array.array('H')  # Blank out the two arrays that must be created everytime this is called
+        self.aMapPinnedParticles = CByteArray()  # Blank out the two arrays that must be created everytime this is called
         self.oMeshPinnedParticles.UpdateBMeshTables()
         for oVert in bmPinnedParticles.verts:                               ###IMPROVE: Code that generates 'aMapPinnedParticles' is duplicate between soft body and cloth... can be merged together?? 
             nOrigFlexParticleID = oVert[oLayParticles]
             if (nOrigFlexParticleID >= G.C_OffsetVertIDs):            # The real particles are over this offset (as created above)
                 nOrigFlexParticleID -= G.C_OffsetVertIDs              # Retrieve the non-offsetted particle
-                self.aMapPinnedParticles.append(oVert.index)
-                self.aMapPinnedParticles.append(nOrigFlexParticleID)
+                self.aMapPinnedParticles.AddUShort(oVert.index)
+                self.aMapPinnedParticles.AddUShort(nOrigFlexParticleID)
                 #print("PinParticle {:4d} = Flex Particle {:4d}". format(oVert.index, nOrigFlexParticleID))
         self.oMeshPinnedParticles.Close()
 
         #=== Skin the pinned particle mesh from original rim mesh.  (So particles are skinned too)
-        Util_TransferWeights(self.oMeshPinnedParticles.oMeshO, self.oBody.oMeshMorph.oMeshO)   ###CHECK: Proper source mesh? ###OPT?
-        Cleanup_VertGrp_RemoveNonBones(self.oMeshPinnedParticles.oMeshO, True)
+        Util_TransferWeights(self.oMeshPinnedParticles.GetMesh(), self.oBody.oBodyBase.oMeshMorphResult.GetMesh())   ###CHECK: Proper source mesh? ###OPT?
+        Cleanup_VertGrp_RemoveNonBones(self.oMeshPinnedParticles.GetMesh(), True)
 
         return "OK"
 
@@ -140,7 +145,7 @@ class CSoftBody(CSoftBodyBase):
         "Create a temporary Unity2Blender with 'nVerts' vertices.  Used by Unity to pass Blender temporary mesh geometry for Blender processing (e.g. Softbody tetramesh pinning)"
         sNameMeshUnity2Blender = self.oMeshSoftBody.GetName() + G.C_NameSuffix_Unity2Blender
         if (self.oMeshUnity2Blender != None):
-            self.oMeshUnity2Blender.Destroy()
+            self.oMeshUnity2Blender.DoDestroy()
             self.oMeshUnity2Blender = None
         oMeshD = bpy.data.meshes.new(sNameMeshUnity2Blender)
         oMeshO = bpy.data.objects.new(oMeshD.name, oMeshD)
@@ -179,7 +184,7 @@ class CSoftBody(CSoftBodyBase):
 #         #=== Iterate through this softbody mesh and update our vert position to our corresponding morph source body ===
 #         bmSoftBody = self.oMeshSoftBody.Open()
 #         oLayVertAssy = bmSoftBody.verts.layers.int[G.C_DataLayer_VertsAssy]
-#         aVertsMorph = self.oBody.oMeshMorph.oMeshO.data.vertices
+#         aVertsMorph = self.oBody.oMeshMorph.GetMesh().data.vertices
 #         for oVert in bmSoftBody.verts:
 #             if (oVert[oLayVertAssy] >= G.C_OffsetVertIDs):
 #                 nVertMorph = oVert[oLayVertAssy] - G.C_OffsetVertIDs        # Obtain the vertID from the assembled mesh (removing offset added during creation)
@@ -199,10 +204,10 @@ class CSoftBody(CSoftBodyBase):
 
 #     def FindPinnedFlexParticles(self, nNumVerts_UnityToBlenderMesh, nDistParticlesFromBackmesh):
 #         "Process the Flex-created particles and create softbody rim mesh.  Updates our rim mesh currently containing only rim (for normals).  This mesh will be responsible to 'pin' some softbody particles to the skinned body so softbody doesn't 'fly out'"
-#         print("-- CSoftBody.FindPinnedFlexParticles() on body '{}' and softbody '{}' with tetra distance {} --".format(self.oBody.sMeshPrefix, self.sSoftBodyPart, nDistParticlesFromBackmesh))
+#         print("-- CSoftBody.FindPinnedFlexParticles() on body '{}' and softbody '{}' with tetra distance {} --".format(self.oBody.oBodyBase.sMeshPrefix, self.sSoftBodyPart, nDistParticlesFromBackmesh))
 # 
 #         #=== Create a temporary copy of rim mesh so we can transfer weights efficiently from it to new mesh including particles ===
-#         ####BUG? Destroy mesh of rim??
+#         ####BUG? DoDestroy mesh of rim??
 #         self.oMeshSoftBodyRim = CMesh.CreateFromDuplicate("TEMP_SoftBodyRim", self.oMeshSoftBodyRim_Orig)
 #         oMeshSoftBodyRim_Copy = CMesh.CreateFromDuplicate("TEMP_SoftBodyRim_Copy", self.oMeshSoftBodyRim_Orig)
 # 
@@ -421,9 +426,9 @@ class CSoftBody(CSoftBodyBase):
 # 
 #         else:
 #             bpy.ops.mesh.select_all(action='DESELECT')
-#             nVertGrpIndex_DetachPart = self.oMeshSoftBody.oMeshO.vertex_groups.find(G.C_VertGrp_Detach + "Vagina_Backmesh")      ###BUG!!!! _ versus -!!!!!!
-#             oVertGroup_DetachPart = self.oMeshSoftBody.oMeshO.vertex_groups[nVertGrpIndex_DetachPart]
-#             self.oMeshSoftBody.oMeshO.vertex_groups.active_index = oVertGroup_DetachPart.index
+#             nVertGrpIndex_DetachPart = self.oMeshSoftBody.GetMesh().vertex_groups.find(G.C_VertGrp_Detach + "Vagina_Backmesh")      ###BUG!!!! _ versus -!!!!!!
+#             oVertGroup_DetachPart = self.oMeshSoftBody.GetMesh().vertex_groups[nVertGrpIndex_DetachPart]
+#             self.oMeshSoftBody.GetMesh().vertex_groups.active_index = oVertGroup_DetachPart.index
 #             bpy.ops.object.vertex_group_select()  # Select only the just-updated vertex group of the vertices we need to separate from the composite mesh.
 # 
 #         #=== Finish creating the backmesh from vagina or no-vagina submesh selected above ===
@@ -474,7 +479,7 @@ class CSoftBody(CSoftBodyBase):
 #             self.oMeshFlexCollider.Open()
 #             bpy.ops.mesh.select_all(action='SELECT')
 #             bpy.ops.transform.shrink_fatten(value=nShrinkDistanceTotal)
-#             Util_SelectVertGroupVerts(self.oMeshFlexCollider.oMeshO, "_FlexSkinSmoothArea_Vagina_Opening")
+#             Util_SelectVertGroupVerts(self.oMeshFlexCollider.GetMesh(), "_FlexSkinSmoothArea_Vagina_Opening")
 #             bpy.ops.mesh.select_more()
 #             bpy.ops.mesh.select_more()
 #             bpy.ops.mesh.select_more()
@@ -489,7 +494,7 @@ class CSoftBody(CSoftBodyBase):
 #               
 #             self.oMeshFlexCollider.Open()
 #             for nStep in range(nSteps):
-#                 Util_SelectVertGroupVerts(self.oMeshFlexCollider.oMeshO, "_FlexSkinSmoothArea_Vagina_Slit")
+#                 Util_SelectVertGroupVerts(self.oMeshFlexCollider.GetMesh(), "_FlexSkinSmoothArea_Vagina_Slit")
 #                 bpy.ops.mesh.select_more()
 #                 bpy.ops.mesh.select_more()
 #                 bpy.ops.mesh.select_more()
@@ -505,14 +510,14 @@ class CSoftBody(CSoftBodyBase):
 
 
 
-# ###OBS: FlexSkin to move
+####OBS: FlexSkin to move
 #         #=== Specific to bIsFlexSkin softbody variant ===
 #         self.aShapeVerts            = array.array('I')  # Array of which vert / particle is also a shape
 #         self.aShapeParticleIndices  = array.array('I')  # Flattened array of which shape match to which particle (as per Flex softbody requirements)
 #         self.aShapeParticleCutoffs  = array.array('I')  # Cutoff in 'aShapeParticleIndices' between sets defining which particle goes to which shape. 
 # 
 #             ###NOW###Duplicate! #=== Create the 'collision mesh' as a 'shrunken version' of appearance mesh (about vert normals) === ###OBS???
-#             ###NOW###: FlexCollider / presentaiton mesh diff!  self.oMeshFlexCollider = CMesh.CreateFromDuplicate(self.oMeshSoftBody.oMeshO.name + G.C_NameSuffix_FlexCollider, self.oMeshSoftBody)
+#             ###NOW###: FlexCollider / presentaiton mesh diff!  self.oMeshFlexCollider = CMesh.CreateFromDuplicate(self.oMeshSoftBody.GetMesh().name + G.C_NameSuffix_FlexCollider, self.oMeshSoftBody)
 #  
 #             bmSoftBody = self.oMeshVAGINABAKED_HACK.Open()
 #             nVertsBeforeDuplication = int(len(bmSoftBody.verts) / 2)
@@ -521,10 +526,10 @@ class CSoftBody(CSoftBodyBase):
 # #             bpy.ops.mesh.select_all(action='SELECT')
 # #             bpy.ops.transform.shrink_fatten(value=G.CGlobals._nFlexParticleSpacing / 2)     ###LEARN: Value is inverse of Blender GUI (positive values shrink in API, expand in GUI)
 # # 
-# #             Util_SelectVertGroupVerts(self.oMeshSoftBody.oMeshO, "_FlexSkinSmoothArea_Vagina_Opening")     ###DEVB: Need much better collision mesh... do by hand??
+# #             Util_SelectVertGroupVerts(self.oMeshSoftBody.GetMesh(), "_FlexSkinSmoothArea_Vagina_Opening")     ###DEVB: Need much better collision mesh... do by hand??
 # #             bpy.ops.mesh.vertices_smooth(factor=0.5, repeat=20)      ###TUNE
 # #             
-# #             Util_SelectVertGroupVerts(self.oMeshSoftBody.oMeshO, "_FlexSkinSmoothArea_Vagina_InnerVerts")  ###SOON### ###DESIGN! Hardcoded vagina!  Remove!!!
+# #             Util_SelectVertGroupVerts(self.oMeshSoftBody.GetMesh(), "_FlexSkinSmoothArea_Vagina_InnerVerts")  ###SOON######DESIGN! Hardcoded vagina!  Remove!!!
 # #             bpy.ops.mesh.vertices_smooth(factor=0.5, repeat=4)      ###TUNE        ###IMPROVE: Edge selection done by vert group.  Improve to use Blender function!
 # # 
 # #             #=== Cleate 'thickness' in the 2D mesh by duplicating all our verts and 'shrinking' them along their normal ===
@@ -534,7 +539,7 @@ class CSoftBody(CSoftBodyBase):
 # #             bpy.ops.transform.shrink_fatten(value=0.015)
 #  
 #             #=== Iterate over all inner verts (every vert except rim) and determine their neighboring verts so we can form Flex arrays for in-game Flex softbody simulation ===
-#             Util_SelectVertGroupVerts(self.oMeshVAGINABAKED_HACK.oMeshO, "_FlexSkinSmoothArea_Vagina_InnerVerts")  ###SOON### ###DESIGN! Hardcoded vagina!  Remove!!!
+#             Util_SelectVertGroupVerts(self.oMeshVAGINABAKED_HACK.GetMesh(), "_FlexSkinSmoothArea_Vagina_InnerVerts")  ###SOON######DESIGN! Hardcoded vagina!  Remove!!!
 #             for oVert in bmSoftBody.verts:
 #                 if (oVert.select == True):        # Iterate over the non-rim verts of the original mesh (not the duplicated shrunken one)
 #                     #=== Mark this vert as an actual shape for Flex simulation (shapes are all verts except rim) ===

@@ -18,12 +18,6 @@ import sys
 class CObject():
     cm_oObjectMeshShapeKeys_HACK = None
 
-    @classmethod
-    def FUCKOFF_HACK(cls, sName, sNameMesh):
-        CObject.cm_oObjectMeshShapeKeys_HACK = CObjectMeshShapeKeys(sName, sNameMesh)
-        return "OK"     ###TEMP??
-
-    
     def __init__(self, sNameObject):
         self.sNameObject    = sNameObject
         self.aProps         = {}

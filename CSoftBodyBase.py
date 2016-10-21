@@ -22,7 +22,7 @@ class CSoftBodyBase():
         self.oMeshSoftBody          = None              # The softbody user-visible presentation mesh.  Visible in Unity and moved by Flex softbody simulation.
         self.oMeshSoftBodyRim       = None              # The small body cutout mesh responsible to manually move softbody edge verts to the position and normal of their corresponding rim verts on the main skinned body.  Critically important for a 'seamless' connection to the main skinned body!
 
-        self.aMapRimVerts           = array.array('H')  # Map that is serialized to Unity to map which edge verts from the 'detached softbody' maps to which edge vert in the skinned main body.  Unity needs this to move at every frame each softbody edge vert for seamless connection with main skinned body.
+        self.aMapRimVerts           = CByteArray()      # Map that is serialized to Unity to map which edge verts from the 'detached softbody' maps to which edge vert in the skinned main body.  Unity needs this to move at every frame each softbody edge vert for seamless connection with main skinned body.
 
         ###TODAY### Belongs here??  Do we reuse backmesh for FlexSkin with two meanings??
         self.oMeshSoftBodyRimBackmesh = None            # The 'backmesh' mesh is a 'filled-in' version of the 'cap' applied to the cutout softbody mesh to make it solid.  It exists for the purpose of finding Flex particles that should be pinned instead of simulated and therefore 'pin' the softbody to the 'hard part' of the main skinned body (e.g. hip for penis, torso for breasts, etc)  It is created by subclasses 
@@ -30,12 +30,12 @@ class CSoftBodyBase():
         self.aMapPinnedParticles    = None              # Map that is serialized to Unity storing pairs of <#RimParticle in self.oMeshSoftBodyRim, #Particle in SoftBody> so Unity can pin the softbody particles to their appropriate location on the skinned main body.
 
 
-        print("=== CSoftBodyBase.ctor()  oBody = '{}'  sSoftBodyPart = '{}'  ===".format(self.oBody.sMeshPrefix, self.sSoftBodyPart))
+        print("=== CSoftBodyBase.ctor()  oBody = '{}'  sSoftBodyPart = '{}'  ===".format(self.oBody.oBodyBase.sMeshPrefix, self.sSoftBodyPart))
 
 
         #===== EXTRACT SOFT BODY MESH FROM BODY AND MAP EDGE VERTS =====
         #=== Prepare naming of the meshes we'll create and manage ===
-        sNameSoftBody = self.oBody.sMeshPrefix + "SB-" + self.sSoftBodyPart         # Name for to-be-created detached softbody mesh
+        sNameSoftBody = self.oBody.oBodyBase.sMeshPrefix + "SB-" + self.sSoftBodyPart         # Name for to-be-created detached softbody mesh
         sNameSoftBodyRim = sNameSoftBody + G.C_NameSuffix_Rim                       # The name of the 'softbody rim' mesh (for pinning softbody to skinned body) 
      
         #=== Open the body's mesh (the one meant to be a source of softbody mesh removals) and create a temporary data layer for mapping of rim verts ===
@@ -43,7 +43,7 @@ class CSoftBodyBase():
         oLayTwinID = bmBody.verts.layers.int.new(G.C_DataLayer_TwinID)  # Create a temp custom data layer to store IDs of rim verts so we remap easily when softbody is detached from main body.    ###LEARN???: This call causes BMesh references to be lost, so do right after getting bmesh reference
 
         #=== Obtain the vertex group of name 'self.sSoftBodyPart' from the source body mesh so we can detach into our softbody mesh ===
-        Util_SelectVertGroupVerts(self.oBody.oMeshBody.oMeshO, G.C_VertGrp_Detach + self.sSoftBodyPart)
+        Util_SelectVertGroupVerts(self.oBody.oMeshBody.GetMesh(), G.C_VertGrp_Detach + self.sSoftBodyPart)
 
         #=== Find the edge verts of the softbody submesh so that we can determine the verts that will become edge verts between the two split meshes ===
         bpy.ops.mesh.region_to_loop()           # This will select only the edge verts at the boundary of the softbody vertex group selected above (find the edge verts)
@@ -55,7 +55,7 @@ class CSoftBodyBase():
                     nNextTwinID += 1
     
         #=== Reselect the softbody faces so we can split below ===
-        Util_SelectVertGroupVerts(self.oBody.oMeshBody.oMeshO, G.C_VertGrp_Detach + self.sSoftBodyPart)
+        Util_SelectVertGroupVerts(self.oBody.oMeshBody.GetMesh(), G.C_VertGrp_Detach + self.sSoftBodyPart)
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='FACE')           # We perform the split by faces so edge verts remain in both mesh
 
         #=== Split and separate the softbody mesh from the body mesh.  (Body gets that geometry removed and is what is rendered in game) ===
@@ -68,7 +68,7 @@ class CSoftBodyBase():
         bpy.context.scene.objects.active = bpy.context.selected_objects[0]      # Set the '2nd object' as the active one (the 'separated one')        
         self.oMeshSoftBody = CMesh(sNameSoftBody, bpy.context.scene.objects.active, None)     # Obtain CMesh reference to our softbody mesh. 
         bpy.ops.object.vertex_group_remove(all=True)        # Remove all vertex groups from detached softbody to save Blender memory
-        self.oMeshSoftBody.oMeshO.modifiers.clear()         # Remove the modifiers to save memory (e.g. armature) ###LEARN: How to remove all modifiers
+        self.oMeshSoftBody.GetMesh().modifiers.clear()         # Remove the modifiers to save memory (e.g. armature) ###LEARN: How to remove all modifiers
         self.oBody.oMeshBody.Close()
 
 
@@ -94,12 +94,12 @@ class CSoftBodyBase():
         bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')        
         self.oMeshSoftBodyRim = CMesh(sNameSoftBodyRim, bpy.context.scene.objects.active)   # Obtain CMesh reference to our rim mesh
         self.oMeshSoftBodyRim.SetParent(self.oMeshSoftBody.GetName())
-        self.oMeshSoftBodyRim.oMeshO.modifiers.clear()          # Remove the modifiers to save memory
+        self.oMeshSoftBodyRim.GetMesh().modifiers.clear()          # Remove the modifiers to save memory
         self.oBody.oMeshBody.Close()
         
         #=== Cleanup the rim mesh by removing all materials and non-bones vertex groups ===
-        Cleanup_RemoveMaterials(self.oMeshSoftBodyRim.oMeshO)
-        Cleanup_VertGrp_RemoveNonBones(self.oMeshSoftBodyRim.oMeshO, True)  # Remove the extra vertex groups (not skinning related)
+        Cleanup_RemoveMaterials(self.oMeshSoftBodyRim.GetMesh())
+        Cleanup_VertGrp_RemoveNonBones(self.oMeshSoftBodyRim.GetMesh(), True)  # Remove the extra vertex groups (not skinning related)
         self.oMeshSoftBodyRim.Hide()
 
 
@@ -131,16 +131,25 @@ class CSoftBodyBase():
             nVertTwinSoftBody = aMapTwinId2VertSoftBody[nTwinID]
             if nTwinID in aMapTwinId2VertRim:
                 nVertTwinRim = aMapTwinId2VertRim[nTwinID]
-                #print("TwinID {:3d} = SoftBodyVert {:5d} = RimVert {:5d}".format(nTwinID, nVertTwinSoftBody, nVertTwinRim))
-                self.aMapRimVerts.append(nVertTwinSoftBody)
-                self.aMapRimVerts.append(nVertTwinRim)
+                print("TwinID {:3d} = SoftBodyVert {:5d} = RimVert {:5d}".format(nTwinID, nVertTwinSoftBody, nVertTwinRim))
+                self.aMapRimVerts.AddUShort(nVertTwinSoftBody)
+                self.aMapRimVerts.AddUShort(nVertTwinRim)
             else:
-                raise Exception("###EXCEPTION: CSoftBody.SeparateSoftBodyPart() finding nTwinID {} in aMapTwinId2VertRim".format(nTwinID))
+                print("###EXCEPTION: CSoftBody.SeparateSoftBodyPart() finding nTwinID {} in aMapTwinId2VertRim".format(nTwinID))
+                #raise Exception("###EXCEPTION: CSoftBody.SeparateSoftBodyPart() finding nTwinID {} in aMapTwinId2VertRim".format(nTwinID))
+                ###NOW#13: Why do softbody splits not have all mapping?  Because of material split?  (Can we survive this?  Do we need to not split morph body instead?)
 
 
+    def DoDestroy(self):
+        self.oMeshSoftBody.DoDestroy()
+        self.oMeshSoftBodyRim.DoDestroy()
+        self.oMeshPinnedParticles.DoDestroy()     
+        if self.oMeshSoftBodyRimBackmesh is not None:
+            self.oMeshSoftBodyRimBackmesh.DoDestroy() 
 
-    def SerializeCollection_aMapRimVerts(self):               ###IMPROVE: Fanning out by function the best way?
-        return Stream_SerializeCollection(self.aMapRimVerts) 
 
-    def SerializeCollection_aMapPinnedParticles(self):
-        return Stream_SerializeCollection(self.aMapPinnedParticles)
+#     def SerializeCollection_aMapRimVerts(self):               ###IMPROVE: Fanning out by function the best way?
+#         return Stream_SerializeCollection(self.aMapRimVerts) 
+# 
+#     def SerializeCollection_aMapPinnedParticles(self):
+#         return Stream_SerializeCollection(self.aMapPinnedParticles)

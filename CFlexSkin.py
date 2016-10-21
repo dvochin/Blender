@@ -31,20 +31,20 @@ class CFlexSkin:        ###OBS: Now part of CSoftBody
         self.oBody                  = oBody             # The back-reference to the owning body.
         self.sFlexSkinPart          = sFlexSkinPart     # The name of the soft body part.  (e.g. "BreastL", "BreastR", "Penis")  This is our key in self.oBody.aSoftBodies[self.sFlexSkinPart]
         self.oMeshFlexSkin          = None              # The flexskin surface mesh itself.  Visible in Unity and moved by Flex flexskin simulation via its internal solid tetramesh.
-        self.aShapeVerts            = array.array('I')  # Array of which vert / particle is also a shape
-        self.aShapeParticleIndices  = array.array('I')  # Flattened array of which shape match to which particle (as per Flex softbody requirements)
-        self.aShapeParticleCutoffs  = array.array('I')  # Cutoff in 'aShapeParticleIndices' between sets defining which particle goes to which shape. 
+        self.aShapeVerts            = CByteArray()      # Array of which vert / particle is also a shape
+        self.aShapeParticleIndices  = CByteArray()      # Flattened array of which shape match to which particle (as per Flex softbody requirements)
+        self.aShapeParticleCutoffs  = CByteArray()      # Cutoff in 'aShapeParticleIndices' between sets defining which particle goes to which shape. 
 
-        print("=== CFlexSkin.ctor()  self.oBody = '{}'  self.sFlexSkinPart = '{}'  ===".format(self.oBody.sMeshPrefix, self.sFlexSkinPart))
+        print("=== CFlexSkin.ctor()  self.oBody = '{}'  self.sFlexSkinPart = '{}'  ===".format(self.oBody.oBodyBase.sMeshPrefix, self.sFlexSkinPart))
         
         #=== Prepare naming of the meshes we'll create and ensure they are not in Blender ===
-        sNameFlexSkin = self.oBody.sMeshPrefix + "FS-" + self.sFlexSkinPart         # Create name for to-be-created detach mesh and open the body mesh
+        sNameFlexSkin = self.oBody.oBodyBase.sMeshPrefix + "FS-" + self.sFlexSkinPart         # Create name for to-be-created detach mesh and open the body mesh
         DeleteObject(sNameFlexSkin)
  
 #         #=== Obtain the to-be-detached vertex group of name 'self.sFlexSkinPart' from the combo mesh that originally came from the source body ===
-#         nVertGrpIndex_DetachPart = self.oBody.oMeshBody.oMeshO.vertex_groups.find(G.C_VertGrp_Detach + self.sFlexSkinPart)  # vertex_group_transfer_weight() above added vertex groups for each bone.  Fetch the vertex group for this detach area so we can enhance its definition past the bone transfer (which is much too tight)     ###DESIGN: Make area-type agnostic
-#         oVertGroup_DetachPart = self.oBody.oMeshBody.oMeshO.vertex_groups[nVertGrpIndex_DetachPart]
-#         self.oBody.oMeshBody.oMeshO.vertex_groups.active_index = oVertGroup_DetachPart.index
+#         nVertGrpIndex_DetachPart = self.oBody.oMeshBody.GetMesh().vertex_groups.find(G.C_VertGrp_Detach + self.sFlexSkinPart)  # vertex_group_transfer_weight() above added vertex groups for each bone.  Fetch the vertex group for this detach area so we can enhance its definition past the bone transfer (which is much too tight)     ###DESIGN: Make area-type agnostic
+#         oVertGroup_DetachPart = self.oBody.oMeshBody.GetMesh().vertex_groups[nVertGrpIndex_DetachPart]
+#         self.oBody.oMeshBody.GetMesh().vertex_groups.active_index = oVertGroup_DetachPart.index
 #         self.oBody.oMeshBody.Open()
 #         bpy.ops.object.vertex_group_select()    # Select only the verts that are to be separated from skinned body to form the new flexskin
 # 
@@ -67,7 +67,7 @@ class CFlexSkin:        ###OBS: Now part of CSoftBody
         for oVertShape in bmFlexSkin.verts:
             if oVertShape.select == True:                            # Iterate through all shapes to find the closest particles to form a runtime softbody connection too
                 #print("--- FlexSkin shape {:3d} ---".format(oVertShape.index))
-                self.aShapeVerts.append(oVertShape.index)
+                self.aShapeVerts.AddInt(oVertShape.index)
                 
                 #=== Find the 'nParticlesPerShape' closest verts/particles to each shape === 
                 aDistToVert = []
@@ -78,23 +78,31 @@ class CFlexSkin:        ###OBS: Now part of CSoftBody
                 
                 #=== Push in the list of particles connected to this shape in the flattened array Flex requires ===
                 for oVertAndDist in aDistToVertSortedTrimmed:
-                    self.aShapeParticleIndices.append(oVertAndDist[0])
+                    self.aShapeParticleIndices.AddInt(oVertAndDist[0])
                     #print("-- Shape {:3d} to Part {:3d} -  Dist {:6f}".format(oVertShape.index, oVertAndDist[0], oVertAndDist[1]))
                     
                 #=== Push in our split point in self.aShapeParticleIndices so Flex can unflatten the aShapeParticleIndices flat array and properly match what particle connects to which shape === 
-                self.aShapeParticleCutoffs.append(len(self.aShapeParticleIndices))
+                self.aShapeParticleCutoffs.AddInt(len(self.aShapeParticleIndices))
         
-        
+        self.aShapeVerts.CloseArray()
+        self.aShapeParticleIndices.CloseArray()
+        self.aShapeParticleCutoffs.CloseArray() 
+
         self.oMeshFlexSkin.Close()
 
-    def SerializeCollection_aShapeVerts(self):
-        return Stream_SerializeCollection(self.aShapeVerts)
-    
-    def SerializeCollection_aShapeParticleIndices(self):
-        return Stream_SerializeCollection(self.aShapeParticleIndices)
-            
-    def SerializeCollection_aShapeParticleCutoffs(self):
-        return Stream_SerializeCollection(self.aShapeParticleCutoffs)
+
+    def DoDestroy(self):
+        self.oMeshFlexSkin.DoDestroy()
+       
+
+#     def SerializeCollection_aShapeVerts(self):
+#         return Stream_SerializeCollection(self.aShapeVerts)
+#     
+#     def SerializeCollection_aShapeParticleIndices(self):
+#         return Stream_SerializeCollection(self.aShapeParticleIndices)
+#             
+#     def SerializeCollection_aShapeParticleCutoffs(self):
+#         return Stream_SerializeCollection(self.aShapeParticleCutoffs)
             
             
             
@@ -113,16 +121,16 @@ class CFlexSkin:        ###OBS: Now part of CSoftBody
 #         self.aShapeVerts             = array.array('H')  # Blank outgoing serializable array of edge verts (used to manually set simulated verts to match normal and position of main-body mesh)
 #         self.aShapeParticleIndices          = array.array('H')  # Blank outgoing serializable array of non-edge verts (used to drive Flex-simulated particles via a 1:1 spring to skinned particles)
 # 
-#         print("=== CFlexSkin.ctor()  self.oBody = '{}'  self.sFlexSkinPart = '{}'  ===".format(self.oBody.sMeshPrefix, self.sFlexSkinPart))
+#         print("=== CFlexSkin.ctor()  self.oBody = '{}'  self.sFlexSkinPart = '{}'  ===".format(self.oBody.oBodyBase.sMeshPrefix, self.sFlexSkinPart))
 #         
 #         #=== Prepare naming of the meshes we'll create and ensure they are not in Blender ===
-#         sNameFlexSkin = self.oBody.sMeshPrefix + "FS-" + self.sFlexSkinPart         # Create name for to-be-created detach mesh and open the body mesh
+#         sNameFlexSkin = self.oBody.oBodyBase.sMeshPrefix + "FS-" + self.sFlexSkinPart         # Create name for to-be-created detach mesh and open the body mesh
 #         DeleteObject(sNameFlexSkin)
 #  
 #         #=== Obtain the to-be-detached vertex group of name 'self.sFlexSkinPart' from the combo mesh that originally came from the source body ===
-#         nVertGrpIndex_DetachPart = self.oBody.oMeshBody.oMeshO.vertex_groups.find(G.C_VertGrp_Detach + self.sFlexSkinPart)  # vertex_group_transfer_weight() above added vertex groups for each bone.  Fetch the vertex group for this detach area so we can enhance its definition past the bone transfer (which is much too tight)     ###DESIGN: Make area-type agnostic
-#         oVertGroup_DetachPart = self.oBody.oMeshBody.oMeshO.vertex_groups[nVertGrpIndex_DetachPart]
-#         self.oBody.oMeshBody.oMeshO.vertex_groups.active_index = oVertGroup_DetachPart.index
+#         nVertGrpIndex_DetachPart = self.oBody.oMeshBody.GetMesh().vertex_groups.find(G.C_VertGrp_Detach + self.sFlexSkinPart)  # vertex_group_transfer_weight() above added vertex groups for each bone.  Fetch the vertex group for this detach area so we can enhance its definition past the bone transfer (which is much too tight)     ###DESIGN: Make area-type agnostic
+#         oVertGroup_DetachPart = self.oBody.oMeshBody.GetMesh().vertex_groups[nVertGrpIndex_DetachPart]
+#         self.oBody.oMeshBody.GetMesh().vertex_groups.active_index = oVertGroup_DetachPart.index
 #         self.oBody.oMeshBody.Open()
 #         bpy.ops.object.vertex_group_select()    # Select only the verts that are to be separated from skinned body to form the new flexskin
 # 

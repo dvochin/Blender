@@ -83,7 +83,7 @@ import CBody
 #---------------------------------------------------------------------------	GLOBAL VARIABLES
 #---------------------------------------------------------------------------	
 
-g_aSharedMeshes = {}			###OBS? Important map of string-to-bmesh object to hold the important bmesh reference for all bmesh requested by Client in gBL_GetMesh() until released by gBL_ReleaseMesh()
+g_aSharedMeshes = {}			###OBS? Important map of string-to-bmesh object to hold the important bmesh reference for all bmesh requested by Client in Unity_GetMesh() until released by gBL_ReleaseMesh()
 
 #---------------------------------------------------------------------------	
 #---------------------------------------------------------------------------	TOP LEVEL
@@ -147,19 +147,19 @@ def DuplicateAsSingleton(sSourceName, sNewName, sNameParent, bHideSource):
 	return oNewO
 
 def SetParent(sNameObject, sNameParent):
-	SelectAndActivate(sNameObject, False)
+	oChildO = SelectAndActivate(sNameObject, False)
 	if sNameParent is not None:							# 'store' the new object at the provided location in Blender's nodes
 		if sNameParent not in bpy.data.objects:
 			raise Exception("###EXCEPTION: SetParent() could not locate parent node " + sNameParent)
-		###oNewO.parent = bpy.data.objects[sNameParent]		   ###LEARN: Parenting an object this way would reset the transform applied to object = disaster!  ###CHECK  No longer valid?
-		oParentO = bpy.data.objects[sNameParent]
-		oParentO.hide = oParentO.hide_select = False
-		oParentO.select = True
-		bpy.context.scene.objects.active = oParentO
-		bpy.ops.object.parent_set(keep_transform=True)		###LEARN: keep_transform=True is critical to prevent reparenting from destroying the previously set transform of object!!
-		bpy.context.scene.objects.active = bpy.data.objects[sNameObject]
-		oParentO.select = False				  
-		oParentO.hide = oParentO.hide_select = True			###WEAK: Show & hide of parent to enable reparenting... (lose previous state of parent but OK for folder nodes made up of 'empty'!)
+		oChildO.parent = bpy.data.objects[sNameParent]		   ###LEARN: Parenting an object this way would reset the transform applied to object = disaster!  ###CHECK  No longer valid?
+# 		oParentO = bpy.data.objects[sNameParent]		###CHECK: Ok now?
+# 		oParentO.hide = oParentO.hide_select = False
+# 		oParentO.select = True
+# 		bpy.context.scene.objects.active = oParentO
+# 		bpy.ops.object.parent_set(keep_transform=True)		###LEARN: keep_transform=True is critical to prevent reparenting from destroying the previously set transform of object!!
+# 		bpy.context.scene.objects.active = bpy.data.objects[sNameObject]
+# 		oParentO.select = False				  
+# 		oParentO.hide = oParentO.hide_select = True			###WEAK: Show & hide of parent to enable reparenting... (lose previous state of parent but OK for folder nodes made up of 'empty'!)
 	
 	 
 def AssertFinished(sResultFromOp):	###IMPROVE: Use this much more!
@@ -304,7 +304,7 @@ def Util_CreateMirrorModifierX(oMeshO):
 	oModMirror.use_mirror_vertex_groups = False
 	return oModMirror
 			
-def Util_TransferWeights(oMeshO, oMeshSrcO):
+def Util_TransferWeights(oMeshO, oMeshSrcO):		# Transfer the skinning information from mesh oMeshSrcO to oMeshO
 	SelectAndActivate(oMeshO.name, True)
 	oMeshSrcO.hide = False			###BUG on hide??
 	oModTransfer = oMeshO.modifiers.new(name="DATA_TRANSFER", type="DATA_TRANSFER")
@@ -536,16 +536,6 @@ def Cleanup_VertGrp_Remove(oMeshO, sNameVertGrp):			# Removes vertex group 'sNam
 #---------------------------------------------------------------------------	STREAM / SERIALIZATION
 #---------------------------------------------------------------------------	
 
-def Stream_SendVector(oBA, vec):  ###LEARN: Proper way to pack Pascal string
-	oBA += struct.pack('fff', vec.x, vec.y, vec.z)
-
-def Stream_SendQuaternion(oBA, quat):  ###LEARN: Proper way to pack Pascal string
-	oBA += struct.pack('ffff', quat.x, quat.y, quat.z, quat.w)
-
-def Stream_SendStringPascal(oBA, sContent):	 ###LEARN: Proper way to pack Pascal string
-	sContentEncoded = sContent.encode()
-	oBA += struct.pack(str(len(sContentEncoded) + 1) + 'p', sContentEncoded)  ###LEARN: First P = Pascal string = first byte of it is lenght < 255 rest are chars
-
 def Stream_SerializeArray(oBA, oArray):				 # Serialize an array to client by first sending the length and then the data.	The other side is supposed to know how many bytes each of our array element takes and deserialize the proper number of bytes
 	if oArray is not None:
 		oBA += struct.pack('L', len(oArray))				# It is assumed that oArray is a bytearray
@@ -556,20 +546,74 @@ def Stream_SerializeArray(oBA, oArray):				 # Serialize an array to client by fi
 
 def Stream_SerializeCollection(aCollection):		
 	"Send Unity the requested serialized bytearray of the previously-defined collection"
-	oBA = bytearray()
-	oBA += struct.pack('H', G.C_MagicNo_TranBegin)  ###LEARN: Struct.Pack args: b=char B=ubyte h=short H=ushort, i=int I=uint, q=int64, Q=uint64, f=float, d=double, s=char[] ,p=PascalString[], P=void*
+	oBA = CByteArray()
 	Stream_SerializeArray(oBA, aCollection.tobytes())
-	oBA += struct.pack('H', G.C_MagicNo_TranEnd)
-	return oBA
+	return oBA.CloseArray()
 
-def  Stream_SendBone(oBA, oBone):				# Recursive function that sends a bone and the tree of bones underneath it in 'breadth first search' order.	 Information sent include bone name, position and number of children.
-	Stream_SendStringPascal(oBA, oBone.name)		# Precise opposite of this function found in Unity's CBodeEd.ReadBone()
-	Stream_SendVector(oBA, G.VectorB2C(oBone.head))	# Obtain the bone head and convert to client-space (LHS/RHS conversion)		 ###LEARN: 'head' appears to give weird coordinates I don't understand... head_local appears much more reasonable! (tail is the 'other end' of the bone (the part that rotates) while head is the pivot point we need
-	Stream_SendQuaternion(oBA, oBone.matrix.to_quaternion())	# Send the bone orientation quaternion.  Needed to properly rotate bones about the axis they were designed for.  ###IMPROVE: Not rotated for Unity axis!  HOW??
-	print("-SendBone '{}'   {}   {}".format(oBone.name, oBone.head, oBone.matrix.to_quaternion()))
-	oBA += struct.pack('B', len(oBone.children))
-	for oBoneChild in oBone.children:
-		Stream_SendBone(oBA, oBoneChild)
+
+#---------------------------------------------------------------------------	CByteArray: abstraction of bytearray		###MOVE? To own file?
+
+class CByteArray(bytearray):
+	def __init__(self):			###LEARN: Struct.Pack args: b=char B=ubyte h=short H=ushort, i=int I=uint, q=int64, Q=uint64, f=float, d=double, s=char[] ,p=PascalString[], P=void*
+		self.bClosed = False
+		self.AddUShort(G.C_MagicNo_TranBegin)  
+	
+	def CloseArray(self):
+		if self.bClosed == False:			# Add trailing magic number when array requested from Unity.
+			self.AddUShort(G.C_MagicNo_TranEnd)  
+			self.bClosed = True;
+		return self
+
+	def AddShort(self, nVal):
+		if nVal > 32767:
+			raise Exception("CByteArray.AddShort() gets out of range value!")
+		self += struct.pack('h', nVal)
+	
+	def AddUShort(self, nVal):
+		if nVal > 65535:
+			raise Exception("CByteArray.AddUShort() gets out of range value!")
+		self += struct.pack('H', nVal)
+	
+	def AddInt(self, nVal):
+		self += struct.pack('i', nVal)
+
+	def AddUInt(self, nVal):
+		self += struct.pack('I', nVal)
+	
+	def AddFloat(self, nVal):
+		self += struct.pack('f', nVal)
+	
+	def AddByte(self, nVal):
+		if nVal > 255:
+			raise Exception("CByteArray.AddByte() gets out of range value!")
+		self += struct.pack('B', nVal)
+
+	def AddVector(self, vec):
+		self += struct.pack('fff', vec.x, vec.y, vec.z)
+	
+	def AddQuaternion(self, quat):
+		self += struct.pack('ffff', quat.x, quat.y, quat.z, quat.w)
+	
+	def AddString(self, sContent):	 ###LEARN: Proper way to pack Pascal string
+		sContentEncoded = sContent.encode()
+		nLenEncoded = len(sContentEncoded) + 1
+		if nLenEncoded > 255:
+			raise Exception("Error in CByteArray.AddString().  String '{}' is too long at {} characters".format(sContent, nLenEncoded))
+		self += struct.pack(str(nLenEncoded) + 'p', sContentEncoded)  ###LEARN: First P = Pascal string = first byte of it is lenght < 255 rest are chars
+
+	def AddBone(self, oBone):				# Recursive function that sends a bone and the tree of bones underneath it in 'breadth first search' order.	 Information sent include bone name, position and number of children.
+		self.AddString(oBone.name)		# Precise opposite of this function found in Unity's CBodeEd.ReadBone()
+		self.AddVector(G.VectorB2C(oBone.head))	# Obtain the bone head and convert to client-space (LHS/RHS conversion)		 ###LEARN: 'head' appears to give weird coordinates I don't understand... head_local appears much more reasonable! (tail is the 'other end' of the bone (the part that rotates) while head is the pivot point we need
+		self.AddQuaternion(oBone.matrix.to_quaternion())	# Send the bone orientation quaternion.  Needed to properly rotate bones about the axis they were designed for.  ###IMPROVE: Not rotated for Unity axis!  HOW??
+		print("-AddBone '{}'   {}   {}".format(oBone.name, oBone.head, oBone.matrix.to_quaternion()))
+		self.AddByte(len(oBone.children))
+		for oBoneChild in oBone.children:
+			self.AddBone(oBoneChild)
+
+	def Unity_GetBytes(self):			# Called from Unity to get a bytearray that Unity can de-serialize.  
+		self.CloseArray()				# Close array first (adds end magic number)
+		#print(self)
+		return self
 
 
 #---------------------------------------------------------------------------	

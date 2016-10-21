@@ -74,7 +74,7 @@ class CCurve:
         self.oCurveO.parent = bpy.data.objects[G.C_NodeName_Curve]
         self.oCurveO.name = self.oCurveO.data.name = self.sName
         self.oCurveO.name = self.oCurveO.data.name = self.sName
-        self.oCurveO.rotation_mode = 'XYZ'
+        #self.oCurveO.rotation_mode = 'XYZ'
         #OLD oCurveO.rotation_euler.x = radians(90)          ###LEARN: How to rotate in eulers
         self.oCurveO.data.dimensions = "3D"
         self.oCurveO.data.fill_mode = "FULL"
@@ -130,7 +130,7 @@ class CCurve:
         #=== Convert the spline curve to a mesh to 'bake' the few bezier points into a fanned-out version and 'shrinkwrap' to the basis mesh to get much closer to mesh surface than the user's curve === 
         bpy.ops.object.convert(target='MESH')            
         oModShrinkwrap = self.oCutterO.modifiers.new('SHRINKWRAP', 'SHRINKWRAP')
-        oModShrinkwrap.target = self.oCloth.oMeshClothSource.oMeshO
+        oModShrinkwrap.target = self.oCloth.oMeshClothSource.GetMesh()
         AssertFinished(bpy.ops.object.modifier_apply(modifier=oModShrinkwrap.name))
     
         #=== Convert back to a curve so that we can easily display a solid curve by adding a bevel object ===        
@@ -184,7 +184,7 @@ class CCurve:
         bpy.context.scene.cursor_location = Vector((0,0,0))     # All dependant code requires cursor to be at origin!
 
         #=== Obtain parameters stored in curve object on how to perform cut ===
-        oMeshO = self.oCloth.oMeshClothCut.oMeshO           ###CLEANUP: From port... make a more natural integration with class!!
+        oMeshO = self.oCloth.oMeshClothCut.GetMesh()           ###CLEANUP: From port... make a more natural integration with class!!
         oMesh = oMeshO.data
         oCurveO = self.oCutterO             ###DEV: Curve = cutter??
         vecCurveCenter = self.oCurveCenterPt.location
@@ -290,6 +290,7 @@ class CCurve:
             Util_HideMesh(oCutterBooleanO)
             
         #=== Boolean cut leaves quads and ngons on the border and triangles give us more control on what to delete -> Triangulate before border cleanup ===
+        bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.mesh.quads_convert_to_tris()        ###REVIVE: use_beauty=True
         bpy.ops.mesh.select_all(action='DESELECT')
@@ -329,7 +330,7 @@ class CCurve:
 #     oCutterAsMeshO.data.name = oCutterAsMeshO.name    # Set the name of the just-created mesh to the name of the object.
 #     oCutterAsMeshO.parent = bpy.data.objects[G.C_NamePrefix_CutterAsMesh]     # Set parent to its utility node folder to get it out of the way and to facilitate mass cleanup
 #     Util_ConvertToTriangles()      # Convert to triangles Client needs
-#     return Client.gBL_GetMesh(oCutterAsMeshO.name)
+#     return Client.Unity_GetMesh(oCutterAsMeshO.name)
 
 
 

@@ -55,7 +55,7 @@
 # 
 #     #=== Construct the beginning of the outgoing bytearray that will be sent to client so it can receive our mesh ===
 #     bpy.ops.object.mode_set(mode='OBJECT')
-#     oBA = Client.gBL_GetMesh(oMeshBodyColClothO.name)
+#     oBA = Client.Unity_GetMesh(oMeshBodyColClothO.name)
 # 
 #     #=== Send the additional definition arrays we created above ===
 #     Stream_SerializeArray(oBA, aEdges.tobytes())
@@ -281,7 +281,7 @@
 #     oMeshBodyColO = bpy.data.objects[sNameMesh]
 # 
 #     #=== Construct the beginning of the outgoing bytearray that will be sent to client so it can receive our mesh ===
-#     oBA = Client.gBL_GetMesh(oMeshBodyColO.name)
+#     oBA = Client.Unity_GetMesh(oMeshBodyColO.name)
 # 
 #     #=== Send the additional definition arrays we created in Generate call ===
 #     Stream_SerializeArray(oBA, oMeshBodyColO['aEdges'])

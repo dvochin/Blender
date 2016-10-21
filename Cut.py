@@ -304,5 +304,5 @@ def gBL_ClothCut_ApplyCut(sNameBody, sNameCurve, nCenterX, nCenterY, nCenterZ): 
     vecCurveCenterClient = Vector((nCenterX, nCenterY, nCenterZ))
     vecCurveCenter = G.VectorC2B(vecCurveCenterClient)
     Cut_ApplyCut(oMeshClothCutO, oCurveO, vecCurveCenter, aBorderLocatorVertPos)
-    Client.Client_ConvertMesh(oMeshClothCutO, True)                           # Mesh has changed topology, update its state for Client  ###CHECK!!!! Expensive complex call???  Do all of that???
+    Client.Client_ConvertMeshForUnity(oMeshClothCutO, True)                           # Mesh has changed topology, update its state for Client  ###CHECK!!!! Expensive complex call???  Do all of that???
     return G.DumpStr("OK: gBL_Cut_ApplyCut(ClothCut = '[]'  Curve='{}')".format(oMeshClothCutO.name, sNameCurve))

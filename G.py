@@ -1,5 +1,5 @@
 #=============================================================================== COMMON COMMANDS
-# CBody.CBody_GetBody(0).aSoftBodies['Breasts'].aMapSavedRimNormals
+# CBody.CBody_GetBodyBase(0).aSoftBodies['Breasts'].aMapSavedRimNormals
 # from gBlender import *
 # DataLayer_EnumerateInt_DEBUG("WomanA", "CmdLine")
 # bpy.ops.object.mode_set(mode='EDIT')
