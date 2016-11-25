@@ -65,6 +65,7 @@ class Panel_gBL_Object(bpy.types.Panel):      ###LEARN: Docs at http://www.blend
         col.operator("gbl.temp7")
         col.operator("gbl.temp8")
         col.operator("gbl.temp9")
+        col.operator("gbl.temp10")
 
         
 
@@ -176,7 +177,7 @@ class gBL_temp7(bpy.types.Operator):
         BodyPrep.FirstImport_ProcessRawDazImport("Genesis3Female", "WomanA")
         return {"FINISHED"}
 
-class SlaveMesh_DefineMasterSlaveRelationship(bpy.types.Operator):
+class gBL_temp8(bpy.types.Operator):
     bl_idname = "gbl.temp8"
     bl_label = "8: ImportShape"
     bl_options = {'REGISTER', 'UNDO'}
@@ -188,61 +189,26 @@ class SlaveMesh_DefineMasterSlaveRelationship(bpy.types.Operator):
 
 class gBL_temp9(bpy.types.Operator):
     bl_idname = "gbl.temp9"
-    bl_label = "9:TempDev"
+    bl_label = "9:UV.ctor"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
         #CBody._aBodyBases[0].SlaveMesh_ResyncWithMasterMesh("BreastCol")
         #CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big', 5000)
+        G.CGlobals._oTempHACK = CMesh.CMeshUV("BodySuit", bpy.data.objects["BodySuit"])
+        return {"FINISHED"}
 
-        #NOW:
-        # Can quickly find UVs from position...
-        # 1. Create code to create 1-unit curves.
-        # 2. Create code to rasterize a curve
-        # 3. Invoke our code to find closest UV tri.
-        # 4. Add code to triangulate, and convert to 3D
-        # 5. Visualize 3D curve
+class gBL_temp10(bpy.types.Operator):
+    bl_idname = "gbl.temp10"
+    bl_label = "10:UV.to3D"
+    bl_options = {'REGISTER', 'UNDO'}
+    def invoke(self, context, event):
+        self.report({"INFO"}, "GBOP: " + self.bl_label)
+        G.CGlobals._oTempHACK.ConvertBackTo3D()
+        return {"FINISHED"}
 
 
-
-        # create a kd-tree from a mesh
-        #from bpy import context
-        obj = bpy.context.object
-        obj = SelectAndActivate("BodySuit")
-        
-        # 3d cursor relative to the object data
-        #co_find = context.scene.cursor_location * obj.matrix_world.inverted()
-        
-        mesh = obj.data
-        size = len(mesh.polygons)
-        kd = kdtree.KDTree(size)
-        
-        #for i, v in enumerate(mesh.vertices):
-        #    kd.insert(v.co, i)
-
-        for oPoly in mesh.polygons:
-            uvs = [mesh.uv_layers.active.data[li] for li in oPoly.loop_indices]
-            vecFaceCenter = Vector((0,0,0))
-            for oUV in uvs:
-                vecFaceCenter.x += oUV.uv.x
-                vecFaceCenter.y += oUV.uv.y
-            vecFaceCenter /= len(uvs)
-            kd.insert(vecFaceCenter, oPoly.index)
-        
-        kd.balance()
-        
-        
-        # Find the closest point to the center
-        co_find = (0.25, 0.50, 0)
-        co, index, dist = kd.find(co_find)
-        print("Close to center:", co, index, dist)
-        
-        
-        # Find the closest 10 points to the 3d cursor
-        print("Close 10 points")
-        for (co, index, dist) in kd.find_n(co_find, 10):
-            print("    ", co, index, dist)
-        
+      
         
         # Find points within a radius of the 3d cursor
 #         print("Close points within 0.5 distance")

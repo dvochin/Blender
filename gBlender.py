@@ -1,3 +1,9 @@
+###NEW#16
+# Could use layers.shape to obtain shape key pos?  See https://www.blender.org/api/blender_python_api_2_63_2/bmesh.html4
+	# Can also use from_mesh(mesh, use_shape_key=False, shape_key_index=0) ??
+
+
+
 ### NEXT ###
 ### Reconsider these other 'GetMesh' functions.  Always call getMesh and get extra arrays in a common method!!!
 

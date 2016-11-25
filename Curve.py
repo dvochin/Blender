@@ -10,7 +10,6 @@ import G
 import Client
 
 
-
 ###NEXT:
 # Just about ready to insert into Unity
     # Unity needs to query how many curves and their points
@@ -57,10 +56,10 @@ class CCurve:
         self.oCloth = oCloth
         self.sName = "Curve-" + sType
         self.sType = sType
-        self.bAboutBodyCenter = (self.sType.find("-Side") == -1)  ###WEAK!!! ###DEV    # Curve is defined about body center (only points on left are specified, right points derived by symmetry from left points)
+        self.bAboutBodyCenter = False   ###NOW#16  (self.sType.find("-Side") == -1)  ###WEAK!!! ###DEV    # Curve is defined about body center (only points on left are specified, right points derived by symmetry from left points)
         self.bInvertCutterNormals = False#(self.sType.find("-Bottom") != -1)      ###HACK!!!
         self.oCurveO = None                             # The actual Blender curve we encapsulate & control
-        self.oCutterO = None                            # The cutter object (responsible for cutting cloth and based on oCurveO)
+        self.oCutterO = None                            # The cutter object (responsible for cutting cloth.  (A mesh-version of oCurveO Bezier curve)
         self.oCutterAsMeshO = None                      # The 'cutter as mesh' representing this curve as a visible mesh in Unity
         self.oSpline = None                             # The first (and only) spline of self.oCurveO
         self.oCurveSource = None                        # The curve 'source'.  Hierarchy of Blender empty objects the curve is created from (and updated from)
@@ -76,8 +75,8 @@ class CCurve:
         self.oCurveO.name = self.oCurveO.data.name = self.sName
         #self.oCurveO.rotation_mode = 'XYZ'
         #OLD oCurveO.rotation_euler.x = radians(90)          ###LEARN: How to rotate in eulers
-        self.oCurveO.data.dimensions = "3D"
-        self.oCurveO.data.fill_mode = "FULL"
+        self.oCurveO.data.dimensions = "2D"             ###NOW#16
+        #self.oCurveO.data.fill_mode = "NONE"            ###NOW#16: was FULL
         self.oSpline = self.oCurveO.data.splines[0]
         self.oSpline.use_cyclic_u = True     ####DEV!!!!           # Symmetry curves are by definition cyclic (e.g. side curve), non-symmetry (e.g. neck opening) are non-cyclic as their points are mirrored with a mirror modifier
         self.oSpline.resolution_u = 24                      ###TODO!!!   # At this point we have a bezier curve with one spline containing two control points
@@ -128,19 +127,76 @@ class CCurve:
         self.oCutterO.parent = bpy.data.objects[G.C_NodeName_Cutter]           ###SOON: Curve quality!
     
         #=== Convert the spline curve to a mesh to 'bake' the few bezier points into a fanned-out version and 'shrinkwrap' to the basis mesh to get much closer to mesh surface than the user's curve === 
-        bpy.ops.object.convert(target='MESH')            
-        oModShrinkwrap = self.oCutterO.modifiers.new('SHRINKWRAP', 'SHRINKWRAP')
-        oModShrinkwrap.target = self.oCloth.oMeshClothSource.GetMesh()
-        AssertFinished(bpy.ops.object.modifier_apply(modifier=oModShrinkwrap.name))
+        bpy.ops.object.convert(target='MESH')
+        
+        
+        
+        self.oCutter3D = DuplicateAsSingleton(self.oCutterO.name, self.oCutterO.name + "-Domain3D", G.C_NodeFolder_Game, True)
+        self.oCutter3D.parent = self.oCutterO
+        
+
+        ###NOW#16 ###OBS!!!!!
+        # Can quickly find UVs from position...
+        # 1. Create code to create 1-unit curves.
+        # 2. Create code to rasterize a curve
+        # 3. Invoke our code to find closest UV tri.
+        # 4. Add code to triangulate, and convert to 3D
+        # 5. Visualize 3D curve
+        #for i, v in enumerate(mesh.vertices):            ###LEARN: interesting approach!
+        #    oTreeKD.insert(v.vecLoc, i)
+
+        ###NOW
+        # Can finally cut... but can adopt a simpler solution than boolean?
+            # Do we proceed with boolean cut or try to slice polys ourselves?  
+        # 1. Add face to 3D cutter (do it at curve level?)
+            # Problem around curved areas... need to insert points into curve center that will map to 3D point that will respect curves for cutter.
+        # 2. 'Solidify' object by pushing / shrinking its normals.
+
+
+        # create a oTreeKD-tree from a mesh
+        oMeshO = SelectAndActivate("BodySuit")
+        oMesh = oMeshO.data
+        size = len(oMesh.polygons)
+        oTreeKD = kdtree.KDTree(size)                       ###LEARN: How to quickly locate spacial data!
+
+        for oPoly in oMesh.polygons:
+            aUV = [oMesh.uv_layers.active.data[nLoopIndex].uv for nLoopIndex in oPoly.loop_indices]     ###LEARN: How to easily traverse array indirection
+            vecFaceCenterUV = Vector((0,0,0))
+            for oUV in aUV:
+                vecFaceCenterUV.x += oUV.x
+                vecFaceCenterUV.y += oUV.y
+            vecFaceCenterUV /= len(aUV)
+            oTreeKD.insert(vecFaceCenterUV, oPoly.index)
+        oTreeKD.balance()
+        
+        # Find the closest point to the center
+        for oVert in self.oCutter3D.data.vertices:
+            vecLoc, nPoly, nDist = oTreeKD.find(oVert.co)                ###LEARN: How to extract multiple arguments out
+            oPoly = oMesh.polygons[nPoly]
+            aUV = [oMesh.uv_layers.active.data[nLoopIndex].uv for nLoopIndex in oPoly.loop_indices]
+            #print("Loc search = ", vecLoc, nPoly, nDist)
+            vecUV0 = Vector((aUV[0].x, aUV[0].y, 0))            # Expand 2D UV coordinate into a 3D vector with z = 0 so we can invoke barycentric_transform() below
+            vecUV1 = Vector((aUV[1].x, aUV[1].y, 0))
+            vecUV2 = Vector((aUV[2].x, aUV[2].y, 0))
+            vecPoly0 = oMesh.vertices[oPoly.vertices[0]].co
+            vecPoly1 = oMesh.vertices[oPoly.vertices[1]].co
+            vecPoly2 = oMesh.vertices[oPoly.vertices[2]].co
+            oVert.co = geometry.barycentric_transform(oVert.co, vecUV0, vecUV1, vecUV2, vecPoly0, vecPoly1, vecPoly2)
+        
+        ###LEARN: mathutils.geometry.barycentric_transform(point, tri_a1, tri_a2, tri_a3, tri_b1, tri_b2, tri_b3) at https://www.blender.org/api/blender_python_api_2_77_release/mathutils.geometry.html
+                    
+#         oModShrinkwrap = self.oCutterO.modifiers.new('SHRINKWRAP', 'SHRINKWRAP')        ###NOW#16
+#         oModShrinkwrap.target = self.oCloth.oMeshClothSource.GetMesh()
+#         AssertFinished(bpy.ops.object.modifier_apply(modifier=oModShrinkwrap.name))
     
-        #=== Convert back to a curve so that we can easily display a solid curve by adding a bevel object ===        
-        bpy.ops.object.convert(target='CURVE')           # Re-convert to spline now that we have a 'baked' representation with about a hundred vertices.
-        bpy.ops.object.mode_set(mode='EDIT')
-        for nSmoothIterations in range(5):        ###TUNE     ###LEARN: This is how to smooth a curve!  (Smooth as a mesh makes non-mirror-x centers diverge, and looptools doesn't smooth enough)
-            bpy.ops.curve.smooth()
-        bpy.ops.object.mode_set(mode='OBJECT')
-        self.oCutterO.data.resolution_u = 1
-          
+#         #=== Convert back to a curve so that we can easily display a solid curve by adding a bevel object ===        
+#         bpy.ops.object.convert(target='CURVE')           # Re-convert to spline now that we have a 'baked' representation with about a hundred vertices.
+#         bpy.ops.object.mode_set(mode='EDIT')
+#         for nSmoothIterations in range(5):        ###TUNE     ###LEARN: This is how to smooth a curve!  (Smooth as a mesh makes non-mirror-x centers diverge, and looptools doesn't smooth enough)
+#             bpy.ops.curve.smooth()
+#         bpy.ops.object.mode_set(mode='OBJECT')
+#         self.oCutterO.data.resolution_u = 1
+#           
 #         #=== Create the 'CutterAsMesh' version rendered in Unity to represent our cutter curve ===
 #         self.oCutterAsMeshO = DuplicateAsSingleton(self.oCutterO.name, self.oCutterO.name + "-CutterAsMesh", None, False)        ###DESIGN: Hide source a pain...
 #         self.oCutterAsMeshO.parent = bpy.data.objects["CutterAsMesh"]
