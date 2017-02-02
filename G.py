@@ -153,7 +153,7 @@ C_OffsetVertIDs = 1000000                       # Offset applied to all vert IDs
 #---------------------------------------------------------------------------    
 class CGlobals:
     _nFlexParticleSpacing = 0.02                # The inter-particular distance Flex uses to keep its particles away from other particles.  Used to 'shrink' our collision meshes so that collisions appear to occur at the surface of the presentation meshes.
-    _oTempHACK = None                           ###HACK#16  
+    _oTempHACK = None                           ###HACK<16>  
     @classmethod
     def SetFlexParticleSpacing(cls, nFlexParticleSpacing):
         CGlobals._nFlexParticleSpacing = nFlexParticleSpacing       ###DESIGN: Store diameter or radius??
@@ -196,7 +196,7 @@ def Debug_AddMarker(sName, sType, nSize, vecPos, eulerRot):
     oNodeMarker.show_x_ray = True
     if sName != "":
         oNodeMarker.name = sName
-        #oNodeMarker.show_name = True
+        oNodeMarker.show_name = True
     return oNodeMarker
         
 def Debug_GetMarker(sName):

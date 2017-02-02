@@ -137,7 +137,7 @@ class CSoftBodyBase():
             else:
                 print("###EXCEPTION: CSoftBody.SeparateSoftBodyPart() finding nTwinID {} in aMapTwinId2VertRim".format(nTwinID))
                 #raise Exception("###EXCEPTION: CSoftBody.SeparateSoftBodyPart() finding nTwinID {} in aMapTwinId2VertRim".format(nTwinID))
-                ###NOW#13: Why do softbody splits not have all mapping?  Because of material split?  (Can we survive this?  Do we need to not split morph body instead?)
+                ###NOW<13>: Why do softbody splits not have all mapping?  Because of material split?  (Can we survive this?  Do we need to not split morph body instead?)
 
 
     def DoDestroy(self):

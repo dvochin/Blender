@@ -1,4 +1,4 @@
-###NEW#16
+###NEW<16>
 # Could use layers.shape to obtain shape key pos?  See https://www.blender.org/api/blender_python_api_2_63_2/bmesh.html4
 	# Can also use from_mesh(mesh, use_shape_key=False, shape_key_index=0) ??
 
@@ -95,7 +95,7 @@ g_aSharedMeshes = {}			###OBS? Important map of string-to-bmesh object to hold t
 #---------------------------------------------------------------------------	TOP LEVEL
 #---------------------------------------------------------------------------	
 
-def gBL_Initialize():
+def gBL_Initialize():		###OBS<17> !!
 	print("\n********** gBL_Initialize **********")
 	###DESIGN: Debug flag of any use??? bpy.types.Scene.IsDebuggable = bpy.props.BoolProperty(name="IsDebuggable", default=False)
 

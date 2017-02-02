@@ -8,13 +8,13 @@ import struct
 from gBlender import *
 import G
 import Client
+import CObject
 
 
 ###NEXT:
 # Just about ready to insert into Unity
     # Unity needs to query how many curves and their points
     # Need a CCurve, CCurvePt (hotspots) moving and redrawing their cuttersasmesh!
-
 
 
 # Need to separate between updates to cutter curves and the actual cutting
@@ -56,337 +56,212 @@ class CCurve:
         self.oCloth = oCloth
         self.sName = "Curve-" + sType
         self.sType = sType
-        self.bAboutBodyCenter = False   ###NOW#16  (self.sType.find("-Side") == -1)  ###WEAK!!! ###DEV    # Curve is defined about body center (only points on left are specified, right points derived by symmetry from left points)
-        self.bInvertCutterNormals = False#(self.sType.find("-Bottom") != -1)      ###HACK!!!
+        #self.bAboutBodyCenter = False   ###NOW<16>  (self.sType.find("-Side") == -1)  ###WEAK!!! ###DEV    # Curve is defined about body center (only points on left are specified, right points derived by symmetry from left points)
+        #self.bInvertCutterNormals = False#(self.sType.find("-Bottom") != -1)      ###HACK!!!
         self.oCurveO = None                             # The actual Blender curve we encapsulate & control
         self.oCutterO = None                            # The cutter object (responsible for cutting cloth.  (A mesh-version of oCurveO Bezier curve)
-        self.oCutterAsMeshO = None                      # The 'cutter as mesh' representing this curve as a visible mesh in Unity
         self.oSpline = None                             # The first (and only) spline of self.oCurveO
-        self.oCurveSource = None                        # The curve 'source'.  Hierarchy of Blender empty objects the curve is created from (and updated from)
-        self.oCurveCenterPt = None                      # The center point of the curve.  Used to define important cutter center.
+        self.nPointIterator = 0                         # Utility variable for curve constructors / updators to define / update their curve point without using by-reference workarounds
         
-        self.oCurveSource = bpy.data.objects[sType]     # Obtain reference to the root object containing the recipe this curve is based on
-
-        DeleteObject(self.sName)       ###LEARN: Previous caused bad blender crash with old bp        # The above caused that bad Blender C++ crash with the 'Gives UnicodeDecodeError: 'utf-8' codec can't decode byte 0xdd in position 0' error
+        DeleteObject(self.sName)       ###LEARN: Previous caused bad blender crash wit17h old bp        # The above caused that bad Blender C++ crash with the 'Gives UnicodeDecodeError: 'utf-8' codec can't decode byte 0xdd in position 0' error
         bpy.ops.curve.primitive_bezier_curve_add()
         self.oCurveO = bpy.context.object
         self.oCurveO.parent = bpy.data.objects[G.C_NodeName_Curve]
         self.oCurveO.name = self.oCurveO.data.name = self.sName
         self.oCurveO.name = self.oCurveO.data.name = self.sName
-        #self.oCurveO.rotation_mode = 'XYZ'
-        #OLD oCurveO.rotation_euler.x = radians(90)          ###LEARN: How to rotate in eulers
-        self.oCurveO.data.dimensions = "2D"             ###NOW#16
-        #self.oCurveO.data.fill_mode = "NONE"            ###NOW#16: was FULL
+        self.oCurveO.data.dimensions = "2D"
+        self.oCurveO.data.fill_mode = "NONE"
+        self.oCurveO.data.extrude = 0.01                # Extrude the curve so that its mesh equivalent can perform a boolean cut on flattened UV cloth mesh
         self.oSpline = self.oCurveO.data.splines[0]
-        self.oSpline.use_cyclic_u = True     ####DEV!!!!           # Symmetry curves are by definition cyclic (e.g. side curve), non-symmetry (e.g. neck opening) are non-cyclic as their points are mirrored with a mirror modifier
-        self.oSpline.resolution_u = 24                      ###TODO!!!   # At this point we have a bezier curve with one spline containing two control points
+        self.oSpline.use_cyclic_u = True                # Symmetry curves are by definition cyclic (e.g. side curve), non-symmetry (e.g. neck opening) are non-cyclic as their points are mirrored with a mirror modifier
+        self.oSpline.resolution_u = 16                  ###TUNE # At this point we have a bezier curve with one spline containing two control points
 
-        #=== Hide our yet-unformed curve and delete previous iteration of cutter plane ===
-        Util_HideMesh(self.oCurveO)
-        DeleteObject(self.oCurveO.name + G.C_NameSuffix_CutterPlane)
+        #Util_HideMesh(self.oCurveO)
 
+
+    def SetPoint(self, vecPt):
+        self.nPointIterator += 1            # Update our iterator by one.  This call assumes caller reset the iterator just before a sequence of calls
+        vec3D = Vector((vecPt.x, vecPt.y, 0))
+        #G.Debug_AddMarker("P" + str(nPt), "PLAIN_AXES", 0.01, vec3D, ((0,0,0)))        ###TEMP<17>
+        if (self.nPointIterator > len(self.oSpline.bezier_points)):
+            self.oSpline.bezier_points.add()                         # Add another control point to the curve
+        oCurvePt = self.oSpline.bezier_points[self.nPointIterator-1]
+        oCurvePt.handle_left_type = oCurvePt.handle_right_type = 'AUTO'     # Curve points are auto until set to free by gBL_Curve_UpdateCurveBezier() 
+        oCurvePt.co = vec3D
+        return oCurvePt
+    
+    def SetPointBeziers(self, sType, x, y):         # Adjusts the bezier handles of the last iterated point set in SetPoint()
+        oCurvePt = self.oSpline.bezier_points[self.nPointIterator-1]
+        if sType == "C":
+            oCurvePt.handle_left_type = oCurvePt.handle_right_type = 'FREE'
+            oCurvePt.handle_left  = oCurvePt.co + Vector(( x,  y, 0))
+            oCurvePt.handle_right = oCurvePt.co + Vector((-x,  y, 0))
+        elif sType == "V":
+            oCurvePt.handle_left_type = oCurvePt.handle_right_type = 'ALIGNED'
+            oCurvePt.handle_left  = oCurvePt.co + Vector(( x,  y, 0))
+            oCurvePt.handle_right = oCurvePt.co + Vector((-x, -y, 0))
 
     def UpdateCutterCurve(self):
-        #=== Iterate through all curve points (not duplicate for symmetry) and add to curve
-        bpy.context.scene.cursor_location = Vector((0,0,0))     # All dependant code requires cursor to be at origin!
-        
-        nPt = 0
-        nNumCurvePtsLess1 = len(self.oCurveSource.children) - 1
-        for oCurvePtO in self.oCurveSource.children:
-            #print("CurveDev Pt: ", oCurvePtO, oCurvePtO.location)
-            if (oCurvePtO.name.find("-Center") != -1):
-                self.oCurveCenterPt = oCurvePtO
-                print("Center " + oCurvePtO.name + " at " + str(oCurvePtO.location))
-            else:
-                oCurvePt = self.EditCurvePoint(nPt, oCurvePtO.location)
-                if (len(oCurvePtO.children)):                       # Process children of curve points as Bezier
-                    oCurveBezierO = oCurvePtO.children[0] 
-                    bInvertSymmetrizeBezierAboutX = (nPt == nNumCurvePtsLess1)
-                    self.UpdateCurveBezier(oCurvePt, bInvertSymmetrizeBezierAboutX, oCurveBezierO.location.x, oCurveBezierO.location.y, oCurveBezierO.location.z)
-                nPt += 1
-    
-        #=== Now iterate through the curve again in reverse order if mirrored (without the extremities) to add the symmetry points ===
-        if self.bAboutBodyCenter:
-            for nCurvePt in range(nNumCurvePtsLess1-1, 1, -1):      # Iterates backward without both extremities. Note the weirdness in reverse ranges!
-                oCurvePtO = self.oCurveSource.children[nCurvePt]
-                if (oCurvePtO.name.find("-Center") == -1):
-                    #print("CurveDev Pt REV:", oCurvePtO, oCurvePtO.location)
-                    vecLoc = oCurvePtO.location.copy()
-                    vecLoc.x = -vecLoc.x                            # Point is for the other side of the body
-                    oCurvePt = self.EditCurvePoint(nPt, vecLoc)
-                    nPt += 1
-            
-        self.RebuildCurve()
+        self.RebuildCurve()             ###TODO<17>: Broken?  ###DESIGN<17>: How to update points?
         
 
     def RebuildCurve(self):              # Rebuild the curve & cutter... typically done after client has changed on or more curve points
-        bpy.context.scene.cursor_location = Vector((0,0,0))     # All dependant code requires cursor to be at origin!
-
         #=== Create a duplicate of the user's curve and set its parent for cleaner node structure ===
         self.oCutterO = DuplicateAsSingleton(self.oCurveO.name, self.oCurveO.name + "-" + G.C_NodeName_Cutter, G.C_NodeFolder_Game, True)
         self.oCutterO.parent = bpy.data.objects[G.C_NodeName_Cutter]           ###SOON: Curve quality!
-    
         #=== Convert the spline curve to a mesh to 'bake' the few bezier points into a fanned-out version and 'shrinkwrap' to the basis mesh to get much closer to mesh surface than the user's curve === 
         bpy.ops.object.convert(target='MESH')
         
+
+    def CutClothWithCutterCurve(self, oMeshCutCloth, sMirrorX=None):
+        print("-CCurve.CutClothWithCutterCurve() on curve '{}'".format(self.sName))
+        self.RebuildCurve()     ###CHECK<17>?
         
+        #=== Mirror the cutter mesh about X=0.5 if requested (needed for side cuts to enforce symmetry ===
+        if sMirrorX == "MirrorX":
+            oModMirrorX = Util_CreateMirrorModifierX(self.oCutterO)
+            oModMirrorX.mirror_object = bpy.data.objects["EmptyAtZeroPointFiveForClothCutting"]     # Specify empty set to X=0.5 so mirror is done about body center
+            AssertFinished(bpy.ops.object.modifier_apply(modifier=oModMirrorX.name))        
+
+        #=== Create a boolean modifier and apply it to remove the extra bit beyond the current cutter ===
+        SelectAndActivate(oMeshCutCloth.name, True)
+        oModBoolean = oMeshCutCloth.modifiers.new('BOOLEAN', 'BOOLEAN')
+        #oModBoolean.solver = "CARVE"                ###LEARN: Older 'CARVE' Boolean Solver appears to destroy all the custom data layers.  BMESH is default but it has problems...  ###DESIGN<17> what to do?
+        ###BUG<17>: BMESH cuts sometime don't work
+        oModBoolean.object = self.oCutterO
+        oModBoolean.operation = 'DIFFERENCE'            ###LEARN: Difference is the one we always want when cutting as the others appear useless!  Note that this is totally influenced by side of cutter normals!!
+        AssertFinished(bpy.ops.object.modifier_apply(modifier=oModBoolean.name))  ###LEARN: Have to specify 'modifier' or this won't work!
         
-        self.oCutter3D = DuplicateAsSingleton(self.oCutterO.name, self.oCutterO.name + "-Domain3D", G.C_NodeFolder_Game, True)
-        self.oCutter3D.parent = self.oCutterO
-        
-
-        ###NOW#16 ###OBS!!!!!
-        # Can quickly find UVs from position...
-        # 1. Create code to create 1-unit curves.
-        # 2. Create code to rasterize a curve
-        # 3. Invoke our code to find closest UV tri.
-        # 4. Add code to triangulate, and convert to 3D
-        # 5. Visualize 3D curve
-        #for i, v in enumerate(mesh.vertices):            ###LEARN: interesting approach!
-        #    oTreeKD.insert(v.vecLoc, i)
-
-        ###NOW
-        # Can finally cut... but can adopt a simpler solution than boolean?
-            # Do we proceed with boolean cut or try to slice polys ourselves?  
-        # 1. Add face to 3D cutter (do it at curve level?)
-            # Problem around curved areas... need to insert points into curve center that will map to 3D point that will respect curves for cutter.
-        # 2. 'Solidify' object by pushing / shrinking its normals.
-
-
-        # create a oTreeKD-tree from a mesh
-        oMeshO = SelectAndActivate("BodySuit")
-        oMesh = oMeshO.data
-        size = len(oMesh.polygons)
-        oTreeKD = kdtree.KDTree(size)                       ###LEARN: How to quickly locate spacial data!
-
-        for oPoly in oMesh.polygons:
-            aUV = [oMesh.uv_layers.active.data[nLoopIndex].uv for nLoopIndex in oPoly.loop_indices]     ###LEARN: How to easily traverse array indirection
-            vecFaceCenterUV = Vector((0,0,0))
-            for oUV in aUV:
-                vecFaceCenterUV.x += oUV.x
-                vecFaceCenterUV.y += oUV.y
-            vecFaceCenterUV /= len(aUV)
-            oTreeKD.insert(vecFaceCenterUV, oPoly.index)
-        oTreeKD.balance()
-        
-        # Find the closest point to the center
-        for oVert in self.oCutter3D.data.vertices:
-            vecLoc, nPoly, nDist = oTreeKD.find(oVert.co)                ###LEARN: How to extract multiple arguments out
-            oPoly = oMesh.polygons[nPoly]
-            aUV = [oMesh.uv_layers.active.data[nLoopIndex].uv for nLoopIndex in oPoly.loop_indices]
-            #print("Loc search = ", vecLoc, nPoly, nDist)
-            vecUV0 = Vector((aUV[0].x, aUV[0].y, 0))            # Expand 2D UV coordinate into a 3D vector with z = 0 so we can invoke barycentric_transform() below
-            vecUV1 = Vector((aUV[1].x, aUV[1].y, 0))
-            vecUV2 = Vector((aUV[2].x, aUV[2].y, 0))
-            vecPoly0 = oMesh.vertices[oPoly.vertices[0]].co
-            vecPoly1 = oMesh.vertices[oPoly.vertices[1]].co
-            vecPoly2 = oMesh.vertices[oPoly.vertices[2]].co
-            oVert.co = geometry.barycentric_transform(oVert.co, vecUV0, vecUV1, vecUV2, vecPoly0, vecPoly1, vecPoly2)
-        
-        ###LEARN: mathutils.geometry.barycentric_transform(point, tri_a1, tri_a2, tri_a3, tri_b1, tri_b2, tri_b3) at https://www.blender.org/api/blender_python_api_2_77_release/mathutils.geometry.html
-                    
-#         oModShrinkwrap = self.oCutterO.modifiers.new('SHRINKWRAP', 'SHRINKWRAP')        ###NOW#16
-#         oModShrinkwrap.target = self.oCloth.oMeshClothSource.GetMesh()
-#         AssertFinished(bpy.ops.object.modifier_apply(modifier=oModShrinkwrap.name))
-    
-#         #=== Convert back to a curve so that we can easily display a solid curve by adding a bevel object ===        
-#         bpy.ops.object.convert(target='CURVE')           # Re-convert to spline now that we have a 'baked' representation with about a hundred vertices.
-#         bpy.ops.object.mode_set(mode='EDIT')
-#         for nSmoothIterations in range(5):        ###TUNE     ###LEARN: This is how to smooth a curve!  (Smooth as a mesh makes non-mirror-x centers diverge, and looptools doesn't smooth enough)
-#             bpy.ops.curve.smooth()
-#         bpy.ops.object.mode_set(mode='OBJECT')
-#         self.oCutterO.data.resolution_u = 1
-#           
-#         #=== Create the 'CutterAsMesh' version rendered in Unity to represent our cutter curve ===
-#         self.oCutterAsMeshO = DuplicateAsSingleton(self.oCutterO.name, self.oCutterO.name + "-CutterAsMesh", None, False)        ###DESIGN: Hide source a pain...
-#         self.oCutterAsMeshO.parent = bpy.data.objects["CutterAsMesh"]
-#         self.oCutterAsMeshO.data.bevel_object = bpy.data.objects[G.C_NodeName_CurveBevelShape]
-#         bpy.ops.object.convert()                # Convert to mesh
-# 
-#         #=== Add a mirror modifier to the cutter mesh whether the curve is symmetrical or not so user sees cuts for both sides of the body ===
-#         if (self.bAboutBodyCenter == False):         ###DEVNOW!!!  Mirror all fucked up!
-#             oModMirrorX = Util_CreateMirrorModifierX(self.oCutterAsMeshO)
-#             AssertFinished(bpy.ops.object.modifier_apply(modifier=oModMirrorX.name))        
-#         Util_ConvertToTriangles()      # Convert to triangles Client needs
-        
-   
-
-    def EditCurvePoint(self, nPt, vecLocation):
-        if (nPt >= len(self.oSpline.bezier_points)):
-            self.oSpline.bezier_points.add()                         # Add another control point to the curve
-        oCurvePt = self.oSpline.bezier_points[nPt]
-        oCurvePt.handle_left_type = oCurvePt.handle_right_type = 'AUTO'     # Curve points are auto until set to free by gBL_Curve_UpdateCurveBezier() 
-        vecCurvePtBlender = vecLocation  ###DEV!!: G.VectorC2B(vecLocation)        # As we're receiving a 3D vector without going through the conversion to verts done while sending a mesh we must convert the coordinate manually here (and likewise when we obtain coordinate from client)
-        oCurvePt.co = vecCurvePtBlender
-        
-        ####DEV!!! === Calculate the snap position of curve point on current cloth manually to avoid the complete rebuild overhead ===
-        #oBaseClothO = bpy.data.objects[sNameBaseCloth]                  ###CHECK: For some reason in this context we don't need stupid 90 degree rotation back and forth?  WHY???
-        #aClosestPtResults = oBaseClothO.closest_point_on_mesh(vecCurvePtBlender)   ###LEARN: This call fails early in blender load process as it complains mesh has no data.  (Forced late update and kludge code!)
-        #vecCurvePtAdjClient = G.VectorB2C(aClosestPtResults[0])      # Return the adjusted point position in client-space.
-        
-        return oCurvePt
-
-    def UpdateCurveBezier(self, oCurvePt, bInvertSymmetrizeBezierAboutX, x, y, z):
-        oCurvePt.handle_left_type = oCurvePt.handle_right_type = 'FREE'
-        if (bInvertSymmetrizeBezierAboutX):
-            oCurvePt.handle_left  = Vector(( x, y, z))     ###G.VectorC2B(
-            oCurvePt.handle_right = Vector((-x, y, z))
-        else:
-            oCurvePt.handle_left  = Vector((-x, y, z))        # As we're receiving a 3D vector without going through the conversion to verts done while sending a mesh we must convert the coordinate manually here (and likewise when we obtain coordinate from client)
-            oCurvePt.handle_right = Vector(( x, y, z))
-
-
-    def CutClothWithCutterCurve(self, bInvertCut):
-        bpy.context.scene.cursor_location = Vector((0,0,0))     # All dependant code requires cursor to be at origin!
-
-        #=== Obtain parameters stored in curve object on how to perform cut ===
-        oMeshO = self.oCloth.oMeshClothCut.GetMesh()           ###CLEANUP: From port... make a more natural integration with class!!
-        oMesh = oMeshO.data
-        oCurveO = self.oCutterO             ###DEV: Curve = cutter??
-        vecCurveCenter = self.oCurveCenterPt.location
-        bCutAboutLeftAndRight = (self.bAboutBodyCenter == False)          # Curves that are defined around body center (e.g. neck opening, bottom opening, etc) only need one cut (different than arm left and right, leg left and right, etc)
-        aBorderLocatorVertPos = {}                      ###OBSOLETE?
-        
-        ###OLD bCutAboutLeftAndRight = oCurveO.data.splines[0].use_cyclic_u       # Symmetry curves are by definition cyclic (e.g. side curve), non-symmetry (e.g. neck opening) are non-cyclic as their points are mirrored with a mirror modifier
-        nSymmetryIterations = bCutAboutLeftAndRight + 1  # The symmetry cutters (e.g. arms and legs) have this set to two so next big loop runs twice for each side
-        ###OLD vecCurveCenter = oCurveO.matrix_world * vecCurveCenter      # Curve is rotated 90 degrees like every other object, convert location of center to its local coordinates so all points on cutter mesh live in the same spacial coordinate system
-    
-        #=== Iterate once or twice through all our pins depending if we're a symmetry or not ===
-        for nSymmetryRun in range(nSymmetryIterations):
-            #=== Determine the full 'cut name' by adding the L/R suffix if this is a symmetry curve
-            sCutName = oCurveO.name
-            if nSymmetryIterations > 1:                                 # The name of the cut is suffixed only for symmetrical cuts (e.g. ArmL and ArmR)
-                sCutName += G.C_SymmetrySuffixNames[nSymmetryRun]
-            print("== ApplyCut() on mesh '{}' cut '{}' bAboutBodyCenter = {} bInvertCutterNormals = {}".format(oMeshO.name, sCutName, self.bAboutBodyCenter, self.bInvertCutterNormals))
-    
-            #=== Create a temporary duplicate of the 'presentation curve' and remove its spline bevel so it becomes a usable flat curve again ===
-            ###DEVF: Need to delete first??
-            oCutterBooleanO = DuplicateAsSingleton(oCurveO.name, oCurveO.name + G.C_NameSuffix_CutterPlane, None, False)
-            oCutterBooleanO.parent = bpy.data.objects["CutterPlanes"]        ###WEAK
-            oCutterBooleanO.data.bevel_object = None            # Remove the bevel object of the spline that was used to render with 'thickness' where the cut is to occur
-            oCutterBooleanO.draw_type = "WIRE"
-            oCutterBooleanO.show_all_edges = True
-            
-            #=== Remove the mirror modifier from the cutter if we're a mirror-x as we need to run the cut twice with single cutters in order to properly prepare each individual border ===
-            if bCutAboutLeftAndRight:       ###CHECK: Needed?
-                while(len(oCutterBooleanO.modifiers) > 0):
-                    oCutterBooleanO.modifiers.remove(oCutterBooleanO.modifiers[0])
-
-            #=== Set the cutter's origin to the user-supplied center point and resize all border points so that all points of the curve are outside the mesh to be cut ===
-            aContextOverride = AssembleOverrideContextForView3dOps()    ###IMPORTANT: For view3d settings to be active when this script code is called from the context of Client we *must* override the context to the one interactive Blender user uses.
-            SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', False)
-            bpy.context.scene.cursor_location = vecCurveCenter      # Now set the fit curve origin to the user-supplied center for this user curve.  (This will therefore set the normals of each vertex on the curve to go from origin to each vertex = perfect for us to project out of cloth with shrink/fatten
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.curve.select_all(action='SELECT')
-            bpy.ops.transform.resize(aContextOverride, value=(1.2,1.2,1.2))
-            bpy.ops.curve.select_all(action='DESELECT')
-            bpy.ops.object.mode_set(mode='OBJECT')
-    
-            #=== Convert the curve into a mesh, extrude the mesh's points and collapse them to a single vertex to meet at center to form faces for boolean ===
-            bpy.ops.object.convert(target='MESH')               # Convert to a mesh            
-            oCutterBoolean = oCutterBooleanO.data
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
-            bpy.ops.mesh.select_all(action='SELECT')
-            bpy.ops.mesh.extrude_edges_indiv()          ###LEARN: extrude_vertices_move() only moves verts with no edges around -> useless!
-            bpy.ops.mesh.merge(type='CURSOR')           ###CHECK: Was not working before??
-            bpy.ops.mesh.select_all(action='SELECT')
-            bpy.ops.mesh.normals_make_consistent()          # Update the normals to present unified normals (very important) for boolean
-            bpy.ops.mesh.select_all(action='DESELECT')
-            bpy.ops.object.mode_set(mode='OBJECT')
-            bpy.context.scene.cursor_location = Vector((0,0,0))
-            
-            ###CHECK === Mirrored cutters may not have their first and last points exactly at x=0 even if clients specifies these as points (errors inserted when curve is converted??)  Anyways we ensure a watertight cutting mesh with remove_doubles to cover this case but a better fix would be to fix the curve!
-            if bCutAboutLeftAndRight == False:          ###NEEDED?
-                bpy.ops.object.mode_set(mode='EDIT')
-                bpy.ops.mesh.select_all(action='SELECT')
-                bpy.ops.mesh.remove_doubles(threshold=0.005)  
-                bpy.ops.mesh.select_all(action='DESELECT')
-                bpy.ops.object.mode_set(mode='OBJECT')
-            
-            ###CHECK: merge to center above does this ok???    
-            oCutterBoolean.vertices[len(oCutterBoolean.vertices) - 1].co = vecCurveCenter  # The added central 'collapse' point (currently at center of border verts) needs to be moved to our center pin ===  # Workaround to bpy.ops.mesh.merge not reliably merging to cursor -> fetch the last vert (the one that just merged) and move it to where it needs to be... 
-    
-            #=== If this is the 2nd 'symmetry run' invert the cutter about X to cut the other side of body and inver the normals ===
-            if (nSymmetryRun > 0):                                    
-                oCutterBooleanO.scale.x *= -1
-                self.InvertNormals()
-                
-            if (self.bInvertCutterNormals):     ###PROBLEM?  The two inversions can interfere with one another??                                    
-                self.InvertNormals()
-            
-    
-            #=== Create a boolean modifier and apply it to remove the extra bit beyond the current cutter ===
-            SelectAndActivate(oMeshO.name)
-            oModBoolean = oMeshO.modifiers.new('BOOLEAN', 'BOOLEAN')
-            oModBoolean.object = oCutterBooleanO
-            if (bInvertCut):
-                oModBoolean.operation = 'INTERSECT'            ###LEARN: Difference is the one we always want when cutting as the others appear useless!  Note that this is totally influenced by side of cutter normals!!
-            else:
-                oModBoolean.operation = 'DIFFERENCE'            ###LEARN: Difference is the one we always want when cutting as the others appear useless!  Note that this is totally influenced by side of cutter normals!!
-            #self.HALT
-            AssertFinished(bpy.ops.object.modifier_apply(modifier=oModBoolean.name))  ###LEARN: Have to specify 'modifier' or this won't work!
-            oCutterBooleanO.scale.x *= -1                            # Revert the cutter back to non-inverted if inverted for 2nd 'symmetry' run above
-            
-            #=== Boolean cut basically destroyed all info such as vert groups, vertID, vert and edge data... anything we could use to store what verts were assigned to each border ===
-            #=== In order to overcome this boolean destruction of most mesh data, we remember for each border the coordinates of one vertex on that border so that we may later rebuild the list of vert for all borders ===
-            #=== Our first step is to start from the center vert, walk the first edge of that vert to find a vertex on the new border, store its position in aBorderLocatorVertPos and delete the (unwanted) mesh cutter central vert ===
-            ###LEARN: Applying boolean modifier will destroy the mesh's vertex groups, the IDs of verts and probably edges and polys, vert attribs like bevel_weight, edges attribs like crease and bevel_weight BUT keeps face material!!
-            bpy.ops.object.mode_set(mode='EDIT')
-            bm = bmesh.from_edit_mesh(oMesh)
-            bm.verts.ensure_lookup_table()
-            oVertMeshCutterCenter = bm.verts[len(bm.verts) - 1]             # The boolean cut has created an a vert where the cutter center vert was.  We don't need our cloth as solid so we delete the center vert' (still at 3d cursor) and remove it to restore the cloth mesh to non-solid  ###CHECK: We are assuming (so far so good) that the collapsed vert is the last one in the cloth.
-            oEdgeFirst = oVertMeshCutterCenter.link_edges[0]                # Select the first edge of that central vert to point the way toward a vert on the border
-            oVertLocatorOnBorder = oEdgeFirst.other_vert(oVertMeshCutterCenter) # Obtain reference to the other side of that 'first edge'.  The 3D coordinate of that 'special vert' will act as the key to rebuild the list of verts for this border once all the highly-destructive boolean operations have been done for all borders on this mesh
-            oVertMeshCutterCenter.select = True                             # Select the unwanted central vert...
-            bpy.ops.mesh.delete(type='VERT')                                # And delete it.  We now have non-manifold border we must cleanup!
-            #print("-Cut: Locator Vert for border {} at {} and index {}".format(oCurveO.name, oVertLocatorOnBorder.co, oVertLocatorOnBorder.index))
-            aBorderLocatorVertPos[sCutName] = oVertLocatorOnBorder.co.copy()    # Store for this border the 3D coordinates of this 'border locator vert' so we can reconstruct what verts form each border after all destructive boolean ops have occured.
-
-            Util_HideMesh(oCutterBooleanO)
-            
         #=== Boolean cut leaves quads and ngons on the border and triangles give us more control on what to delete -> Triangulate before border cleanup ===
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.mesh.quads_convert_to_tris()        ###REVIVE: use_beauty=True
+        bpy.ops.mesh.delete_loose()                     # For some reason back cloth leaves loose verts!  Clean with this call
+        bpy.ops.mesh.quads_convert_to_tris()            ###CHECK<17>: Needed??
         bpy.ops.mesh.select_all(action='DESELECT')
         bpy.ops.object.mode_set(mode='OBJECT')
-
-        #=== Hide back internal objects to avoid cluttering display ===
         Util_HideMesh(self.oCutterO)
 
 
-    def InvertNormals(self):
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.mesh.flip_normals()  
-        bpy.ops.mesh.select_all(action='DESELECT')
-        bpy.ops.object.mode_set(mode='OBJECT')
-        
+# class CCurvePt:        ###DESIGN<17>: Adopt?
+#     def __init__(self, sName):
+#         self.OBSOLETE()
+
+class CCurveNeck(CCurve):
+    def __init__(self, oCloth, sType):
+        super(self.__class__, self).__init__(oCloth, sType)
+        #--- Unity-public properties ---
+        self.oObj = CObject.CObject("Neck Opening Curve Parameters")
+
+        self.oPropUpSeamDist            = self.oObj.PropAdd("UpSeamDist",           "", 0.03, 0.00, 0.5)        ###IMPROVE<17>: extract the max from some seam curves?
+        self.oPropUpSeamCurveX          = self.oObj.PropAdd("UpSeamCurveX",         "", 0.00, -0.1, 0.1)
+        self.oPropUpSeamCurveY          = self.oObj.PropAdd("UpSeamCurveY",         "", 0.04, 0.0, 0.2)
+
+        self.oPropNeckFrontHeight       = self.oObj.PropAdd("NeckFrontHeight",      "", 0.8, 0.5, 1.0)
+        self.oPropNeckFrontCurveX       = self.oObj.PropAdd("NeckFrontCurveX",      "", 0.09, 0.0, 0.2)
+        self.oPropNeckFrontCurveY       = self.oObj.PropAdd("NeckFrontCurveY",      "", 0.00, -0.2, 0.2)
+
+        self.oPropNeckBackHeight        = self.oObj.PropAdd("NeckBackHeight",       "", 0.82, 0.5, 1.0)
+        self.oPropNeckBackCurveX        = self.oObj.PropAdd("NeckBackCurveX",       "", 0.04, 0.0, 0.2)
+        self.oPropNeckBackCurveY        = self.oObj.PropAdd("NeckBackCurveY",       "", 0.00, -0.2, 0.2)
+
+    def UpdateCurvePoints(self, bmCloth3DS):
+        #=== Set common variables re-used by points below ===
+        nCenterUV = 0.5
+        vecSeamPointNeckToArmL = self.oCloth.aDictSeamCurves["TopL"].GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet())
+        vecSeamPointNeckToArmR = self.oCloth.aDictSeamCurves["TopR"].GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet()) ###IMPROVE<17>: Ditch right curves and derive R from L?
+
+        #--- Set point above head (for loop closure) ---        
+        self.nPointIterator = 0           # Reset the curve point iterators so calls below always start at point 0
+        self.SetPoint(Vector((nCenterUV, 1.1)))
+        #--- Set left neck-to-arm seam point ----
+        self.SetPoint(vecSeamPointNeckToArmL)
+        self.SetPointBeziers("V", self.oPropUpSeamCurveX.PropGet(), self.oPropUpSeamCurveY.PropGet())
+        #--- Set front point and beziers----
+        self.SetPoint(Vector((nCenterUV, self.oPropNeckFrontHeight.PropGet())))
+        self.SetPointBeziers("C", self.oPropNeckFrontCurveX.PropGet(), self.oPropNeckFrontCurveY.PropGet())
+        #--- Set right neck-to-arm seam point ----
+        self.SetPoint(vecSeamPointNeckToArmR)
+        self.SetPointBeziers("V", self.oPropUpSeamCurveX.PropGet(), -self.oPropUpSeamCurveY.PropGet())  # Note negated Y for right-side symmetry to left side
+        #--- Cut the front UV flattened mesh ---
+        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVF_Cut)
+
+        #--- Set left neck-to-arm seam point ----
+        self.nPointIterator = 1
+        self.SetPoint(vecSeamPointNeckToArmL)
+        self.SetPointBeziers("V", -self.oPropUpSeamCurveX.PropGet(), self.oPropUpSeamCurveY.PropGet())
+        #--- Set front point and beziers----
+        self.SetPoint(Vector((nCenterUV, self.oPropNeckBackHeight.PropGet())))
+        self.SetPointBeziers("C", self.oPropNeckBackCurveX.PropGet(), self.oPropNeckBackCurveY.PropGet())
+        #--- Set right neck-to-arm seam point ----
+        self.SetPoint(vecSeamPointNeckToArmR)
+        self.SetPointBeziers("V", -self.oPropUpSeamCurveX.PropGet(), -self.oPropUpSeamCurveY.PropGet())
+        #--- Cut the back UV flattened mesh ----0.03241414141414141414141414141414141414141
+        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVB_Cut)
 
 
+class CCurveSide(CCurve):
+    def __init__(self, oCloth, sType):
+        super(self.__class__, self).__init__(oCloth, sType)
+        #--- Unity-public properties ---
+        self.oObj = CObject.CObject("Side Curve Parameters")
+        self.oPropUpSeamDist     = self.oObj.PropAdd("UpSeamDist",        "", 0.07, 0.00, 0.5)
+        self.oPropUpSeamCurveX   = self.oObj.PropAdd("UpSeamCurveX",      "", 0.01, -0.1, 0.1)
+        self.oPropUpSeamCurveY   = self.oObj.PropAdd("UpSeamCurveY",      "", 0.20, 0.0, 0.2)
+
+        self.oPropSideSeamDist   = self.oObj.PropAdd("SideSeamDist",      "", 0.45, 0.00, 1.0)
+        self.oPropSideSeamCurveX = self.oObj.PropAdd("SideSeamCurveX",    "",-0.04, -0.1, 0.1)
+        self.oPropSideSeamCurveY = self.oObj.PropAdd("SideSeamCurveY",    "", 0.02, -0.1, 0.1)
+
+    def UpdateCurvePoints(self, bmCloth3DS):
+        #=== Set common variables re-used by points below ===
+        vecSeamPointUpL   = self.oCloth.aDictSeamCurves["TopL"] .GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet())
+        vecSeamPointUpR   = self.oCloth.aDictSeamCurves["TopR"] .GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet()) ###IMPROVE<17>: Ditch right curves and derive R from L?
+        vecSeamPointSideL = self.oCloth.aDictSeamCurves["SideL"].GetPosAtSeamChainLength(bmCloth3DS, self.oPropSideSeamDist.PropGet())
+        vecSeamPointSideR = self.oCloth.aDictSeamCurves["SideR"].GetPosAtSeamChainLength(bmCloth3DS, self.oPropSideSeamDist.PropGet()) ###IMPROVE<17>: Ditch right curves and derive R from L?
+
+        #--- Set two points to the extreme right/left to cut requrested part of arm mesh ---        
+        self.nPointIterator = 0
+        self.SetPoint(Vector((1.5, -0.5)))
+        self.SetPointBeziers("V", 0, 0)
+        self.SetPoint(Vector((1.5, 1.5)))
+        self.SetPointBeziers("V", 0, 0)
+        #--- Set neck-to-arm seam point ----
+        self.SetPoint(vecSeamPointUpL)
+        self.SetPointBeziers("V", self.oPropUpSeamCurveX.PropGet(), self.oPropUpSeamCurveY.PropGet())
+        #--- Set side hand-to-ankle seam point ----
+        self.SetPoint(vecSeamPointSideL)
+        self.SetPointBeziers("V", self.oPropSideSeamCurveX.PropGet(), self.oPropSideSeamCurveY.PropGet())
+        #--- Cut the UV flattened meshes ---
+        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVF_Cut, "MirrorX")
+        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVB_Cut, "MirrorX")
 
 
+class CCurveTorsoSplit(CCurve):
+    def __init__(self, oCloth, sType):
+        super(self.__class__, self).__init__(oCloth, sType)
+        #--- Unity-public properties ---
+        self.oObj = CObject.CObject("Torso Split Curve Parameters")
+        self.oPropUpSeamDist     = self.oObj.PropAdd("UpSeamDist",        "", 0.51, 0.00, 0.1)
+        self.oPropUpSeamCurveX   = self.oObj.PropAdd("UpSeamCurveX",      "", 0.10, -0.1, 0.1)
+        self.oPropUpSeamCurveY   = self.oObj.PropAdd("UpSeamCurveY",      "", 0.00, -0.1, 0.1)
 
-#---------------------------------------------------------------------------    
-#---------------------------------------------------------------------------    ###OBS
-#---------------------------------------------------------------------------    
+    def UpdateCurvePoints(self, bmCloth3DS):
+        #=== Set common variables re-used by points below ===
+        vecSeamPointUpL   = self.oCloth.aDictSeamCurves["SideL"] .GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet())
+        vecSeamPointUpR   = self.oCloth.aDictSeamCurves["SideR"] .GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet()) ###IMPROVE<17>: Ditch right curves and derive R from L?
 
-# def gBL_Curve_GetCutterAsMesh(sNameCutterAsMesh):         # Called by Client to force a rebuild of this curve & cutter and create & return a mesh copy of the cutter that can be displayed in Client 
-#     if sNameCutterAsMesh.startswith(G.C_NamePrefix_CutterAsMesh) == False:
-#         return "ERROR: gBL_Curve_GetCutterAsMesh() did not receive a cutter refresh request that begins with '{}'".format(G.C_NamePrefix_CutterAsMesh)
-#     sNameCurve  = sNameCutterAsMesh[len(G.C_NamePrefix_CutterAsMesh):]          # Extract the curve and cutter's object name from the client's request.
-#     sNameCutter = sNameCurve + "-" + G.C_NodeName_Cutter
-#     if sNameCurve not in bpy.data.objects:
-#         return "ERROR: gBL_Curve_GetCutterAsMesh() could not find curve object '{}' from request '{}'".format(sNameCurve, sNameCutterAsMesh)
-# 
-#     gBL_Curve_Rebuild(sNameCurve)              # Rebuild the curve and cutter so we can convert the cutter to a mesh and send to client.         
-#     oCutterAsMeshO = DuplicateAsSingleton(sNameCutter, sNameCutterAsMesh, G.C_NodeFolder_Game, False)        ###DESIGN: Hide source a pain...
-#     bpy.ops.object.convert()                # Convert to mesh
-#     oCutterAsMeshO.data.name = oCutterAsMeshO.name    # Set the name of the just-created mesh to the name of the object.
-#     oCutterAsMeshO.parent = bpy.data.objects[G.C_NamePrefix_CutterAsMesh]     # Set parent to its utility node folder to get it out of the way and to facilitate mass cleanup
-#     Util_ConvertToTriangles()      # Convert to triangles Client needs
-#     return Client.Unity_GetMesh(oCutterAsMeshO.name)
-
-
-
+        #--- Set two points to the extreme right/left to cut requrested part of arm mesh ---        
+        self.nPointIterator = 0                 ###IMPROVE<17>: Add property to flip what is removed (top or bottom)
+        self.SetPoint(Vector((-0.5, -0.5)))
+        #self.SetPointBeziers("V", 0, 0)
+        self.SetPoint(Vector((1.5, -0.5)))
+        #self.SetPointBeziers("V", 0, 0)
+        #--- Set left hand-to-ankle seam point ----
+        self.SetPoint(vecSeamPointUpL)
+        self.SetPointBeziers("V", self.oPropUpSeamCurveX.PropGet(), self.oPropUpSeamCurveY.PropGet())
+        #--- Set right hand-to-ankle seam point ----
+        self.SetPoint(vecSeamPointUpR)
+        self.SetPointBeziers("V", self.oPropUpSeamCurveX.PropGet(), self.oPropUpSeamCurveY.PropGet())
+        #--- Cut the UV flattened meshes ---
+        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVF_Cut)
+        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVB_Cut)

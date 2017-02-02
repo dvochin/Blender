@@ -23,8 +23,9 @@ class CObject():
         self.aProps         = {}
         
     def PropAdd(self, sName, sDescription, nValue, nMin, nMax):
-        self.aProps[sName] = CProp(self, sName, sDescription, nValue, nMin, nMax)
-        print("[PropAdd for '{}' added property '{}'".format(self.sNameObject, sName))
+        self.aProps[sName] = oProp = CProp(self, sName, sDescription, nValue, nMin, nMax)
+        #print("[PropAdd for '{}' added property '{}'".format(self.sNameObject, sName))
+        return oProp
 
     def PropFind(self, sName):
         if (sName in self.aProps):
@@ -104,12 +105,12 @@ class CProp():
         #self.eFlags         = eFlags
         
     def PropGet(self):
-        print("[PropGet '{}' = {:3f}]".format(self.sName, self.nValue))
+        #print("[PropGet '{}' = {:3f}]".format(self.sName, self.nValue))
         return self.nValue
 
     def PropSet(self, nValueNew):
         nValueNew = self.PropClamp(nValueNew)
-        print("[PropSet '{}' = {:3f}]".format(self.sName, nValueNew))
+        #print("[PropSet '{}' = {:3f}]".format(self.sName, nValueNew))
         self.nValue = nValueNew
         return self.nValue
     

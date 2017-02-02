@@ -77,6 +77,7 @@ from gBlender import *
 import G
 import CSoftBody
 import CCloth
+import CClothSrc
 import CMesh
 import Client
 import CFlexSkin
@@ -94,7 +95,7 @@ class CBodyBase:
 
     def __init__(self, nBodyID, sMeshSource, sSex, sGenitals):
         self.nBodyID = nBodyID              # Our ID is passed in by Blender and remains the only public way to access this instance (e.g. CBody._aBodyBases[<OurID>])
-        self.sMeshSource = sMeshSource      # The name of the source body mesh (e.g. 'WomanA', 'ManA', etc)        ###TODO#11: Separate sex from mesh version!
+        self.sMeshSource = sMeshSource      # The name of the source body mesh (e.g. 'WomanA', 'ManA', etc)        ###TODO<11>: Separate sex from mesh version!
         self.sSex = sSex                    # The body's sex (one of 'Man', 'Woman' or 'Shemale')
         self.sGenitals = sGenitals          # The body's genitals (e.g. 'Vagina-Erotic9-A', 'PenisW-Erotic9-A' etc.)
         self.sMeshPrefix = "B" + chr(65 + self.nBodyID) + '-'  # The Blender object name prefix of every submesh (e.g. 'BodyA-Detach-Breasts', etc)
@@ -112,12 +113,14 @@ class CBodyBase:
         self.oObjectMeshShapeKeys = None    # The Unity-editable shape keys that enable Unity player to morph our body.    
         self.aVertsFlexCollider = CByteArray()  # Collection of verts sent to Unity that determine which verts form a morphing-time Flex collider capable of repelling morph-time bodysuit master cloth.
         self.aCloths = {}                   # Dictionary of CCloth objects fitted to this body
+        self.oClothSrc = None               ###DESIGN<17>!! Keep here?  An array of different bodysuits?  Who owns bodysuits and their per-body instances??
+
 
         print("\n=== CBodyBase()  nBodyID:{}  sMeshPrefix:'{}'  sMeshSource:'{}'  sSex:'{}'  sGenitals:'{}' ===".format(self.nBodyID, self.sMeshPrefix, self.sMeshSource, self.sSex, self.sGenitals))
 
         
         CBodyBase._aBodyBases.append(self)  # Append ourselves to global array.  The only way Unity can find our instance is through CBody._aBodyBases[<OurID>]
-
+        SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', True)     # Make sure we're starting Blender operations with Blender in a known state...
         self.oMeshSource = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource, bpy.data.objects[self.sMeshSource])  ###DEV: Special ctor??
 
         #=== Create a empty node in game folder where every mesh related to this body will go ===            ###MOVE: Create helper function to do this?  Duplicate an existing empty object instead?
@@ -134,7 +137,7 @@ class CBodyBase:
         #=== Duplicate the source body (kept in the most pristine condition possible) as the assembled body. Delete unwanted parts and attach the user-specified genital mesh instead ===
         self.oMeshAssembled = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + "Assembled", self.oMeshSource)  # Creates the top-level body object named like "BodyA", "BodyB", that will accept the various genitals we tack on to the source body.
         self.oMeshAssembled.SetParent(self.oNodeRoot.name)
-        self.oMeshAssembled.ConvertMeshForUnity(True)  ###DESIGN#13: This early??
+        self.oMeshAssembled.ConvertMeshForUnity(True)  ###DESIGN<13>: This early??
 
         #=== Prepare a ready-for-morphing body for Unity.  Also create the 'body' mesh that will have parts detached from it where softbodies are ===
         self.oMeshMorph = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + 'Morph', self.oMeshAssembled)   
@@ -163,12 +166,18 @@ class CBodyBase:
             return
         print("--- CBodyBase '{}' going from mode '{}' to mode '{}' ---".format(self.sMeshPrefix, self.sBodyBaseMode, sBodyBaseMode))
         self.sBodyBaseMode = sBodyBaseMode
-        if (self.sBodyBaseMode == "Configure"):  # If we enter configure mode and body is created destory it
+        
+        ###NOW<17>: Place stuff here for bodysuit / cloth!
+        
+        if (self.sBodyBaseMode == "MorphBody"):         # If we enter MorphBody mode and body is created destory it
             if (self.oBody != None):
-                self.oBody = self.oBody.DoDestroy()  # Destroy the entire gametime body... lots of meshes!
+                self.oBody = self.oBody.DoDestroy()     # Destroy the entire gametime body... lots of meshes!
+        elif (self.sBodyBaseMode == "CutCloth"):
+            if (self.oBody != None):
+                self.oBody = self.oBody.DoDestroy()     # Destroy the entire gametime body... lots of meshes!
         elif (self.sBodyBaseMode == "Play"):
             if (self.oBody == None):
-                self.oBody = CBody(self)  # Create a game-time body.  Expensive operation!
+                self.oBody = CBody(self)                # Create a game-time body.  Expensive operation!
         elif (self.sBodyBaseMode == "Disabled"):
             print("CBodyBase entering Disabled mode.")  # Unity-related only... we have nothing to do.
         else:
@@ -215,7 +224,7 @@ class CBodyBase:
         #=== Obtain access to shape key vert data ===        
         aVertsBasis = oMeshShapeKeyBlocks[0].data                       # 'Basis' is always index zero
         aVertsMorph = oMeshShapeKeyBlocks[nMorphKeyBlockIndex].data     # We obtain the vert positions from the 'baked shape key'  ###LEARN: How to get raw shape key data
-        bm = bmesh.new()                                ###LEARN: How to operate with bmesh without entering edit mode!        ###TODO#11: Change codebase to this technique?
+        bm = bmesh.new()                                ###LEARN: How to operate with bmesh without entering edit mode!        ###TODO<11>: Change codebase to this technique?
         bm.from_object(oMeshMorphO, bpy.context.scene)  ###DESIGN: Selection of body! 
      
         #=== Iterate through all the mesh verts and test all verts that are different for the given shape key so we can serialize its delta data to client
@@ -240,6 +249,11 @@ class CBodyBase:
         "Create a CCloth object compatible with this body"
         self.aCloths[sNameCloth] = CCloth.CCloth(self, sNameCloth, sNameClothSrc, sVertGrp_ClothSkinArea, sClothType)
         return "OK"
+    
+    def CreateClothSrc(self, sNameClothSrc):        ###DESIGN<17>: Needed?  Automatic in BodySrc ctor?
+        "Create a CCloth object compatible with this body"
+        self.oClothSrc = CClothSrc.CClothSrc(self, sNameClothSrc)
+        return "OK"     #self.aClothSrc.PrepareForGame()      ###DESIGN<17>: Need prep call?
     
     
 #---------------------------------------------------------------------------    
@@ -308,7 +322,7 @@ class CBody:
         oMeshFlexCollider = self.oMeshFlexCollider.GetMesh()
         
         #=== Simplify the mesh so remesh + shrink below work better (e.g. remove teeth, eyes, inside of ears & nostrils, etc) ===
-        ###TODO#15: Cleanup mesh!
+        ###TODO<15>: Cleanup mesh!
 
         #=== Gut the mesh's armature, vertex groups, etc as it has to be reskined after the remesh ===
         #oMeshFlexCollider.modifiers.remove(oMeshFlexCollider.modifiers['Armature'])     ###LEARN: How to remove a modifier by name
@@ -317,7 +331,7 @@ class CBody:
         #=== Remesh the Flex collider mesh so that it has particles spaced evenly to efficiently repell other Flex objects ===
         oModRemesh = oMeshFlexCollider.modifiers.new(name="REMESH", type="REMESH")
         oModRemesh.mode = 'SMOOTH'
-        oModRemesh.octree_depth = 7         ###IMPROVE#15: Need to convert remesh arguments based on body height to inter-particular distance
+        oModRemesh.octree_depth = 7         ###IMPROVE<15>: Need to convert remesh arguments based on body height to inter-particular distance
         oModRemesh.scale = 0.90 
         oModRemesh.use_remove_disconnected = True
         AssertFinished(bpy.ops.object.modifier_apply(modifier=oModRemesh.name))     # This call destroys skinning info / vertex groups
@@ -650,7 +664,7 @@ def CBodyBase_GetBodyBase(nBodyID):
         # bpy.ops.mesh.remove_doubles(threshold=0.000001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###LEARN: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
 
         #=== Create the custom data layer storing assembly vert index.  Enables traversal from Assembly / Morph meshes to Softbody parts 
-        ###BROKEN#11 DataLayer_CreateVertIndex(self.oMeshAssembled.GetName(), G.C_DataLayer_VertsAssy)
+        ###BROKEN<11> DataLayer_CreateVertIndex(self.oMeshAssembled.GetName(), G.C_DataLayer_VertsAssy)
         
 
         #=== Create map of source verts to morph verts ===  (Enables some morphs such as Breast morphs to be applied to morphing mesh)

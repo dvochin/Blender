@@ -150,7 +150,7 @@ class CMesh:
         #=== Iterate through all edges to select only the non-sharp seams (The sharp edges have been marked as sharp deliberately by border creation code).  We need to split these edges so Client-bound mesh can meet its (very inconvenient) one-normal-per-vertex requirement ===
         if (bSplitVertsAtUvSeams == True):
             try:
-                bpy.ops.uv.seams_from_islands()  # Update the edge flags so all seams are flagged        ###DESIGN#11: try still needed??
+                bpy.ops.uv.seams_from_islands()  # Update the edge flags so all seams are flagged        ###DESIGN<11>: try still needed??
             except:
                 print("###ERROR: Exception running 'uv.seams_from_islands'. Continuing.  Error=", sys.exc_info()[0])
             else:
@@ -163,7 +163,7 @@ class CMesh:
     
     
         #=== Load/create a persistent custom data layer to store the 'SharedNormalID' of duplicated verts accross seams that must have their normal averaged out by Client ===
-        ###TODO#11: Update docs & cleanup!!
+        ###TODO<11>: Update docs & cleanup!!
         ###NOTE: as this call can be called multiple times with the mesh getting its edges split each time that this data layer persists and gets added to at each wave of splits.
         ###NOTE: While this data layer is stored in the mesh to persists between call, the 'aMapSharedNormals' below is recreated from this persistent info each time this function is called so Client receives shared normals that had their edges split accross multiple calls
         ###NOTE: An common/important example is Blender taking the morphed body that was client-ready, and appends clothing & separates parts to have result be client-ready again.   
@@ -214,11 +214,11 @@ class CMesh:
     #---------------------------------------------------------------------------    
 
     def Unity_GetMesh(self):  # Called in the constructor of Unity's important CBMesh constructor to return the mesh (possibly skinned depending on mesh anme) + meta info the class needs to run.
-        ###IMPROVE#11: Rapidly ported... finish integration into CMesh
+        ###IMPROVE<11>: Rapidly ported... finish integration into CMesh
         print("=== Unity_GetMesh() sending mesh '{}' ===".format(self.GetName()))
 
-        oMeshO = SelectAndActivate(self.GetName())           ###IMPROVE#11: Move all this crap to CMesh and do only once!!
-        ###NOW#13: Cleanup_VertGrp_RemoveNonBones(oMeshO, True)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
+        oMeshO = SelectAndActivate(self.GetName())           ###IMPROVE<11>: Move all this crap to CMesh and do only once!!
+        ###NOW<13>: Cleanup_VertGrp_RemoveNonBones(oMeshO, True)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
         self.ConvertMeshForUnity(True)  # Client requires a tri-based mesh and verts that only have one UV. (e.g. no polys accross different seams/materials sharing the same vert)
     
         oMesh = oMeshO.data
@@ -259,7 +259,7 @@ class CMesh:
     
     
     def Unity_GetMesh_SkinnedInfo(self):          #=== Send skinning info to Unity's CBSkin objects  (vertex groups with names so Unity can map blender bones -> existing Client bones)
-        ###IMPROVE#11: Rapidly ported... finish integration into CMesh
+        ###IMPROVE<11>: Rapidly ported... finish integration into CMesh
         print("=== Unity_GetMesh_SkinnedInfo() sending mesh '{}' ===".format(self.GetName()))
     
         #=== Unity can only process 4 bones per vert max.  Ensure cleanup ===
@@ -306,9 +306,8 @@ class CMesh:
         
 
 
-
-        
-###DESIGN: SlaveMesh functionality needs:
+    
+###DESIGN: SlaveMesh functionality needs: ###OBS??
 # Only used for breast colliders, various cloth body collider, full body fluid collider
 # Always involves a half-of-body source.  Needs to be mirrored before application
 # Other possible usage?  Decorations on clothing?  Borders on clothing?
@@ -329,202 +328,3 @@ class CMesh:
 # Need to piggy-back on normal parent / slave functionality of CMesh... CMeshSlave overrides virtual call to use its mechansim instead
 # We'll drop vagina replacement so user can morph.  Cloth collider will work then
     # For Penis replacement we'll need to remove very few verts but penis collider will repel clothing
-
-
-
-
-class CMeshUV(CMesh):           # CMeshUV: Specialization of CMesh that can 'flatten' a mesh to its UV and back to its 3D form (Used for 2D cloth cutting)
-    def __init__(self, sNameMesh, oMesh3DO, oMeshParent = None):            ###NOW:16: args!
-
-        super(self.__class__, self).__init__(sNameMesh, oMesh3DO, oMeshParent = None)
-        
-        self.oMesh3DSO = oMesh3DO
-        self.oMeshUVSO = None
-        self.oMesh3DDO = None
-        self.oTreeKD = None
-    
-        #=== Open bmesh of reference mesh ===
-        bm3DS = bmesh.new()                                 ###LEARN: Can't access UV data if we open in edit mode! (Have to open bmesh using from_mesh())
-        bm3DS.from_mesh(self.oMesh3DSO.data)
-        aLayer3DSUV = self.oMesh3DSO.data.uv_layers.active.data        ###LEARN: How to access UV data
-        
-        #=== Construct a KDTree from source 3D mesh (so we can spacially find verts quickly during UV -> 3D conversion)         
-        self.oTreeKD = kdtree.KDTree(len(self.oMesh3DSO.data.polygons))                       ###LEARN: How to quickly locate spacial data!
-        for oPoly in self.oMesh3DSO.data.polygons:
-            aUV = [aLayer3DSUV[nLoopIndex].uv for nLoopIndex in oPoly.loop_indices]     ###LEARN: How to easily traverse array indirection
-            vecFaceCenterUV = Vector((0,0,0))
-            for oUV in aUV:
-                vecFaceCenterUV.x += oUV.x
-                vecFaceCenterUV.z += oUV.y          # Note 90 degree inversion about X so UV appears upright like cloth
-            vecFaceCenterUV /= len(aUV)
-            self.oTreeKD.insert(vecFaceCenterUV, oPoly.index)
-        self.oTreeKD.balance()
-        
-        #=== Create UV-domain mesh so we can cut with a flattened mesh that doesn't move with user morphs ===
-        oMeshUVD = bpy.data.meshes.new("CMeshUV-UVs")
-        self.oMeshUVSO = bpy.data.objects.new(oMeshUVD.name, oMeshUVD)
-        bpy.context.scene.objects.link(self.oMeshUVSO)
-        SetParent(self.oMeshUVSO.name, G.C_NodeFolder_Game)
-
-        #=== Create new layer in new UV mesh so we can store back reference to the reference 3D vert (will be needed by UV -> 3D conversion) ===
-        bmUVS = bmesh.new()
-        bmUVS.from_mesh(oMeshUVD)
-        oLayVert3D = bmUVS.verts.layers.int.new(G.C_DataLayer_VertsSrc)
-
-        #=== Create verts where unique UVs exist.  This will traverse the fact that verts between textures have different UVs === 
-        aMapUV2VertNew = {}                # Temporary unique UVs back to new vert index (temporarily needed in 3D -> UV process)
-        for oFace in bm3DS.faces:
-            for oLoop in oFace.loops:
-                oUV = aLayer3DSUV[oLoop.index]
-                vecUV = oUV.uv.freeze()                 ###LEARN: We must 'freeze' a vector before it can be inserted into a collection (its hash function needs non-mutable value)
-                if vecUV not in aMapUV2VertNew:
-                    aMapUV2VertNew[vecUV] = len(bmUVS.verts) 
-                    vecUV3D = Vector((vecUV.x, 0, vecUV.y))         ###CHECK: Invert y & z???
-                    oVertNew = bmUVS.verts.new(vecUV3D)
-                    oVertNew[oLayVert3D] = oLoop.vert.index + G.C_OffsetVertIDs      # Store back-reference to the reference vert so we can reconstruct the 3D mesh from the flat UV one. (add offset so default 0 means new vert)                     
-                    
-        bmUVS.verts.ensure_lookup_table()              ###LEARN: Added verts, need to run ensure_lookup_table() before we can access bmesh.verts collection
-        
-        #=== Re-iterate through faces again to create faces in UV-domain mesh ===
-        for oFace in bm3DS.faces:
-            aVertsNewFaceUV = []
-            for oLoop in oFace.loops:
-                oUV = aLayer3DSUV[oLoop.index]
-                vecUV = oUV.uv.freeze()                 ###LEARN: We must 'freeze' a vector before it can be inserted into a collection (its hash function needs non-mutable value)
-                nVertUV = aMapUV2VertNew[vecUV]
-                aVertsNewFaceUV.append(bmUVS.verts[nVertUV])
-            bmUVS.faces.new(aVertsNewFaceUV)
-        
-        bmUVS.to_mesh(oMeshUVD)
-        
-    def ConvertBackTo3D(self):
-        bmUVS = bmesh.new()
-        bm3DS = bmesh.new()
-        bm3DD = bmesh.new()
-        bmUVS.from_mesh(self.oMeshUVSO.data)
-        bm3DS.from_mesh(self.oMesh3DSO.data)
-
-        #=== Create new 3D-domain mesh so we can cut with a flattened mesh that doesn't move with user morphs ===
-        oMesh3DDD = bpy.data.meshes.new("CMeshUV-3DD")          ###TODO#16
-        self.oMesh3DDO = bpy.data.objects.new(oMesh3DDD.name, oMesh3DDD)
-        bpy.context.scene.objects.link(self.oMesh3DDO)
-        SetParent(self.oMesh3DDO.name, G.C_NodeFolder_Game)
-        bm3DD.from_mesh(self.oMesh3DDO.data)
-
-        #=== Create the verts in the destination 3D mesh ===
-        aMapVertsUV2Verts3DD = {}
-        bm3DS.verts.ensure_lookup_table()
-        oLayVert3D = bmUVS.verts.layers.int[G.C_DataLayer_VertsSrc]
-        for oVertUV in bmUVS.verts:
-            nVert3DS = oVertUV[oLayVert3D]
-            if nVert3DS >= G.C_OffsetVertIDs:
-                oVert3DS = bm3DS.verts[nVert3DS - G.C_OffsetVertIDs]
-                vecVert3D = oVert3DS.co
-            else:           # New vert that was created by Boolean cuts... we must interpolate its 3D position
-                vecLoc, nPoly, nDist = self.oTreeKD.find(oVertUV.co)                ###LEARN: How to extract multiple arguments out
-                oPoly = self.oMesh3DSO.data.polygons[nPoly]
-                aUV = [self.oMesh3DSO.data.uv_layers.active.data[nLoopIndex].uv for nLoopIndex in oPoly.loop_indices]
-                #print("Loc search = ", vecLoc, nPoly, nDist)
-                vecUV0 = Vector((aUV[0].x, 0, aUV[0].y))            # Expand 2D UV coordinate into a 3D vector with z = 0 so we can invoke barycentric_transform() below
-                vecUV1 = Vector((aUV[1].x, 0, aUV[1].y))
-                vecUV2 = Vector((aUV[2].x, 0, aUV[2].y))
-                vecPoly0 = self.oMesh3DSO.data.vertices[oPoly.vertices[0]].co
-                vecPoly1 = self.oMesh3DSO.data.vertices[oPoly.vertices[1]].co
-                vecPoly2 = self.oMesh3DSO.data.vertices[oPoly.vertices[2]].co
-                vecVert3D = geometry.barycentric_transform(oVertUV.co, vecUV0, vecUV1, vecUV2, vecPoly0, vecPoly1, vecPoly2)    ###LEARN: How to convert from a point in one triangle space to another triangle space
-            aMapVertsUV2Verts3DD[oVertUV.index] = len(bm3DD.verts) 
-            bm3DD.verts.new(vecVert3D)
-                
-        ###TODO#16: Duplicate verts along seams??
-        
-        #=== Create the polygons in the destination 3D mesh ===
-        bm3DD.verts.ensure_lookup_table()
-        for oFace in bmUVS.faces:
-            aVertsNewFace3D = []
-            for oVert in oFace.verts:
-                nVert3DD = aMapVertsUV2Verts3DD[oVert.index]
-                oVert3DD = bm3DD.verts[nVert3DD]  
-                aVertsNewFace3D.append(oVert3DD)       # Traverse from UV-domain to 3D domain using map we created in loop above
-            bm3DD.faces.new(aVertsNewFace3D)
-                
-        
-        bm3DD.to_mesh(self.oMesh3DDO.data)
-
-
-        ###TODO#16: Above done very quickly... verify & document... 
-        # Integrate automated cut into flow... and sandwitch call
-        # Seam traversal of curves
-        # Unity curves and point adjustments + recipes
-        
-        
-
-
-
-
-
-
-
-        
-        
-        ###NOW: Can put back verts that had original IDs...
-        ## Have to triangulate after boolean (otherwise crash!)
-        
-        
-            # Duplicates verts at seams... what to do?
-        # Now for polys & loops while respecting UV seams... must deal with gluing verts first?
-        # Rought cut as to where to put the code... CMeshUV??  Subclass from CMesh?? 
-
-#         for oFace in bm3D.faces:
-#             for oLoop in oFace.link_
-
-#         for oVert in bm3D.verts:
-#             #aUV = [oMeshUVSO.data.uv_layers.active.data[nLoopIndex].uv for nLoopIndex in oFace.loop_indices]     ###LEARN: How to easily traverse array indirection
-#             #oVert.tag = oVert.co
-#             print("Poly {:5d}  Loops: {}".format(oFace.index, oFace.loop_indices))
-#             nLoop0 = oVert.link_loops[0].index
-#             vecUV = aLayer3DUV[nLoop0].uv
-#             oVert.co = Vector((vecUV.x, vecUV.y, 0)) 
-#         bm3D.to_mesh(oMeshUVSO.data)
-
-#         bmUVS = bmesh.new()
-#         for oLoop in bm3D.loops:
-#             vecUV = aLayer3DUV[oLoop.index].uv
-#             bmUVS.verts.new(vecUV)
-            
-
-        #self.Close()
-    
-    
-###LATEST: Need to convert from 3D domain to UV domain and back... UVs are super fanned-out with no way to know what connects a given UV x,y to what vert?
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    

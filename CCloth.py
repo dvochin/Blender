@@ -1,4 +1,4 @@
-###DISCUSSION: Cloth revival for new CBodyBase
+##DISCUSSION: Cloth revival for new CBodyBase
 #=== DESIGN ===
 # Rebase approach on UVs of bodysuit
     # Enables clothing recipes to survive morphing bodysuits
@@ -42,6 +42,7 @@ import CMesh
 import Client
 import Curve
 import Cut
+import CObject
 
 class CCloth:
     def __init__(self, oBodyBase, sNameCloth, sClothType, sNameClothSrc, sVertGrp_ClothSkinArea):
@@ -56,36 +57,117 @@ class CCloth:
         self.sNameClothSrc          = sNameClothSrc     # The Blender name of the mesh we cut from.  (e.g. 'Bodysuit')
         self.sVertGrp_ClothSkinArea = sVertGrp_ClothSkinArea    # The name in self.oBodyBase of the vertex group detailing the area where cloth verts are skinned instead of cloth-simulated
 
-        self.oMeshClothSource       = None              # The source cloth mesh.  Kept untouched.
-        self.oMeshClothCut          = None              # The source cloth mesh cut from user-supplied cutter curves.  Re-created everytime a cutter curve point moves
-        self.oMeshClothSimulated    = None              # The simulated part of the runtime cloth mesh.  Simulated by Flex at runtime.
-        self.oMeshClothSkinned      = None              # The skinned part of the runtime cloth mesh.  Skinned at runtime just like its owning skinned body.  (Also responsible to pins simulated mesh)
-        ##self.oMeshBodyColCloth      = None            # The 'SlaveMesh' created at design time for this 'sClothType' to repell this cloth from its owning body at runtime.  Simple skinned mesh 
+        ###TODO<17>: Merge these vars with new UV code
         
-        #self.aTwinIdToVertSim = {}                     # Setup two maps (that will have the same size) to store for both simulated and skinned cloth parts what 'TwinVertID' maps to simVert / skinVert           
-        #self.aTwinIdToVertSkin = {}                    # Each of these will go from 1..<NumVertIDs> and be used to determine mapping
-        #self.aMapClothVertsSimToSkin = array.array('H')# The final flattened map of what verts from the 'simulated cloth verts' to 'skinned cloth vert'.  Unity needs this to pin the edges of the simulated part of the cloth to the skinned part
         self.aMapPinnedParticles = CByteArray()         # The final flattened map of what verts from the 'skinned cloth vert' map to which verts in the (untouched) Flex-simulated mesh.  Flex needs this to create extra springs to keep the skinned part close to where it should be on the body!
 
         self.aCurves = []                               # Array of CCurve objects responsible to cut this cloth as per user directions
+        #--- UV-domain related ---
+        self.oMeshO_3DS = None          # The untouched source 3D cloth mesh ###TODO<17>?
+        self.oMeshO_UVF = None          # The untouched front source cloth mesh with UVs becoming vertex coordinates
+        self.oMeshO_UVB = None          # The untouched back  source cloth mesh with UVs becoming vertex coordinates
+        self.oMeshO_3DD = None          # The to-be-modified flattened UV cloth mesh suitable for boolean cuts
 
-        bpy.context.scene.cursor_location = Vector((0,0,0))     # All dependant code requires cursor to be at origin!
+        self.oMesh_3DD  = None          # The source cut cloth mesh and source of simulated & skinned runtime cloth.  Kept untouched 
+        self.oMeshClothCut          = None              # The source cloth mesh cut from user-supplied cutter curves.  Re-created everytime a cutter curve point moves
+        self.oMeshClothSimulated    = None              # The simulated part of the runtime cloth mesh.  Simulated by Flex at runtime.
+        self.oMeshClothSkinned      = None              # The skinned part of the runtime cloth mesh.  Skinned at runtime just like its owning skinned body.  (Also responsible to pins simulated mesh)
 
-        #=== Obtain reference to the needed source mesh ===
-        self.oMeshClothSource       = CMesh.CMesh.CreateFromExistingObject(self.sNameClothSrc)       ###DEV: Unique names?
+        #--- Unity-public properties ===
+        self.oObj = CObject.CObject("Cloth Global Parameters")
+        self.oPropNeckStrapThickness     = self.oObj.PropAdd("NeckStrapThickness",    "", 0.01, 0.001, 0.1) ###TODO<17>
 
-        #=== Register cutting curves from the Blender-stored recipe for this cloth type ===
-        oCurveRootO = bpy.data.objects[self.sClothType]         # Our collection of cutter curve definition points is the same as our cloth type (e.g. 'Top', 'Underwear', etc)
-        for oCurveO in oCurveRootO.children:
-            sNameCurve = oCurveO.name
-            self.aCurves.append(Curve.CCurve(self, sNameCurve))
 
-        #=== Delete previous iteration if it exists ===
-        sNameClothCut       = self.oBodyBase.sMeshPrefix + self.sNameCloth + "-Cut"
-        DeleteObject(sNameClothCut)
+        #===== CONVERSION TO FLATTENED UV MESH PRIOR TO BOOLEAN CUTS =====
+        ###IMPROVE<17>: Do once at game ship-time?
+        self.oMeshO_3DS = bpy.data.objects[self.sNameClothSrc]       # The untouched source 3D cloth mesh ###TODO<17>?
+    
+        #=== Open bmesh of reference mesh ===
+        bm3DS = bmesh.new()                                 ###LEARN: Can't access UV data if we open in edit mode! (Have to open bmesh using from_mesh())
+        bm3DS.from_mesh(self.oMeshO_3DS.data)
+        aLayer3DSUV = self.oMeshO_3DS.data.uv_layers.active.data        ###LEARN: How to access UV data
+        
+        #=== Construct a KDTree from source 3D mesh (so we can spacially find verts quickly during UV -> 3D conversion)         
+        self.oTreeKD = kdtree.KDTree(len(self.oMeshO_3DS.data.polygons))                       ###LEARN: How to quickly locate spacial data!
+        for oPoly in self.oMeshO_3DS.data.polygons:
+            aUV = [aLayer3DSUV[nLoopIndex].uv for nLoopIndex in oPoly.loop_indices]     ###LEARN: How to easily traverse array indirection
+            vecFaceCenterUV = Vector((0,0,0))
+            for oUV in aUV:
+                vecFaceCenterUV.x += oUV.x
+                vecFaceCenterUV.y += oUV.y
+            vecFaceCenterUV /= len(aUV)
+            self.oTreeKD.insert(vecFaceCenterUV, oPoly.index)
+        self.oTreeKD.balance()
+        
+        #=== Create two UV-domain mesh (front UV and back UV) so we can cut with a flattened mesh that doesn't move with user morphs ===
+        oMesh_UVF = bpy.data.meshes.new("CMeshUV-UVF")
+        oMesh_UVB = bpy.data.meshes.new("CMeshUV-UVB")
+        self.oMeshO_UVF = bpy.data.objects.new(oMesh_UVF.name, oMesh_UVF)
+        self.oMeshO_UVB = bpy.data.objects.new(oMesh_UVB.name, oMesh_UVB)
+        bpy.context.scene.objects.link(self.oMeshO_UVF)
+        bpy.context.scene.objects.link(self.oMeshO_UVB)
+        SetParent(self.oMeshO_UVF.name, G.C_NodeFolder_Game)        ###IMPROVE<17>: body node, cloth?
+        SetParent(self.oMeshO_UVB.name, G.C_NodeFolder_Game)
+
+        #=== Create new layer in new UV mesh so we can store back reference to the reference 3D vert (will be needed by UV -> 3D conversion) ===
+        bmUVF = bmesh.new()
+        bmUVB = bmesh.new()
+        bmUVF.from_mesh(oMesh_UVF)
+        bmUVB.from_mesh(oMesh_UVB)
+        oLayVertUVF = bmUVF.verts.layers.int.new(G.C_DataLayer_VertsSrc)
+        oLayVertUVB = bmUVB.verts.layers.int.new(G.C_DataLayer_VertsSrc)
+
+        #=== Create verts where unique UVs exist.  This will traverse the fact that verts between textures have different UVs === 
+        aMapUV2VertNewF = {}                # Temporary unique UVs back to new vert index (temporarily needed in 3D -> UV process)
+        aMapUV2VertNewB = {}
+        for oFace in bm3DS.faces:
+            for oLoop in oFace.loops:
+                oUV = aLayer3DSUV[oLoop.index]
+                vecUV = oUV.uv.freeze()                 ###LEARN: We must 'freeze' a vector before it can be inserted into a collection (its hash function needs non-mutable value)
+                if vecUV not in aMapUV2VertNewF:
+                    if vecUV.x < 1:
+                        vecUV3D = Vector((vecUV.x, vecUV.y, 0))
+                        aMapUV2VertNewF[vecUV] = len(bmUVF.verts)    # We're adding a new vert at this unique UV coordinate, so the vert ID is the number of verts already inseted in the mesh (by this loop)
+                        oVertNewF = bmUVF.verts.new(vecUV3D)
+                        oVertNewF[oLayVertUVF] = oLoop.vert.index + G.C_OffsetVertIDs      # Store back-reference to the reference vert so we can reconstruct the 3D mesh from the flat UV one. (add offset so default 0 means new vert)
+                    else:
+                        vecUV3D = Vector((vecUV.x - 1, vecUV.y, 0))     ###NOTE: Note the -1 on x so back cloth is coincident with front in UV domain ###DESIGN<17>: Keep??
+                        aMapUV2VertNewB[vecUV] = len(bmUVB.verts)    # We're adding a new vert at this unique UV coordinate, so the vert ID is the number of verts already inseted in the mesh (by this loop)
+                        oVertNewB = bmUVB.verts.new(vecUV3D)
+                        oVertNewB[oLayVertUVB] = oLoop.vert.index + G.C_OffsetVertIDs      # Store back-reference to the reference vert so we can reconstruct the 3D mesh from the flat UV one. (add offset so default 0 means new vert)                     
+                    
+        bmUVF.verts.ensure_lookup_table()              ###LEARN: Added verts, need to run ensure_lookup_table() before we can access bmesh.verts collection
+        bmUVB.verts.ensure_lookup_table()
+        
+        #=== Re-iterate through faces again to create faces in UV-domain mesh ===
+        for oFace in bm3DS.faces:
+            aVertsNewFaceUV = []
+            for oLoop in oFace.loops:
+                oUV = aLayer3DSUV[oLoop.index]
+                vecUV = oUV.uv.freeze()                 ###LEARN: We must 'freeze' a vector before it can be inserted into a collection (its hash function needs non-mutable value)
+                if (vecUV.x < 1):
+                    nVertUVF = aMapUV2VertNewF[vecUV]
+                    aVertsNewFaceUV.append(bmUVF.verts[nVertUVF])
+                else:
+                    nVertUVB = aMapUV2VertNewB[vecUV]
+                    aVertsNewFaceUV.append(bmUVB.verts[nVertUVB])
+            if (vecUV.x < 1):
+                bmUVF.faces.new(aVertsNewFaceUV)
+            else:
+                bmUVB.faces.new(aVertsNewFaceUV)
+        
+        bmUVF.to_mesh(oMesh_UVF)
+        bmUVB.to_mesh(oMesh_UVB)
+
+
+        #===== DEV ###MOVE =====
+        self.aCurves.append(Curve.CCurveNeck(self, "Neck"))
+        self.aCurves.append(Curve.CCurveSide(self, "Side"))
+        self.aCurves.append(Curve.CCurveTorsoSplit(self, "TorsoSplit"))
 
         
     def DoDestroy(self):
+        ###TODO<17>
         self.oMeshClothCut.DoDestroy()
         self.oMeshClothSimulated.DoDestroy()
         self.oMeshClothSkinned.DoDestroy()
@@ -93,6 +175,7 @@ class CCloth:
         
     def UpdateCutterCurves(self):
         #===== Iterate through our cutter curves to ask them to update themselves from the (just moved) recipe points =====
+        ###OBS<17>? 
         for oCurve in self.aCurves:
             oCurve.UpdateCutterCurve()
         return "OK"
@@ -101,20 +184,115 @@ class CCloth:
             
     def CutClothWithCutterCurves(self):
         #===== Cut the source cloth (e.g. bodysuit) and remove the extra fabric the user didn't want with the 'cutter curves' =====
-        sNameClothCut       = self.oBodyBase.sMeshPrefix + self.sNameCloth + "-Cut"
-        self.oMeshClothCut  = CMesh.CMesh.CreateFromDuplicate(sNameClothCut, self.oMeshClothSource)
+        ###DESIGN<17>: Use CMesh?
+        self.oMeshO_UVF_Cut = DuplicateAsSingleton(self.oMeshO_UVF.name, self.oMeshO_UVF.name + "-Cut", G.C_NodeFolder_Game, True)
+        self.oMeshO_UVB_Cut = DuplicateAsSingleton(self.oMeshO_UVB.name, self.oMeshO_UVB.name + "-Cut", G.C_NodeFolder_Game, True)
+        bmCloth3DS = bmesh.new()
+        bmCloth3DS.from_mesh(self.oMeshO_3DS.data)
         for oCurve in self.aCurves:
-            bInvertCut = oCurve.sType.find("Top") != -1         ###DEVF ###HACK!!!!  ###IMPROVE: Auto determination of cut possible?  Have to have designer pass in? 
-            oCurve.CutClothWithCutterCurve(bInvertCut)
+            oCurve.UpdateCurvePoints(bmCloth3DS)
+        self.ConvertBackTo3D()
         return "OK"
 
+
+
+    def ConvertBackTo3D(self):      # Convert the UV-domain front and back mesh that was cut via Boolean modifiers back to its original 3D form for in-game rendering ===
+        #=== Join the two flat UV meshes into one ===
+        SelectAndActivate(self.oMeshO_UVB_Cut.name)         # First select and activate mesh that will be destroyed (temp mesh)    (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
+        bpy.ops.transform.translate(value=(1, 0, 0))        # Push the back UV mesh by X+1 to undo the X-1 done during ctor
+        self.oMeshO_UVF_Cut.hide = False
+        self.oMeshO_UVF_Cut.select = True                         # Now select...
+        bpy.context.scene.objects.active = self.oMeshO_UVF_Cut    #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
+        bpy.ops.object.join()                                           #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
+        self.oMeshO_UVB_Cut = None                               # Above join destroyed the copy mesh so set our variable to None
+
+        #=== Obtain reference to bmeshes for the meshes we need programmatic access to ===
+        bmUVF = bmesh.new()     ###IMPROVE<17>: Move to part of CMesh?
+        bm3DS = bmesh.new()
+        bm3DD = bmesh.new()
+        bmUVF.from_mesh(self.oMeshO_UVF_Cut.data)
+        bm3DS.from_mesh(self.oMeshO_3DS.data)
+
+        #=== Create new 3D-domain mesh so we can cut with a flattened mesh that doesn't move with user morphs ===
+        oMesh3DDD = bpy.data.meshes.new("CMeshUV-3DD")          ###TODO<16>
+        self.oMeshO_3DD = bpy.data.objects.new(oMesh3DDD.name, oMesh3DDD)
+        bpy.context.scene.objects.link(self.oMeshO_3DD)
+        SetParent(self.oMeshO_3DD.name, G.C_NodeFolder_Game)
+        self.oMeshO_3DD.location = self.oMeshO_3DS.location       # Set (new mesh) location to same as source 3D mesh.  
+        bpy.ops.mesh.uv_texture_add()               # Add the UV layer to new 3D mesh.
+        bm3DD.from_mesh(self.oMeshO_3DD.data)
+
+        #=== Create the verts in the destination 3D mesh ===
+        aMapVertsUV2Verts3DD = {}
+        bm3DS.verts.ensure_lookup_table()
+        oLayVert3DF = bmUVF.verts.layers.int[G.C_DataLayer_VertsSrc]
+        for oVertUV in bmUVF.verts:
+            nVert3D = oVertUV[oLayVert3DF]
+            if nVert3D >= G.C_OffsetVertIDs:       # UV vert has back reference to original 3D pointer... so the same vert... just set it back to its original 3D position
+                oVert3DS = bm3DS.verts[nVert3D - G.C_OffsetVertIDs]
+                vecVert3D = oVert3DS.co
+            else:           # Vert has no valid back reference to an original 3D vert so it was therefore created by Boolean cuts... we must interpolate its 3D position
+                vecLoc, nPoly, nDist = self.oTreeKD.find(oVertUV.co)                ###LEARN: How to extract multiple arguments out
+                oPoly = self.oMeshO_3DS.data.polygons[nPoly]
+                aUV = [self.oMeshO_3DS.data.uv_layers.active.data[nLoopIndex].uv for nLoopIndex in oPoly.loop_indices]
+                vecUV0 = Vector((aUV[0].x, aUV[0].y, 0))            # Expand 2D UV coordinate into a 3D vector with z = 0 so we can invoke barycentric_transform() below
+                vecUV1 = Vector((aUV[1].x, aUV[1].y, 0))
+                vecUV2 = Vector((aUV[2].x, aUV[2].y, 0))
+                vecPoly0 = self.oMeshO_3DS.data.vertices[oPoly.vertices[0]].co
+                vecPoly1 = self.oMeshO_3DS.data.vertices[oPoly.vertices[1]].co
+                vecPoly2 = self.oMeshO_3DS.data.vertices[oPoly.vertices[2]].co
+                vecVert3D = geometry.barycentric_transform(oVertUV.co, vecUV0, vecUV1, vecUV2, vecPoly0, vecPoly1, vecPoly2)    ###LEARN: How to convert from a point in one triangle space to another triangle space
+            aMapVertsUV2Verts3DD[oVertUV.index] = len(bm3DD.verts) 
+            bm3DD.verts.new(vecVert3D)
         
+        #=== Create the polygons in the destination 3D mesh ===
+        bm3DD.verts.ensure_lookup_table()
+        for oFace in bmUVF.faces:
+            aVertsNewFace3D = []
+            for oVert in oFace.verts:
+                nVert3DD = aMapVertsUV2Verts3DD[oVert.index]
+                oVert3DD = bm3DD.verts[nVert3DD]  
+                aVertsNewFace3D.append(oVert3DD)       # Traverse from UV-domain to 3D domain using map we created in loop above
+            bm3DD.faces.new(aVertsNewFace3D)
+        bm3DD.to_mesh(self.oMeshO_3DD.data)
+
+        #=== Add a UV layer and set it to the positions of the source UV verts ===
+        aLayer3DSUV_Dst = self.oMeshO_3DD.data.uv_layers.active.data    #... and obtain a reference to it
+        bm3DD.from_mesh(self.oMeshO_3DD.data)
+        bmUVF.verts.ensure_lookup_table()
+        for oFace in bm3DD.faces:
+            for oLoop in oFace.loops:
+                oUV = aLayer3DSUV_Dst[oLoop.index].uv
+                nVertID = oLoop.vert.index
+                oVertUV = bmUVF.verts[nVertID]
+                oUV.x = oVertUV.co.x              
+                oUV.y = oVertUV.co.y              
+
+        #=== Cleanup the newly generated 3D mesh ===
+        bpy.ops.object.mode_set(mode='EDIT')        ###TODO<17>
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.region_to_loop()
+        bpy.ops.mesh.select_more()
+        bpy.ops.mesh.remove_doubles(threshold=0.005)
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.region_to_loop()
+        bpy.ops.mesh.looptools_relax(input='selected', interpolation='cubic', iterations='1', regular=True)
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')
+        bpy.ops.mesh.select_all(action='DESELECT')
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        #=== Obtain CMesh reference to 3D cloth mesh we just created ===        
+        self.oMesh_3DD = CMesh.CMesh.CreateFromExistingObject(self.oMeshO_3DD.name)       ###IMPROVE<17>: Go all on CMesh??
+                
+
+
     def PrepareClothForGame(self):
         #===== Prepare the cloth for gaming runtime by separating cut-cloth into skinned and simulated areas =====       
         sNameClothSimulated = self.oBodyBase.sMeshPrefix + self.sNameCloth + "-Simulated"
         sNameClothSkinned   = self.oBodyBase.sMeshPrefix + self.sNameCloth + "-Skinned"
         ###DEVF!!!!!!!!! self.oMeshClothSimulated = CMesh.CMesh.CreateFromDuplicate(sNameClothSimulated, self.oMeshClothCut)     # Simulated mesh is sent to Unity untouched.
-        self.oMeshClothSimulated = CMesh.CMesh.CreateFromDuplicate(sNameClothSimulated, self.oMeshClothSource)     # Simulated mesh is sent to Unity untouched.
+        self.oMeshClothSimulated = CMesh.CMesh.CreateFromDuplicate(sNameClothSimulated, self.oMesh_3DD)     # Simulated mesh is sent to Unity untouched.
         self.oMeshClothSimulated.SetParent(G.C_NodeFolder_Game)
     
         #=== Transfer the skinning information from the skinned body mesh to the clothing.  _ClothSkinArea_xxx vert groups are to define various areas of the cloth that are skinned and not simulated ===
@@ -172,130 +350,3 @@ class CCloth:
         bpy.ops.object.vertex_group_remove(all=True)        # Remove all vertex groups from simulated mesh to save memory
 
         return "OK"
-        
-
-
-        
-#     def PrepareClothForGame(self):        ###OBS: Version for separated skinned / simulated clothing mesh tied up at the rim.  (Before Flex skinned-to-slave particles)
-#         #===== Prepare the cloth for gaming runtime by separating cut-cloth into skinned and simulated areas =====       
-#         sNameClothSimulated = self.oBody.oBodyBase.sMeshPrefix + self.sNameCloth + "-Simulated"
-#         sNameClothSkinned   = self.oBody.oBodyBase.sMeshPrefix + self.sNameCloth + "-Skinned"
-# 
-#         #=== Duplicate the simulated copy of the mesh (to be modified) ===
-#         self.oMeshClothSimulated    = CMesh.CMesh.CreateFromDuplicate(sNameClothSimulated, self.oMeshClothCut)
-#         self.oMeshClothSimulated.SetParent(G.C_NodeFolder_Game)
-#     
-#         #=== Transfer the skinning information from the skinned body mesh to the clothing.  Some vert groups are useful to move non-simulated area of cloth as skinned cloth, other _ClothSkinArea_xxx vert groups are to define areas of the cloth that are skinned and not simulated ===
-#         self.oBody.oMeshMorph.GetMesh().hide = False         ###LEARN: Mesh MUST be visible for weights to transfer!
-#         Util_TransferWeights(self.oMeshClothSimulated.GetMesh(), self.oBody.oMeshMorph.GetMesh())
-#         Cleanup_VertGrp_RemoveNonBones(self.oBody.oMeshMorph.GetMesh(), True)
-#     
-#         #=== With the body's skinning info transfered to the cloth, select the the requested vertices contained in the 'skinned verts' vertex group.  These will 'pin' the cloth on the body while the other verts are simulated ===
-#         bmClothSim = self.oMeshClothSimulated.Open()
-#         nVertGrpIndex_Pin = self.oMeshClothSimulated.GetMesh().vertex_groups.find(self.sVertGrp_ClothSkinArea)       
-#         if nVertGrpIndex_Pin == -1:
-#             raise Exception("###EXCEPTION: CCloth.PrepareClothForGame() could not find in skinned body pin vertex group " + self.sVertGrp_ClothSkinArea)
-#         oVertGroup_Pin = self.oMeshClothSimulated.GetMesh().vertex_groups[nVertGrpIndex_Pin]
-#         self.oMeshClothSimulated.GetMesh().vertex_groups.active_index = oVertGroup_Pin.index
-#         bpy.ops.mesh.select_all(action='DESELECT')
-#         bpy.ops.object.vertex_group_select()                # To-be-skinned cloth verts are now selected
-#     
-#         #=== Prepare the to-be-split cloth mesh for 'twin vert' mapping: This vert-to-vert map between the skinned part of cloth mesh to simulated-part of cloth mesh is needed by Unity at runtime to 'pin' the edges of the simulated mesh to 'follow' the skinned part 
-#         oLayVertOrigID = bmClothSim.verts.layers.int.new(G.C_PropArray_ClothSkinToSim)  # Create a temp custom data layer to store IDs of split verts so we can find twins easily.    ###LEARN: This call causes BMesh references to be lost, so do right after getting bmesh reference
-#         aFacesToSplit = [oFace for oFace in bmClothSim.faces if oFace.select]           # Obtain array of all faces to separate so we can select them once edge loop is found
-#     
-#         #=== Determine the edges separating the skinned cloth mesh from the simulated one (removing edge-of-cloth edges) ===
-#         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
-#         bpy.ops.mesh.region_to_loop()       # This will select only the edges at the boundary of the cutout polys... including edge of cloth, seams and the (needed) edges that connect split mesh to main mesh
-#         for oEdge in bmClothSim.edges:      # Iterate over the edges at the boundary to remove any edge that is 'on the edge' -> This leaves selected only edges that have one polygon in the main mesh and one polygon in the mesh-to-be-cut
-#             if oEdge.select == True:
-#                 if oEdge.is_manifold == False:  # Deselect the edges-on-edge (i.e. natural edge of cloth)
-#                     oEdge.select_set(False)
-#     
-#     
-#         #=== Iterate over the split verts at the boundary loop to store a uniquely-generated 'twin vert ID' into the custom data layer so we can re-twin the split verts from different meshes after the mesh separate ===
-#         nNextRimVertID = 1  
-#         aVertsBoundary = [oVert for oVert in bmClothSim.verts if oVert.select]              # Create a collection for all the verts on the boundary loop
-#         for oVert in aVertsBoundary:
-#             oVert[oLayVertOrigID] = nNextRimVertID  # These are unique to the whole skinned body so all detached chunk can always find their corresponding skinned body vert for per-frame positioning
-#             #print("TwinID {:3d} = VertSim {:5d} at {:}".format(nNextRimVertID, oVert.index, oVert.co))
-#             nNextRimVertID += 1
-#             
-#         #=== Reselect the to-be-skinned faces again   ===
-#         bpy.ops.mesh.select_all(action='DESELECT')
-#         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='FACE')
-#         bChunkMeshHasGeometry = False   # Determine if chunk mesh has any faces
-#         for oFace in aFacesToSplit:
-#             oFace.select_set(True)
-#             bChunkMeshHasGeometry = True
-#     
-#         #=== If chunk mesh has no geometry then we don't generate it as client has nothing to render / process for this chunk ===
-#         if bChunkMeshHasGeometry == False:
-#             print("\n>>> CCloth.ctor() skips the creation of cloth '{}' from body '{}' because it has no geometry to simulate <<<".format(self.sNameCloth, self.oBody.oBodyBase.sMeshPrefix))
-#             return "ERROR"      ####DESIGN: A fatal failure??
-#     
-#         #=== Split and separate the skinned-part of the cloth from the simulated mesh (twin-vert IDs layer info will be copied to new mesh) ===
-#         bpy.ops.mesh.split()        # 'Split' the selected polygons so both 'sides' have verts at the border and form two submesh
-#         bpy.ops.mesh.separate()     # 'Separate' the selected polygon (now with their own non-manifold edge from split above) into its own mesh as a 'chunk'
-#         self.oMeshClothSimulated.Close()
-#     
-#         #=== Post-process the just-detached chunk to calculate the 'twin verts' array between the skinned-part of cloth to simulated-part of cloth ===
-#         bpy.context.object.select = False               # Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
-#         bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')        
-#         oMeshClothSkinnedO = bpy.context.object 
-#         oMeshClothSkinnedO.name = oMeshClothSkinnedO.data.name = sNameClothSkinned  ###NOTE: Do twice so name sticks!
-#         oMeshClothSkinnedO.name = oMeshClothSkinnedO.data.name = sNameClothSkinned
-#         self.oMeshClothSkinned = CMesh.CMesh.CreateFromExistingObject(sNameClothSkinned)
-#             
-#         #=== Post-process the skinned-part to be ready for Unity ===
-#         Cleanup_VertGrp_RemoveNonBones(self.oMeshClothSkinned.GetMesh(), True)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
-#         Client.Client_ConvertMeshForUnity(self.oMeshClothSkinned.GetMesh(), False)                   ###NOTE: Call with 'False' to NOT separate verts at UV seams  ####PROBLEM!!!: This causes UV at seams to be horrible ####SOON!!!
-#         ####DEV: Done here??                   
-#     
-#         #=== Post-process the simulated-part to be ready for Unity ===
-#         Client.Client_ConvertMeshForUnity(self.oMeshClothSimulated.GetMesh(), False)                   ###NOTE: Call with 'False' to NOT separate verts at UV seams  ####PROBLEM!!!: This causes UV at seams to be horrible ####SOON!!!
-#         bpy.ops.object.vertex_group_remove(all=True)        # Remove all vertex groups from detached chunk to save memory
-#     
-#     
-#     
-#         #===== ASSEMBLE THE TWIN VERT MAPPING =====
-#         #=== Iterate over the boundary verts of the simulated mesh to find their vertex IDs ===
-#         bmMeshClothSim = self.oMeshClothSimulated.Open()
-#         oLayVertOrigID = bmMeshClothSim.verts.layers.int[G.C_PropArray_ClothSkinToSim]
-#         for oVert in bmMeshClothSim.verts:  ###LEARN: Interestingly, both the set and retrieve list their verts in the same order... with different topology!
-#             nTwinID = oVert[oLayVertOrigID]
-#             if nTwinID != 0:
-#                 self.aTwinIdToVertSim[nTwinID] = oVert.index             # Remember what skin vert this TwinID maps to
-#                 #print("TwinID {:3d} = VertSim {:5d} at {:}".format(nTwinID, oVert.index, oVert.co))
-#         self.oMeshClothSimulated.Close()
-#         
-#         #=== Iterate through the boundary verts of the skinned part of the clto to access the freshly-created custom data layer to obtain ID information that enables us to match the skinned mesh vertices to the simulated cloth mesh for pinning ===
-#         bmMeshClothSkinned = self.oMeshClothSkinned.Open()
-#         oLayVertOrigID = bmMeshClothSkinned.verts.layers.int[G.C_PropArray_ClothSkinToSim]
-#         for oVert in bmMeshClothSkinned.verts:  ###LEARN: Interestingly, both the set and retrieve list their verts in the same order... with different topology!
-#             nTwinID = oVert[oLayVertOrigID]
-#             if nTwinID != 0:
-#                 self.aTwinIdToVertSkin[nTwinID] = oVert.index             # Remember what skin vert this TwinID maps to
-#                 #print("TwinID {:3d} = VertSkin {:5d} at {:}".format(nTwinID, oVert.index, oVert.co))
-#         self.oMeshClothSkinned.Close()
-#         
-#         #=== Assembled the serializable flat array of twin verts Unity needs to pin simulated cloth to skinned cloth part ===
-#         for nTwinID in range(1, nNextRimVertID):
-#             self.aMapClothVertsSimToSkin.append(self.aTwinIdToVertSim [nTwinID])
-#             self.aMapClothVertsSimToSkin.append(self.aTwinIdToVertSkin[nTwinID])
-#             #print("nTwinID {:3d} = VertSim {:4d} = VertSkin {:4d}".format(nTwinID, self.aTwinIdToVertSim[nTwinID], self.aTwinIdToVertSkin[nTwinID]))
-# 
-# 
-#         #===== BODY CLOTH COLLIDER PROCESSING =====
-#         #=== Obtain cloth body col mesh to service upcoming Unity requests ===
-#         ###DEVF sNameMesh = self.oBody.sMeshSource + "-BodyColCloth-" + self.sClothType + "-Slave"   ###WEAK: Extreme dependency on object naming! 
-#         ###DEVF self.oMeshBodyColCloth = CMesh.CMesh.CreateFromExistingObject(sNameMesh)
-#         return "OK"
-
-
-
-#     def SerializeCollection_aMapClothVertsSimToSkin(self):
-#         return Stream_SerializeCollection(self.aMapClothVertsSimToSkin)
-
-#     def SerializeCollection_aMapPinnedParticles(self):
-#         return Stream_SerializeCollection(self.aMapPinnedParticles)
