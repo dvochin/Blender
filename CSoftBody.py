@@ -59,7 +59,7 @@ class CSoftBody(CSoftBodyBase):
         self.oMeshFlexCollider.SetParent(self.oMeshSoftBody.GetName())
         self.oMeshFlexCollider.Open()
         bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.transform.shrink_fatten(value=self.nSoftBodyFlexColliderShrinkRatio * G.CGlobals._nFlexParticleSpacing)      # Shrink presentation mesh by the particle distance multiplied by the shrink ratio provided for this softbody
+        bpy.ops.transform.shrink_fatten(value=self.nSoftBodyFlexColliderShrinkRatio * G.CGlobals.cm_nFlexParticleSpacing)      # Shrink presentation mesh by the particle distance multiplied by the shrink ratio provided for this softbody
         self.oMeshFlexCollider.Close()
     
     
@@ -475,7 +475,7 @@ class CSoftBody(CSoftBodyBase):
 
 
 ### Old FlexSkin trying stuff
-#             nShrinkDistanceTotal = -G.CGlobals._nFlexParticleSpacing / 2
+#             nShrinkDistanceTotal = -G.CGlobals.cm_nFlexParticleSpacing / 2
 #             self.oMeshFlexCollider.Open()
 #             bpy.ops.mesh.select_all(action='SELECT')
 #             bpy.ops.transform.shrink_fatten(value=nShrinkDistanceTotal)
@@ -489,7 +489,7 @@ class CSoftBody(CSoftBodyBase):
             
             
 #             nSteps = 4
-#             nShrinkDistanceTotal = -G.CGlobals._nFlexParticleSpacing / 2
+#             nShrinkDistanceTotal = -G.CGlobals.cm_nFlexParticleSpacing / 2
 #             nShrinkDistancePerStep = nShrinkDistanceTotal / nSteps
 #               
 #             self.oMeshFlexCollider.Open()
@@ -524,7 +524,7 @@ class CSoftBody(CSoftBodyBase):
 #             bpy.ops.mesh.select_all(action='SELECT')
 #             bpy.ops.mesh.select_less()                  # Flex shapes are defined for all 
 # #             bpy.ops.mesh.select_all(action='SELECT')
-# #             bpy.ops.transform.shrink_fatten(value=G.CGlobals._nFlexParticleSpacing / 2)     ###LEARN: Value is inverse of Blender GUI (positive values shrink in API, expand in GUI)
+# #             bpy.ops.transform.shrink_fatten(value=G.CGlobals.cm_nFlexParticleSpacing / 2)     ###LEARN: Value is inverse of Blender GUI (positive values shrink in API, expand in GUI)
 # # 
 # #             Util_SelectVertGroupVerts(self.oMeshSoftBody.GetMesh(), "_FlexSkinSmoothArea_Vagina_Opening")     ###DEVB: Need much better collision mesh... do by hand??
 # #             bpy.ops.mesh.vertices_smooth(factor=0.5, repeat=20)      ###TUNE

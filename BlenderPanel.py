@@ -58,6 +58,7 @@ class Panel_gBL_Object(bpy.types.Panel):      ###LEARN: Docs at http://www.blend
         col.operator("gbl.hide_game_meshes")
         col.operator("gbl.showreal")
         col.operator("gbl.showfake")
+        col.operator("gbl.temp0")
         col.operator("gbl.temp1")
         col.operator("gbl.temp2")
         col.operator("gbl.temp3")
@@ -128,6 +129,15 @@ class gBL_show_fake(bpy.types.Operator):
         o = bpy.data.objects["BodySuit-Fake"];  o.name = o.data.name = "BodySuit"
         return {"FINISHED"}
 
+class gBL_temp0(bpy.types.Operator):
+    bl_idname = "gbl.temp0"
+    bl_label = "0: Init"
+    bl_options = {'REGISTER', 'UNDO'}
+    def invoke(self, context, event):
+        self.report({"INFO"}, "GBOP: " + self.bl_label)
+        G.CGlobals.Initialize(0.02)
+        return {"FINISHED"}
+
 class gBL_temp1(bpy.types.Operator):
     bl_idname = "gbl.temp1"
     bl_label = "1: BodyBase"
@@ -135,12 +145,10 @@ class gBL_temp1(bpy.types.Operator):
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
         CBodyBase_Create(0, 'WomanA', 'WomanA','JUNK')
-        CBodyBase_GetBodyBase(0).OnChangeBodyMode('Play')
-        CBodyBase_GetBodyBase(0).oBody.oMeshBody.GetMesh().hide = True    ###HACK<17>
-        CBodyBase_GetBodyBase(0).oMeshMorph.GetMesh().hide = True    ###HACK<17>
-        bpy.data.objects['BodySuit'].hide = True
-        #oBody = CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big')
-        #oBody = CBody(0, 'WomanA', 'Woman', 'Vagina-Erotic9-A')
+#         CBodyBase_GetBodyBase(0).OnChangeBodyMode('Play')
+#         CBodyBase_GetBodyBase(0).oBody.oMeshBody.GetMesh().hide = True    ###HACK<17>
+#         CBodyBase_GetBodyBase(0).oMeshMorph.GetMesh().hide = True    ###HACK<17>
+#         bpy.data.objects['BodySuit'].hide = True
         #oBody.CreateFlexSkin("TestFlexSkin", 10)
         return {"FINISHED"}
 
@@ -154,18 +162,16 @@ class gBL_temp2(bpy.types.Operator):
 
 class gBL_temp3(bpy.types.Operator):
     bl_idname = "gbl.temp3"
-    #bl_label = "3: BreastOp"
-    bl_label = "3: ClothSrc"
+    bl_label = "3: XXX"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        oClothSrc = CClothSrc.CClothSrc(CBodyBase_GetBodyBase(0), "BodySuit") 
+        #oClothSrc = CClothSrc.CClothSrc(CBodyBase_GetBodyBase(0), "BodySuit") 
         return {"FINISHED"}
 
 class gBL_temp4(bpy.types.Operator):
     bl_idname = "gbl.temp4"
     bl_label = "4: ClothCreate"
-    #bl_label = "4: Cloth"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
@@ -222,7 +228,7 @@ class gBL_temp9(bpy.types.Operator):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
         #CBody._aBodyBases[0].SlaveMesh_ResyncWithMasterMesh("BreastCol")
         #CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big', 5000)
-        G.CGlobals._oTempHACK = CMesh.CMeshUV("BodySuit", bpy.data.objects["BodySuit"])
+        #G.CGlobals._oTempHACK = CMesh.CMeshUV("BodySuit", bpy.data.objects["BodySuit"])
         return {"FINISHED"}
 
 class gBL_temp10(bpy.types.Operator):

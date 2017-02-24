@@ -24,6 +24,10 @@
 # # do some stuff to the bmesh
 # bpy.ops.object.mode_set(mode='OBJECT')
 # bm.to_mesh(obj.data) 
+
+#from inspect import currentframe, getframeinfo
+#G.Dump("ConvertBackTo3D: " + str(getframeinfo(currentframe()).lineno))
+
 #===============================================================================
 
 ###DISCUSSION: 
@@ -50,6 +54,7 @@
 
 import bpy
 import sys
+import CClothSrc
 from math import *
 from mathutils import *
 
@@ -152,14 +157,30 @@ C_OffsetVertIDs = 1000000                       # Offset applied to all vert IDs
 #---------------------------------------------------------------------------    GLOBAL VARIABLES (MANUALLY SET BY UNITY AT STARTUP)
 #---------------------------------------------------------------------------    
 class CGlobals:
-    _nFlexParticleSpacing = 0.02                # The inter-particular distance Flex uses to keep its particles away from other particles.  Used to 'shrink' our collision meshes so that collisions appear to occur at the surface of the presentation meshes.
-    _oTempHACK = None                           ###HACK<16>  
+    cm_nFlexParticleSpacing = 0.02                # The inter-particular distance Flex uses to keep its particles away from other particles.  Used to 'shrink' our collision meshes so that collisions appear to occur at the surface of the presentation meshes.
+    cm_aClothSources = {}
+    
     @classmethod
-    def SetFlexParticleSpacing(cls, nFlexParticleSpacing):
-        CGlobals._nFlexParticleSpacing = nFlexParticleSpacing       ###DESIGN: Store diameter or radius??
-        return "OK"                     ###HACK: Try to remove need for functions returning a string from gBlender c code
-        
+    def Initialize(cls, nFlexParticleSpacing):
+        CGlobals.cm_nFlexParticleSpacing = nFlexParticleSpacing       ###DESIGN: Store diameter or radius??
+        CGlobals.cm_aClothSources['BodySuit'] = CClothSrc.CClothSrc('BodySuit')            ###IMPROVE: Create function to automatically create all the cloth sources
+        return "OK"                     ###IMPROVE: Try to remove need for functions returning a string from gBlender c code!
+    
+            
 
+
+#---------------------------------------------------------------------------    
+#---------------------------------------------------------------------------    DUMP LOG FILE FUNCTIONALITY
+#---------------------------------------------------------------------------    
+g_oFileDump = None  
+
+def Dump(sText):
+    global g_oFileDump
+    if g_oFileDump is None:
+        g_oFileDump = open("C:/Temp/EroticVR-BlenderScriptDumpFile.txt", "w")        ###DESIGN<18>!!!  MOVE!!! and work on auto-init!
+        g_oFileDump.write("=== EroticVR Blender Script Dump File ===\n")
+    g_oFileDump.writelines(sText + "\n")
+    g_oFileDump.flush()
 
 #---------------------------------------------------------------------------    COORDINATE CONVERSION    
 #---------------------------------------------------------------------------    Converts from Blender 3D space to Client 3D space.  (Blender is right-handed like OpenGL while most Clients (like Unity and DirectX) are left-handed)

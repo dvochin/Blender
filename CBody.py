@@ -101,7 +101,7 @@ class CBodyBase:
         self.sMeshPrefix = "B" + chr(65 + self.nBodyID) + '-'  # The Blender object name prefix of every submesh (e.g. 'BodyA-Detach-Breasts', etc)
         
         self.oBody = None                   # Our game-time body.  Created when we enter play mode, destroyed when we leave play mode for configure mode.
-        self.sBodyBaseMode = "Startup"      # The Body Base mode.  Blender equivalent of Unity's CBodyBase._eBodyBaseMode enumeration
+        self.sBodyBaseMode = "Uninitialized"      # The Body Base mode.  Blender equivalent of Unity's CBodyBase._eBodyBaseMode enumeration
 
         self.oMeshSource = None             # The 'source body'.  Never modified in any way
         self.oMeshAssembled = None          # The 'assembled mesh'.  Fully assembled with proper genitals.  Basis of oMeshMorph                  
@@ -113,7 +113,6 @@ class CBodyBase:
         self.oObjectMeshShapeKeys = None    # The Unity-editable shape keys that enable Unity player to morph our body.    
         self.aVertsFlexCollider = CByteArray()  # Collection of verts sent to Unity that determine which verts form a morphing-time Flex collider capable of repelling morph-time bodysuit master cloth.
         self.aCloths = {}                   # Dictionary of CCloth objects fitted to this body
-        self.oClothSrc = None               ###DESIGN<17>!! Keep here?  An array of different bodysuits?  Who owns bodysuits and their per-body instances??
 
 
         print("\n=== CBodyBase()  nBodyID:{}  sMeshPrefix:'{}'  sMeshSource:'{}'  sSex:'{}'  sGenitals:'{}' ===".format(self.nBodyID, self.sMeshPrefix, self.sMeshSource, self.sSex, self.sGenitals))
@@ -123,18 +122,10 @@ class CBodyBase:
         SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', True)     # Make sure we're starting Blender operations with Blender in a known state...
         self.oMeshSource = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource, bpy.data.objects[self.sMeshSource])  ###DEV: Special ctor??
 
-        #=== Create a empty node in game folder where every mesh related to this body will go ===            ###MOVE: Create helper function to do this?  Duplicate an existing empty object instead?
-        bpy.ops.object.empty_add(type='CUBE', radius=0.01)          # Create an empty we will reparent to game folder
-        self.oNodeRoot = bpy.context.object                         # Obtain reference empty we just created above
-        self.oNodeRoot.parent = bpy.data.objects[G.C_NodeFolder_Game]  # Set as child of game folder
-        self.oNodeRoot.name = "Body" + chr(65 + self.nBodyID)       # Name it (twice so it sticks) 
-        self.oNodeRoot.name = "Body" + chr(65 + self.nBodyID)
-        self.oNodeRoot.location = Vector((0, 0, 0))                 # Set it to origin 
-        bpy.context.scene.objects.active = None                     ###LEARN: If we don't deactivate it, copies will also copy this object!
-        bpy.ops.object.select_all(action='DESELECT')
-        self.oNodeRoot.hide = self.oNodeRoot.hide_render = self.oNodeRoot.hide_select = True  # Hide & deactivate it in every way
+        #=== Create a empty node in game folder where every mesh related to this body will go ===
+        self.oNodeRoot = CreateEmptyBlenderNode("Body" + chr(65 + self.nBodyID), G.C_NodeFolder_Game)
 
-        #=== Duplicate the source body (kept in the most pristine condition possible) as the assembled body. Delete unwanted parts and attach the user-specified genital mesh instead ===
+        #=== Duplicate the source body (kept in pristine condition) as the assembled body. Delete unwanted parts and attach the user-specified genital mesh instead ===
         self.oMeshAssembled = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + "Assembled", self.oMeshSource)  # Creates the top-level body object named like "BodyA", "BodyB", that will accept the various genitals we tack on to the source body.
         self.oMeshAssembled.SetParent(self.oNodeRoot.name)
         self.oMeshAssembled.ConvertMeshForUnity(True)  ###DESIGN<13>: This early??
@@ -143,7 +134,7 @@ class CBodyBase:
         self.oMeshMorph = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + 'Morph', self.oMeshAssembled)   
         self.oMeshMorph.SetParent(self.oNodeRoot.name)
 
-        #=== Prepare the Unity-serialized mesh that is updated everytime player adjusts a slider ===
+        #=== Prepare the Unity-serialized mesh that is updated every time player adjusts a slider ===
         self.oMeshMorphResult = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + 'MorphResult', self.oMeshMorph)   
         self.oMeshMorphResult.SetParent(self.oNodeRoot.name)
         bpy.ops.object.shape_key_remove(all=True)  # Remove all the shape keys of the outgoing mesh.  We set its verts manually at every morph change.
@@ -160,30 +151,6 @@ class CBodyBase:
                 self.aVertsFlexCollider.AddUShort(oVert.index)
         self.oMeshMorphResult.Close()
         
-
-    def OnChangeBodyMode(self, sBodyBaseMode):  # Blender-side equivalent of Unity's CBodyBase.OnChangeBodyMode().  Switches between configure / play mode for this body.
-        if (sBodyBaseMode == self.sBodyBaseMode):
-            return
-        print("--- CBodyBase '{}' going from mode '{}' to mode '{}' ---".format(self.sMeshPrefix, self.sBodyBaseMode, sBodyBaseMode))
-        self.sBodyBaseMode = sBodyBaseMode
-        
-        ###NOW<17>: Place stuff here for bodysuit / cloth!
-        
-        if (self.sBodyBaseMode == "MorphBody"):         # If we enter MorphBody mode and body is created destory it
-            if (self.oBody != None):
-                self.oBody = self.oBody.DoDestroy()     # Destroy the entire gametime body... lots of meshes!
-        elif (self.sBodyBaseMode == "CutCloth"):
-            if (self.oBody != None):
-                self.oBody = self.oBody.DoDestroy()     # Destroy the entire gametime body... lots of meshes!
-        elif (self.sBodyBaseMode == "Play"):
-            if (self.oBody == None):
-                self.oBody = CBody(self)                # Create a game-time body.  Expensive operation!
-        elif (self.sBodyBaseMode == "Disabled"):
-            print("CBodyBase entering Disabled mode.")  # Unity-related only... we have nothing to do.
-        else:
-            raise Exception("###EXCEPTION in CBodyBase.OnChangeBodyMode().  Unrecognized body mode " + sBodyBaseMode)
-        return "OK"  # Unity called so we must return something it recognizes like a string ###IMPROVE: Remove this dumb requirement and transfer null too!
-
 
     def UpdateMorphResultMesh(self):  # 'Bake' the morphing mesh as per the player's morphing parameters into a 'MorphResult' mesh that can be serialized to Unity.  Matches Unity's CBodyBase.UpdateMorphResultMesh()
         #=== 'Bake' all the shape keys in their current position into one and extract its verts ===
@@ -246,16 +213,33 @@ class CBodyBase:
 
 
     def CreateCloth(self, sNameCloth, sNameClothSrc, sVertGrp_ClothSkinArea, sClothType):
-        "Create a CCloth object compatible with this body"
+        "Create a CCloth object compatible with this body base"
         self.aCloths[sNameCloth] = CCloth.CCloth(self, sNameCloth, sNameClothSrc, sVertGrp_ClothSkinArea, sClothType)
         return "OK"
+
+    def DestroyCloth(self, sNameCloth):
+        "Destroy the specified cloth from this body base"
+        self.aCloths[sNameCloth].DoDestroy()
+        del self.aCloths[sNameCloth]
+        return "OK"
+
+    def CreateCBody(self):
+        print("\n=== CBodyBase.CreateCBody() called on CBodyBase '{}' ===".format(self.sMeshPrefix))
+        if (self.oBody == None):
+            self.oBody = CBody(self)                # Create a game-time body.  Expensive operation!
+        return "OK"
+
+    def DestroyCBody(self):                 # Called by Unity so a body base can free the resources from its CBody instance (game-time body)  (Means the user went back to body editing)
+        print("\n=== CBodyBase.DestroyCBody() called on CBodyBase '{}' ===".format(self.sMeshPrefix))
+        if (self.oBody != None):
+            self.oBody = self.oBody.DoDestroy()     # Destroy the entire gametime body... lots of meshes!
+        return "OK"
+
+    def SelectClothSrc_HACK(self, sNameClothSrc):           ###HACK<18>: To overcome Unity's CBMesh.Create requiring every mesh to be accessible from a CBodyBase instance.
+        self.oClothSrcSelected_HACK = CMesh.CMesh.CreateFromExistingObject(G.CGlobals.cm_aClothSources[sNameClothSrc].oMeshO_3DS.name)       # 'Select' the current cloth src and put it in this variable.  It will the be pulled by Unity to interact with the cloth source
+        return "OK"
     
-    def CreateClothSrc(self, sNameClothSrc):        ###DESIGN<17>: Needed?  Automatic in BodySrc ctor?
-        "Create a CCloth object compatible with this body"
-        self.oClothSrc = CClothSrc.CClothSrc(self, sNameClothSrc)
-        return "OK"     #self.aClothSrc.PrepareForGame()      ###DESIGN<17>: Need prep call?
-    
-    
+
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    CBODY
 #---------------------------------------------------------------------------    
@@ -342,7 +326,7 @@ class CBody:
         #=== Now that we have re-skinned we can 'shrink' the collision mesh to compensate for the Flex inter-particle distance ===
         self.oMeshFlexCollider.Open()
         bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.transform.shrink_fatten(value=G.CGlobals._nFlexParticleSpacing * nDistFlexColliderShrinkMult)
+        bpy.ops.transform.shrink_fatten(value=G.CGlobals.cm_nFlexParticleSpacing * nDistFlexColliderShrinkMult)
         self.oMeshFlexCollider.Close()
         
         return "OK"         # Called from Unity so we must return something it can understand
@@ -616,10 +600,10 @@ class CBody:
 def CBodyBase_Create(nBodyID, sMeshSource, sSex, sGenitals):
     "Proxy for CBody ctor as we can only return primitives back to Unity"
     oBodyBase = CBodyBase(nBodyID, sMeshSource, sSex, sGenitals)
-    return str(oBodyBase.nBodyID)  ###OBS?      # Strings is one of the only things we can return to Unity
+    return str(oBodyBase.nBodyID)           # Strings is one of the only things we can return to Unity
 
 def CBodyBase_GetBodyBase(nBodyID):
-    "Easy accessor to simplify Unity's access to bodies by ID"
+    "Easy accessor to simplify Unity's access to bodies by ID. Used throughout Unity codebase to easily obtain instances from the global scope."
     return CBodyBase._aBodyBases[nBodyID]
 
 
@@ -687,3 +671,25 @@ def CBodyBase_GetBodyBase(nBodyID):
 # 
 #         nSize = 1.75
 #         self.Breasts_ApplyMorph('RESIZE', 'Nipple', 'Center', 'Wide', (nSize,nSize,nSize,0), None)     ###NOW###  ###HACK!
+
+
+
+#     def OnChangeBodyMode(self, sBodyBaseMode):  # Blender-side equivalent of Unity's CBodyBase.OnChangeBodyMode().  Switches between configure / play mode for this body.
+#         if (sBodyBaseMode == self.sBodyBaseMode):
+#             return
+#         print("--- CBodyBase '{}' going from mode '{}' to mode '{}' ---".format(self.sMeshPrefix, self.sBodyBaseMode, sBodyBaseMode))
+#         self.sBodyBaseMode = sBodyBaseMode
+#         
+#         if (self.sBodyBaseMode == "MorphBody"):         # If we enter MorphBody mode and body is created destory it
+#             if (self.oBody != None):
+#                 self.oBody = self.oBody.DoDestroy()     # Destroy the entire gametime body... lots of meshes!
+#         elif (self.sBodyBaseMode == "CutCloth"):
+#             if (self.oBody != None):
+#                 self.oBody = self.oBody.DoDestroy()     # Destroy the entire gametime body... lots of meshes!
+#         elif (self.sBodyBaseMode == "Play"):
+#             if (self.oBody == None):
+#                 self.oBody = CBody(self)                # Create a game-time body.  Expensive operation!
+#         else:
+#             raise Exception("###EXCEPTION in CBodyBase.OnChangeBodyMode().  Unrecognized body mode " + sBodyBaseMode)
+#         return "OK"  # Unity called so we must return something it recognizes like a string ###IMPROVE: Remove this dumb requirement and transfer null too!
+

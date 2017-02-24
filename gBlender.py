@@ -166,7 +166,19 @@ def SetParent(sNameObject, sNameParent):
 # 		bpy.context.scene.objects.active = bpy.data.objects[sNameObject]
 # 		oParentO.select = False				  
 # 		oParentO.hide = oParentO.hide_select = True			###WEAK: Show & hide of parent to enable reparenting... (lose previous state of parent but OK for folder nodes made up of 'empty'!)
-	
+
+def CreateEmptyBlenderNode(sNameNode, sNameParent):			# Create an empty Blender object (a hidden cube in this case) as a child of 'sNameParent'.  Used to create a useful hierarchy in Blender's outliner so tons of unrelated objects don't have to be under the same parent
+	bpy.ops.object.empty_add(type='CUBE', radius=0.01)		# Create an empty we will reparent to game folder
+	oNodeNew = bpy.context.object						 	# Obtain reference empty we just created above
+	oNodeNew.parent = bpy.data.objects[sNameParent]			# Set as child of game folder
+	oNodeNew.name = sNameNode	   							# Name it (twice so it sticks) 
+	oNodeNew.name = sNameNode
+	oNodeNew.location = Vector((0, 0, 0))				 	# Set it to origin 
+	bpy.context.scene.objects.active = None					###LEARN: If we don't deactivate it, copies will also copy this object!
+	bpy.ops.object.select_all(action='DESELECT')
+	oNodeNew.hide = oNodeNew.hide_render = oNodeNew.hide_select = True  # Hide & deactivate it in every way
+	return oNodeNew
+
 	 
 def AssertFinished(sResultFromOp):	###IMPROVE: Use this much more!
 	if (sResultFromOp != {'FINISHED'}):

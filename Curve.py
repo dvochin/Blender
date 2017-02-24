@@ -1,25 +1,22 @@
-import bpy
-import sys
-import bmesh
 from math import *
+import sys
+
+import CObject
+import Client
+import G
+import bmesh
+import bpy
+from gBlender import *
 from mathutils import *
 import struct
-
-from gBlender import *
-import G
-import Client
-import CObject
 
 
 ###NEXT:
 # Just about ready to insert into Unity
     # Unity needs to query how many curves and their points
     # Need a CCurve, CCurvePt (hotspots) moving and redrawing their cuttersasmesh!
-
-
 # Need to separate between updates to cutter curves and the actual cutting
 # Graceful update without creating a new cloth!! 
-
 # Fixed mirrored but the 'demo cutter mesh' not mirrored... clarify!
     # Revisit usage of MirroX mod
 # WOuld be nice to have cleaner scene start!
@@ -28,29 +25,19 @@ import CObject
 # Prevent cutter plane destruction for debugging?
 #IDEA: Expose smoothing iterations to Unity for each curve!
 #IDEA: Also need to expose mirror!
-
 # Weird handles and curves now... not auto?
 # Rebuild fails cuz of no name on self.oCurveO?
-
 # Need to create from plain 3D points and also update... without destroying?
-
 # CCurve class.  Owned by its attached CCloth in _aCurves
 # CCloth based on body suit, and is cut by collection of curves
 # Unity: Merge into normal CCloth with all its baggage? (e.g. skinned half, simulation, etc)... or new class?
 #  Benefits: 1-1 relationship between both classes on both sides
 # Need a CCurvePt class on both sides?
 #  Loaded from just a few points stored in Blender sub-objects (acting as 'recipes')
-
 ###TODO###
 # Have to show the whole thing in Unity: Semi-transparent body suit, Cutter curve meshes, Cut cloth
-
-
 ###IDEAS###
 # 'Extra cutter points'.  Can be stored in recipe and are define as an interleaving point between two permanent points
-
-
-
-
 class CCurve:
     def __init__(self, oCloth, sType):
         self.oCloth = oCloth
@@ -115,6 +102,7 @@ class CCurve:
 
     def CutClothWithCutterCurve(self, oMeshCutCloth, sMirrorX=None):
         print("-CCurve.CutClothWithCutterCurve() on curve '{}'".format(self.sName))
+        G.Dump("CutClothWithCutterCurve: " + oMeshCutCloth.name)
         self.RebuildCurve()     ###CHECK<17>?
         
         #=== Mirror the cutter mesh about X=0.5 if requested (needed for side cuts to enforce symmetry ===
@@ -167,8 +155,8 @@ class CCurveNeck(CCurve):
     def UpdateCurvePoints(self, bmCloth3DS):
         #=== Set common variables re-used by points below ===
         nCenterUV = 0.5
-        vecSeamPointNeckToArmL = self.oCloth.aDictSeamCurves["TopL"].GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet())
-        vecSeamPointNeckToArmR = self.oCloth.aDictSeamCurves["TopR"].GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet()) ###IMPROVE<17>: Ditch right curves and derive R from L?
+        vecSeamPointNeckToArmL = self.oCloth.oClothSrc.aDictSeamCurves["TopL"].GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet())
+        vecSeamPointNeckToArmR = self.oCloth.oClothSrc.aDictSeamCurves["TopR"].GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet()) ###IMPROVE<17>: Ditch right curves and derive R from L?
 
         #--- Set point above head (for loop closure) ---        
         self.nPointIterator = 0           # Reset the curve point iterators so calls below always start at point 0
@@ -183,7 +171,7 @@ class CCurveNeck(CCurve):
         self.SetPoint(vecSeamPointNeckToArmR)
         self.SetPointBeziers("V", self.oPropUpSeamCurveX.PropGet(), -self.oPropUpSeamCurveY.PropGet())  # Note negated Y for right-side symmetry to left side
         #--- Cut the front UV flattened mesh ---
-        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVF_Cut)
+        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVF)
 
         #--- Set left neck-to-arm seam point ----
         self.nPointIterator = 1
@@ -196,7 +184,7 @@ class CCurveNeck(CCurve):
         self.SetPoint(vecSeamPointNeckToArmR)
         self.SetPointBeziers("V", -self.oPropUpSeamCurveX.PropGet(), -self.oPropUpSeamCurveY.PropGet())
         #--- Cut the back UV flattened mesh ----0.03241414141414141414141414141414141414141
-        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVB_Cut)
+        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVB)
 
 
 class CCurveSide(CCurve):
@@ -214,10 +202,10 @@ class CCurveSide(CCurve):
 
     def UpdateCurvePoints(self, bmCloth3DS):
         #=== Set common variables re-used by points below ===
-        vecSeamPointUpL   = self.oCloth.aDictSeamCurves["TopL"] .GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet())
-        vecSeamPointUpR   = self.oCloth.aDictSeamCurves["TopR"] .GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet()) ###IMPROVE<17>: Ditch right curves and derive R from L?
-        vecSeamPointSideL = self.oCloth.aDictSeamCurves["SideL"].GetPosAtSeamChainLength(bmCloth3DS, self.oPropSideSeamDist.PropGet())
-        vecSeamPointSideR = self.oCloth.aDictSeamCurves["SideR"].GetPosAtSeamChainLength(bmCloth3DS, self.oPropSideSeamDist.PropGet()) ###IMPROVE<17>: Ditch right curves and derive R from L?
+        vecSeamPointUpL   = self.oCloth.oClothSrc.aDictSeamCurves["TopL"] .GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet())
+        vecSeamPointUpR   = self.oCloth.oClothSrc.aDictSeamCurves["TopR"] .GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet()) ###IMPROVE<17>: Ditch right curves and derive R from L?
+        vecSeamPointSideL = self.oCloth.oClothSrc.aDictSeamCurves["SideL"].GetPosAtSeamChainLength(bmCloth3DS, self.oPropSideSeamDist.PropGet())
+        vecSeamPointSideR = self.oCloth.oClothSrc.aDictSeamCurves["SideR"].GetPosAtSeamChainLength(bmCloth3DS, self.oPropSideSeamDist.PropGet()) ###IMPROVE<17>: Ditch right curves and derive R from L?
 
         #--- Set two points to the extreme right/left to cut requrested part of arm mesh ---        
         self.nPointIterator = 0
@@ -232,8 +220,8 @@ class CCurveSide(CCurve):
         self.SetPoint(vecSeamPointSideL)
         self.SetPointBeziers("V", self.oPropSideSeamCurveX.PropGet(), self.oPropSideSeamCurveY.PropGet())
         #--- Cut the UV flattened meshes ---
-        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVF_Cut, "MirrorX")
-        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVB_Cut, "MirrorX")
+        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVF, "MirrorX")
+        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVB, "MirrorX")
 
 
 class CCurveTorsoSplit(CCurve):
@@ -247,8 +235,8 @@ class CCurveTorsoSplit(CCurve):
 
     def UpdateCurvePoints(self, bmCloth3DS):
         #=== Set common variables re-used by points below ===
-        vecSeamPointUpL   = self.oCloth.aDictSeamCurves["SideL"] .GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet())
-        vecSeamPointUpR   = self.oCloth.aDictSeamCurves["SideR"] .GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet()) ###IMPROVE<17>: Ditch right curves and derive R from L?
+        vecSeamPointUpL   = self.oCloth.oClothSrc.aDictSeamCurves["SideL"] .GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet())
+        vecSeamPointUpR   = self.oCloth.oClothSrc.aDictSeamCurves["SideR"] .GetPosAtSeamChainLength(bmCloth3DS, self.oPropUpSeamDist.PropGet()) ###IMPROVE<17>: Ditch right curves and derive R from L?
 
         #--- Set two points to the extreme right/left to cut requrested part of arm mesh ---        
         self.nPointIterator = 0                 ###IMPROVE<17>: Add property to flip what is removed (top or bottom)
@@ -263,5 +251,5 @@ class CCurveTorsoSplit(CCurve):
         self.SetPoint(vecSeamPointUpR)
         self.SetPointBeziers("V", self.oPropUpSeamCurveX.PropGet(), self.oPropUpSeamCurveY.PropGet())
         #--- Cut the UV flattened meshes ---
-        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVF_Cut)
-        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVB_Cut)
+        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVF)
+        self.CutClothWithCutterCurve(self.oCloth.oMeshO_UVB)
