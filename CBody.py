@@ -212,9 +212,9 @@ class CBodyBase:
         return oBA.Unity_GetBytes()
 
 
-    def CreateCloth(self, sNameCloth, sNameClothSrc, sVertGrp_ClothSkinArea, sClothType):
+    def CreateCloth(self, sNameCloth, sClothType, sNameClothSrc):
         "Create a CCloth object compatible with this body base"
-        self.aCloths[sNameCloth] = CCloth.CCloth(self, sNameCloth, sNameClothSrc, sVertGrp_ClothSkinArea, sClothType)
+        self.aCloths[sNameCloth] = CCloth.CCloth(self, sNameCloth, sClothType, sNameClothSrc)
         return "OK"
 
     def DestroyCloth(self, sNameCloth):

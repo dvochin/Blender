@@ -47,18 +47,16 @@ import CObject
 
 
 class CCloth:
-    def __init__(self, oBodyBase, sNameCloth, sClothType, sNameClothSrc, sVertGrp_ClothSkinArea):
+    def __init__(self, oBodyBase, sNameCloth, sClothType, sNameClothSrc):
         "Separate cloth mesh between skinned and simulated parts, calculating the 'twin verts' that will pin the simulated part to the skinned part at runtime."
-        ####IMPROVE ####DESIGN: Possible to 'group' sVertGrp_ClothSkinArea & sClothType together??
         
-        print("=== CCloth.ctor()  oBodyBase = '{}'  sNameCloth = '{}'  sClothType = '{}'  sNameClothSrc = '{}'  sVertGrp_ClothSkinArea = '{}'  ===".format(oBodyBase.sMeshPrefix, sNameCloth, sClothType, sNameClothSrc, sVertGrp_ClothSkinArea))
+        print("=== CCloth.ctor()  oBodyBase = '{}'  sNameCloth = '{}'  sClothType = '{}'  sNameClothSrc = '{}' ===".format(oBodyBase.sMeshPrefix, sNameCloth, sClothType, sNameClothSrc))
 
         self.oBodyBase              = oBodyBase         # The back-reference to the owning bodybase that owns / manages this instance
         self.sNameCloth             = sNameCloth        # The human-readable name of this cloth.  Is whatever Unity wants to set it.  Acts as key in owning CBody.aCloths[]
         self.sClothType             = sClothType        # Is one of { 'Shirt', 'Underwear', etc } and determines the cloth collider mesh source.  Must match previously-defined meshes created for each body!   ###IMPROVE: Define all choices
         self.sNameClothSrc          = sNameClothSrc     # The Blender name of the mesh we cut from.  (e.g. 'Bodysuit')
         self.oClothSrc              = G.CGlobals.cm_aClothSources[sNameClothSrc]    # Convenience reference to our cloth source.  We 'cut' from this at every cloth cutting update
-        self.sVertGrp_ClothSkinArea = sVertGrp_ClothSkinArea    # The name in self.oBodyBase of the vertex group detailing the area where cloth verts are skinned instead of cloth-simulated
 
         self.aMapPinnedParticles = CByteArray()         # The final flattened map of what verts from the 'skinned cloth vert' map to which verts in the (untouched) Flex-simulated mesh.  Flex needs this to create extra springs to keep the skinned part close to where it should be on the body!
 
@@ -126,7 +124,7 @@ class CCloth:
 
 
     def ConvertBackTo3D(self):      # Convert the UV-domain front and back mesh that was cut via Boolean modifiers back to its original 3D form for in-game rendering ===
-        
+
         #=== Join the two flat UV meshes into one ===
         SelectAndActivate(self.oMeshO_UVB.name)         # First select and activate mesh that will be destroyed (temp mesh)    (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
         bpy.ops.transform.translate(value=(1, 0, 0))        # Push the back UV mesh by X+1 to undo the X-1 done during ctor
@@ -144,6 +142,8 @@ class CCloth:
         bm3DS.from_mesh(self.oClothSrc.oMeshO_3DS.data)
 
         #=== Create new 3D-domain mesh so we can cut with a flattened mesh that doesn't move with user morphs ===
+        if self.oMeshO_3DD is not None:
+            self.oMeshO_3DD = DeleteObject(self.oMeshO_3DD.name)          # Delete the existing 3DD mesh if it exists.  (This call occurs at every cloth cutting operation)
         oMesh3DDD = bpy.data.meshes.new(self.oNodeRoot.name + "-3DD")
         self.oMeshO_3DD = bpy.data.objects.new(oMesh3DDD.name, oMesh3DDD)
         bpy.context.scene.objects.link(self.oMeshO_3DD)
@@ -217,8 +217,8 @@ class CCloth:
         self.oMesh_3DD = CMesh.CMesh.CreateFromExistingObject(self.oMeshO_3DD.name)       ###IMPROVE<17>: Go all on CMesh??
 
 
-    def PrepareClothForGame(self):
-        #===== Prepare the cloth for gaming runtime by separating cut-cloth into skinned and simulated areas =====       
+    def PrepareClothForGame(self, sVertGrp_ClothSkinArea):
+        #===== Prepare the cloth for gaming runtime by separating cut-cloth into skinned and simulated areas.  sVertGrp_ClothSkinArea enables caller to specify which cloth area should be skinned (instead of flex-simulated) =====       
         sNameClothSimulated = self.oNodeRoot.name + "-Simulated"
         sNameClothSkinned   = self.oNodeRoot.name + "-Skinned"
         self.oMeshClothSimulated = CMesh.CMesh.CreateFromDuplicate(sNameClothSimulated, self.oMesh_3DD)     # Simulated mesh is sent to Unity untouched.
@@ -230,13 +230,16 @@ class CCloth:
     
         #=== With the body's skinning info transfered to the cloth, select the the requested vertices contained in the 'skinned verts' vertex group.  These will 'pin' the cloth on the body while the other verts are simulated ===
         bmClothSim = self.oMeshClothSimulated.Open()
-        nVertGrpIndex_Pin = self.oMeshClothSimulated.GetMesh().vertex_groups.find(self.sVertGrp_ClothSkinArea)       
-        if nVertGrpIndex_Pin == -1:
-            raise Exception("###EXCEPTION: CCloth.PrepareClothForGame() could not find in skinned body pin vertex group " + self.sVertGrp_ClothSkinArea)
-        oVertGroup_Pin = self.oMeshClothSimulated.GetMesh().vertex_groups[nVertGrpIndex_Pin]
-        self.oMeshClothSimulated.GetMesh().vertex_groups.active_index = oVertGroup_Pin.index
-        bpy.ops.mesh.select_all(action='DESELECT')
-        bpy.ops.object.vertex_group_select()                # To-be-skinned cloth verts are now selected
+        nVertGrpIndex_Pin = self.oMeshClothSimulated.GetMesh().vertex_groups.find(sVertGrp_ClothSkinArea)       # The name in self.oBodyBase of the vertex group detailing the area where cloth verts are skinned instead of cloth-simulated
+       
+        if nVertGrpIndex_Pin != -1:
+            oVertGroup_Pin = self.oMeshClothSimulated.GetMesh().vertex_groups[nVertGrpIndex_Pin]
+            self.oMeshClothSimulated.GetMesh().vertex_groups.active_index = oVertGroup_Pin.index
+            bpy.ops.mesh.select_all(action='DESELECT')
+            bpy.ops.object.vertex_group_select()                # To-be-skinned cloth verts are now selected
+        else:
+            #raise Exception("###EXCEPTION: CCloth.PrepareClothForGame() could not find in skinned body pin vertex group " + sVertGrp_ClothSkinArea)
+            print("###NOTE: CCloth.PrepareClothForGame() could not find in skinned body pin vertex group " + sVertGrp_ClothSkinArea + ".  Proceeding with no skinned cloth area.")
     
         #=== Prepare the to-be-split cloth mesh for 'twin vert' mapping: This vert-to-vert map between the skinned part of cloth mesh to simulated-part of cloth mesh is needed by Unity at runtime to 'pin' the edges of the simulated mesh to 'follow' the skinned part 
         oLayVertOrigID = bmClothSim.verts.layers.int.new(G.C_PropArray_ClothSkinToSim)  # Create a temp custom data layer to store IDs of split verts so we can find twins easily.    ###LEARN: This call causes BMesh references to be lost, so do right after getting bmesh reference

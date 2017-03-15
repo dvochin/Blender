@@ -131,7 +131,8 @@ def DeleteObject(sNameObject):
 	if sNameObject in bpy.data.objects:			###LEARN: This is by *far* the best way to delete in Blender!!
 		oObj = bpy.data.objects[sNameObject]
 		bpy.data.scenes[0].objects.unlink(oObj)
-		bpy.data.objects.remove(oObj)	
+		bpy.data.objects.remove(oObj)
+	return None				# Return convenient None so we can set owning variable in one line
 
 def DuplicateAsSingleton(sSourceName, sNewName, sNameParent, bHideSource):
 	#print("-- DuplicateAsSingleton  sSourceName '{}'  sNewName '{}'  sNameParent '{}'".format(sSourceName, sNewName, sNameParent))

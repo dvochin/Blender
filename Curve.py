@@ -101,7 +101,7 @@ class CCurve:
         
 
     def CutClothWithCutterCurve(self, oMeshCutCloth, sMirrorX=None):
-        print("-CCurve.CutClothWithCutterCurve() on curve '{}'".format(self.sName))
+        #print("-CCurve.CutClothWithCutterCurve() on curve '{}'".format(self.sName))
         G.Dump("CutClothWithCutterCurve: " + oMeshCutCloth.name)
         self.RebuildCurve()     ###CHECK<17>?
         
