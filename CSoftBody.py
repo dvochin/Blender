@@ -18,7 +18,6 @@ from CSoftBodyBase import *     ###LEARN: Inheritance requires this method of im
 
 class CSoftBody(CSoftBodyBase):         
     # CSoftBody: Centrally-important class responsible for separating 'soft' body parts (e.g. breasts, penis, vagina, anus, etc) and performing the proper separation, modification and calculations for Flex-based simulation in Unity.
-    # This class is derived from CSoftBodyBase for its common elements with CSoftBodySkin (both have a skinned rim and pinned Flex particles) (CSoftBody has its solid geometry created by Unity+Flex while CSoftBodySkin has its solid geometry created here in Blender)
     
     def __init__(self, oBody, sSoftBodyPart, nSoftBodyFlexColliderShrinkRatio):
         super(self.__class__, self).__init__(oBody, sSoftBodyPart)      ###LEARN: How to call base class ctor.  Recommended over 'CSoftBodyBase.__init__(oBody, sSoftBodyPart)' (for what reason again??)
@@ -28,7 +27,6 @@ class CSoftBody(CSoftBodyBase):
         self.oMeshFlexCollider      = None              # The 'Flex collision' mesh is a 'slightly shrunken' version of 'self.oMeshSoftBody' in order so that Flex simulates a smaller mesh so that the appearance mesh appears to collide at the presentation depth (even though this is impossibly to do by Flex)    
         self.oMeshUnity2Blender     = None              # The 'Unity-to-Blender' mesh created by CreateUnity2BlenderMesh().  Used by Unity to pass in geometry for Blender processing (e.g. Softbody particle skinning and pinning)   
 
-
         #===== SOFTBODY CAPPING: Turns the separated softbody mesh from a 2D mesh to a solid =====
         #=== Select the edge of the softbody mesh, extrude to create new geometry and collapse these new verts at the center.  This will turn the presentation mesh into the solid mesh needed by Flex ===
         self.oMeshSoftBody.Open()
@@ -36,6 +34,15 @@ class CSoftBody(CSoftBodyBase):
         bpy.ops.mesh.select_non_manifold()          # Select the edge of the mesh... ###LEARN: Will select the edge of the detached softbody mesh = what we have to collapse to make a solid for Flex
         bpy.ops.mesh.extrude_edges_indiv()          #... and extrude them to create new verts... ###LEARN: This is the function we need to really extrude!
         bpy.ops.mesh.edge_collapse()                #... and collapse them to a single point to 'close' the mesh. ###LEARN: The collapse will combine all selected verts into one vert at the center
+        #bpy.ops.object.vertex_group_remove(all=True)        # Remove all vertex groups from detached softbody to save Blender memory
+        ###DEV19
+        
+        
+        
+
+
+
+
 
         #=== Create the 'backmesh' mesh from the cap.  This mesh is used to find Flex particles that should be pinned to the body instead of simulated ===
         bpy.ops.mesh.select_more()                  # Add the verts immediate to the just-created center vert (the rim verts)  We now have the entire cap faces.
@@ -61,7 +68,8 @@ class CSoftBody(CSoftBodyBase):
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.transform.shrink_fatten(value=self.nSoftBodyFlexColliderShrinkRatio * G.CGlobals.cm_nFlexParticleSpacing)      # Shrink presentation mesh by the particle distance multiplied by the shrink ratio provided for this softbody
         self.oMeshFlexCollider.Close()
-    
+
+
     
     def DoDestroy(self):
         super(self.__class__, self).DoDestroy()         ###LEARN: How to call base class method
@@ -136,7 +144,7 @@ class CSoftBody(CSoftBodyBase):
 
         #=== Skin the pinned particle mesh from original rim mesh.  (So particles are skinned too)
         Util_TransferWeights(self.oMeshPinnedParticles.GetMesh(), self.oBody.oBodyBase.oMeshMorphResult.GetMesh())   ###CHECK: Proper source mesh? ###OPT?
-        Cleanup_VertGrp_RemoveNonBones(self.oMeshPinnedParticles.GetMesh(), True)
+        VertGrp_RemoveNonBones(self.oMeshPinnedParticles.GetMesh(), True)
 
         return "OK"
 
@@ -261,7 +269,7 @@ class CSoftBody(CSoftBodyBase):
 #         bpy.ops.object.mode_set(mode='OBJECT')    
 #         #=== Skin the rim+particles mesh from original rim mesh.  (So particles are skinned too!)
 #         Util_TransferWeights(self.oMeshSoftBodyRim.oMesh, oMeshSoftBodyRim_Copy.oMesh)      #bpy.ops.object.vertex_group_transfer_weight()
-#         Cleanup_VertGrp_RemoveNonBones(self.oMeshSoftBodyRim.oMesh, True)        
+#         VertGrp_RemoveNonBones(self.oMeshSoftBodyRim.oMesh, True)        
 #         nVertsRimJoined = len(self.oMeshSoftBodyRim.oMesh.data.vertices)     # Remember how many verts rim now has once close particles are kept in
 #         nShiftAppliedToOrigRimVerts = nVertsRimJoined - nVertsRimOrig   # Calculate the shift applied to orig verts  
 #         self.oMeshSoftBodyRim.Close()
@@ -426,7 +434,7 @@ class CSoftBody(CSoftBodyBase):
 # 
 #         else:
 #             bpy.ops.mesh.select_all(action='DESELECT')
-#             nVertGrpIndex_DetachPart = self.oMeshSoftBody.GetMesh().vertex_groups.find(G.C_VertGrp_Detach + "Vagina_Backmesh")      ###BUG!!!! _ versus -!!!!!!
+#             nVertGrpIndex_DetachPart = self.oMeshSoftBody.GetMesh().vertex_groups.find(G.C_VertGrp_CSoftBody + "Vagina_Backmesh")      ###BUG!!!! _ versus -!!!!!!
 #             oVertGroup_DetachPart = self.oMeshSoftBody.GetMesh().vertex_groups[nVertGrpIndex_DetachPart]
 #             self.oMeshSoftBody.GetMesh().vertex_groups.active_index = oVertGroup_DetachPart.index
 #             bpy.ops.object.vertex_group_select()  # Select only the just-updated vertex group of the vertices we need to separate from the composite mesh.
@@ -479,7 +487,7 @@ class CSoftBody(CSoftBodyBase):
 #             self.oMeshFlexCollider.Open()
 #             bpy.ops.mesh.select_all(action='SELECT')
 #             bpy.ops.transform.shrink_fatten(value=nShrinkDistanceTotal)
-#             Util_SelectVertGroupVerts(self.oMeshFlexCollider.GetMesh(), "_FlexSkinSmoothArea_Vagina_Opening")
+#             VertGrp_SelectVerts(self.oMeshFlexCollider.GetMesh(), "_FlexSkinSmoothArea_Vagina_Opening")
 #             bpy.ops.mesh.select_more()
 #             bpy.ops.mesh.select_more()
 #             bpy.ops.mesh.select_more()
@@ -494,7 +502,7 @@ class CSoftBody(CSoftBodyBase):
 #               
 #             self.oMeshFlexCollider.Open()
 #             for nStep in range(nSteps):
-#                 Util_SelectVertGroupVerts(self.oMeshFlexCollider.GetMesh(), "_FlexSkinSmoothArea_Vagina_Slit")
+#                 VertGrp_SelectVerts(self.oMeshFlexCollider.GetMesh(), "_FlexSkinSmoothArea_Vagina_Slit")
 #                 bpy.ops.mesh.select_more()
 #                 bpy.ops.mesh.select_more()
 #                 bpy.ops.mesh.select_more()
@@ -502,74 +510,3 @@ class CSoftBody(CSoftBodyBase):
 #                 bpy.ops.mesh.vertices_smooth(factor=0.5, repeat=3)      ###TUNE
 #                 bpy.ops.mesh.select_all(action='SELECT')
 #                 bpy.ops.transform.shrink_fatten(value=nShrinkDistancePerStep)
-
-
-
-
-
-
-
-
-####OBS: FlexSkin to move
-#         #=== Specific to bIsFlexSkin softbody variant ===
-#         self.aShapeVerts            = array.array('I')  # Array of which vert / particle is also a shape
-#         self.aShapeParticleIndices  = array.array('I')  # Flattened array of which shape match to which particle (as per Flex softbody requirements)
-#         self.aShapeParticleCutoffs  = array.array('I')  # Cutoff in 'aShapeParticleIndices' between sets defining which particle goes to which shape. 
-# 
-#             ###NOW###Duplicate! #=== Create the 'collision mesh' as a 'shrunken version' of appearance mesh (about vert normals) === ###OBS???
-#             ###NOW###: FlexCollider / presentaiton mesh diff!  self.oMeshFlexCollider = CMesh.CreateFromDuplicate(self.oMeshSoftBody.GetMesh().name + G.C_NameSuffix_FlexCollider, self.oMeshSoftBody)
-#  
-#             bmSoftBody = self.oMeshVAGINABAKED_HACK.Open()
-#             nVertsBeforeDuplication = int(len(bmSoftBody.verts) / 2)
-#             bpy.ops.mesh.select_all(action='SELECT')
-#             bpy.ops.mesh.select_less()                  # Flex shapes are defined for all 
-# #             bpy.ops.mesh.select_all(action='SELECT')
-# #             bpy.ops.transform.shrink_fatten(value=G.CGlobals.cm_nFlexParticleSpacing / 2)     ###LEARN: Value is inverse of Blender GUI (positive values shrink in API, expand in GUI)
-# # 
-# #             Util_SelectVertGroupVerts(self.oMeshSoftBody.GetMesh(), "_FlexSkinSmoothArea_Vagina_Opening")     ###DEVB: Need much better collision mesh... do by hand??
-# #             bpy.ops.mesh.vertices_smooth(factor=0.5, repeat=20)      ###TUNE
-# #             
-# #             Util_SelectVertGroupVerts(self.oMeshSoftBody.GetMesh(), "_FlexSkinSmoothArea_Vagina_InnerVerts")  ###SOON######DESIGN! Hardcoded vagina!  Remove!!!
-# #             bpy.ops.mesh.vertices_smooth(factor=0.5, repeat=4)      ###TUNE        ###IMPROVE: Edge selection done by vert group.  Improve to use Blender function!
-# # 
-# #             #=== Cleate 'thickness' in the 2D mesh by duplicating all our verts and 'shrinking' them along their normal ===
-# #             nVertsBeforeDuplication = len(bmSoftBody.verts)
-# #             bpy.ops.mesh.select_all(action='SELECT')
-# #             bpy.ops.mesh.duplicate()
-# #             bpy.ops.transform.shrink_fatten(value=0.015)
-#  
-#             #=== Iterate over all inner verts (every vert except rim) and determine their neighboring verts so we can form Flex arrays for in-game Flex softbody simulation ===
-#             Util_SelectVertGroupVerts(self.oMeshVAGINABAKED_HACK.GetMesh(), "_FlexSkinSmoothArea_Vagina_InnerVerts")  ###SOON######DESIGN! Hardcoded vagina!  Remove!!!
-#             for oVert in bmSoftBody.verts:
-#                 if (oVert.select == True):        # Iterate over the non-rim verts of the original mesh (not the duplicated shrunken one)
-#                     #=== Mark this vert as an actual shape for Flex simulation (shapes are all verts except rim) ===
-#                     self.aShapeVerts.append(oVert.index)
-#                      
-#                     #=== Determine all the particles that will be included in this Flex softbody shape ===
-#                     aSetVertsAroundThisVert = set()             ###LEARN: How to operate on a set
-#                     for oFace in oVert.link_faces:                              # Iterate over every face connected to the vert currently being processed...
-#                         for oVertAround in oFace.verts:                         #... then iterate through all verts connected to this face to...
-#                             aSetVertsAroundThisVert.add(oVertAround.index)      #... add that vert to the 'set of all verts connected to oVert' (including oVert)
-#                             aSetVertsAroundThisVert.add(oVertAround.index + nVertsBeforeDuplication)      #... and add the duplicate vert of the '2nd thickness' 2D mesh so FlexSkin behaves like a solid (instead of like cloth)
-#  
-#                     #=== Push in the list of particles connected to this shape in the flattened array Flex requires ===
-#                     for nVert in aSetVertsAroundThisVert:
-#                         self.aShapeParticleIndices.append(nVert)
-#  
-#                     #=== Push in our split point in self.aShapeParticleIndices so Flex can unflatten the aShapeParticleIndices flat array and properly match what particle connects to which shape === 
-#                     self.aShapeParticleCutoffs.append(len(self.aShapeParticleIndices))
-#                      
-#  
-#             print("\n=== aShapeVerts:\n" + str(self.aShapeVerts))
-#             print("\n=== aShapeParticleIndices:\n" + str(self.aShapeParticleIndices))
-#             print("\n=== aShapeParticleCutoffs:\n" + str(self.aShapeParticleCutoffs))
-#  
-#             self.oMeshVAGINABAKED_HACK.Close()
-# 
-# 
-# 
-# 
-#         #=== Immediately perform post-processing of FlexSkin ===
-#         if (self.bIsFlexSkin == True):          # FlexSkin 3D structure known now, non-FlexSkin needs Unity+Flex processing (with Unity manually calling 'FindPinnedFlexParticles' when ready)
-#             self.FindPinnedFlexParticles(0)           # Because FlexSkin is complete in constructor we call the FindPinnedFlexParticles as these are already known by Blender at this point.
-

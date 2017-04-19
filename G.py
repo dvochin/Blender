@@ -109,7 +109,7 @@ C_NodeFolder_Temp           = "(TEMP)"              # Temporary node folder for 
 C_VertGrpPrefix_NonBone = "_"              ###NOTE: All non-bone vertex groups MUSt start with '_' so they can be removed before export to Client!
 C_VertGrp_Border = "_Border_"        # All vertex groups that contain collection of verts that define an individual border start with this prefix 
 C_VertGrp_Morph  = "_Morph_"         # All vertex groups that have identify vertices to be used for morphing areas (when used with proportional editing) start with this
-C_VertGrp_Detach = "_Detach_"        # All vertex groups that identify part of the skinned body that are to be 'detached' for softbody processing begin with this prefix.  (Ex: Breasts)
+C_VertGrp_CSoftBody = "_CSoftBody_"        # All vertex groups that identify part of the skinned body that are to be 'detached' for softbody processing begin with this prefix.  (Ex: Breasts)
 C_VertGrp_Cutout = "_Cutout_"        # All vertex groups that identify vertices that are removed to make way for other mesh parts (such as Vagina mesh area and Penis mesh area) have this prefix.
 C_VertGrp_Area   = "_Area_"          # All vertex groups that contain contiguous areas of the mesh (to be used mostly for mesh seperation) start with this.
 C_VertGrp_Area_BreastMorph = C_VertGrp_Area + "BreastMorph"     # The name of the vertex group that blends the breasts to give zero weight at border, near zero near border and so on...
@@ -121,13 +121,14 @@ C_PropArray_MapSharedNormals    = "aMapSharedNormals"       # Property array sto
 C_PropArray_ClothSkinToSim      = "aMapClothSkinToSim"      # Property array that maps what verts in the skinned-part of a cloth maps to what (identically positioned) vert of the simulated-part of the same cloth.
 
 #---------------------------------------------------------------------------    CUSTOM DATA LAYERS
-C_DataLayer_VertsSrc        = "DataLayer_VertsSrc"          # Original vertex indices in untouched original mesh.  Enables traversal to assembled / morph meshes
-C_DataLayer_VertsAssy       = "DataLayer_VertsAssy"         # Original vertex indices in assembled body.  Enables traversal of morphs to assembled body to reach detached softbody meshes (e.g. breasts)
-C_DataLayer_Particles      = "DataLayer_Particles"        # Data layer storing the mapping between tetra verts close to their rim and original tetra verts
-C_DataLayer_TwinID        = "DataLayer_RimVerts"          # Temporary data layer to store twin-vert ID as mesh is split into parts (Used to reconnect verts at the same location from different meshes)  ####CHECK: Names can't be too long to be unique???
-C_DataLayer_SharedNormals   = "DataLayer_SharedNormals"     # Temporary data layer used while preparing a mesh for Client to construct what just-separated verts should share the same normal (because of Client's need to have one vert per UV)
-C_DataLayer_SourceBreastVerts = 'DataLayer_SourceBreastVerts'       # Data layer to store the vertIDs of left and right breast verts from cutoff breast
-C_DataLayer_SlaveMeshVerts  = 'DataLayer_SlaveMeshVerts'       # Data layer to store the vertIDs of the verts closest to each verts of this mesh
+C_DataLayer_VertSrcBody         = "DataLayer_VertSrcBody"      # Data layer to store the source body verts (the untouched vert IDs as they existed in the source body mesh)  Used for traversal between the different vert domains such as soft skin
+C_DataLayer_VertsSrc            = "DataLayer_VertsSrc"          # Original vertex indices in untouched original mesh.  Enables traversal to assembled / morph meshes
+C_DataLayer_VertsAssy           = "DataLayer_VertsAssy"         # Original vertex indices in assembled body.  Enables traversal of morphs to assembled body to reach detached softbody meshes (e.g. breasts)
+C_DataLayer_Particles           = "DataLayer_Particles"         # Data layer storing the mapping between tetra verts close to their rim and original tetra verts
+C_DataLayer_TwinID              = "DataLayer_RimVerts"          # Temporary data layer to store twin-vert ID as mesh is split into parts (Used to reconnect verts at the same location from different meshes)  ####CHECK: Names can't be too long to be unique???
+C_DataLayer_SharedNormals       = "DataLayer_SharedNormals"     # Temporary data layer used while preparing a mesh for Client to construct what just-separated verts should share the same normal (because of Client's need to have one vert per UV)
+C_DataLayer_SourceBreastVerts   = 'DataLayer_SourceBreastVerts' # Data layer to store the vertIDs of left and right breast verts from cutoff breast
+C_DataLayer_SlaveMeshVerts      = 'DataLayer_SlaveMeshVerts'    # Data layer to store the vertIDs of the verts closest to each verts of this mesh
 
 #---------------------------------------------------------------------------    'MAGIC NUMBERS': Arbitrary constants that have special meanings in arrays
 C_MagicNo_TranBegin = 0x0B16  # Magic numbers stored as unsigned shorts at the head & tail of every serialization to help sanity checks...         (MUST MATCH Client SIDE!)
@@ -157,8 +158,9 @@ C_OffsetVertIDs = 1000000                       # Offset applied to all vert IDs
 #---------------------------------------------------------------------------    GLOBAL VARIABLES (MANUALLY SET BY UNITY AT STARTUP)
 #---------------------------------------------------------------------------    
 class CGlobals:
-    cm_nFlexParticleSpacing = 0.02                # The inter-particular distance Flex uses to keep its particles away from other particles.  Used to 'shrink' our collision meshes so that collisions appear to occur at the surface of the presentation meshes.
+    cm_nFlexParticleSpacing = 0.02                  # The inter-particular distance Flex uses to keep its particles away from other particles.  Used to 'shrink' our collision meshes so that collisions appear to occur at the surface of the presentation meshes.
     cm_aClothSources = {}
+    DEBUG = None                                    # Debug variable used for quick command-line access to DEBUG_xxx functions
     
     @classmethod
     def Initialize(cls, nFlexParticleSpacing):
@@ -177,7 +179,7 @@ g_oFileDump = None
 def Dump(sText):
     global g_oFileDump
     if g_oFileDump is None:
-        g_oFileDump = open("C:/Temp/EroticVR-BlenderScriptDumpFile.txt", "w")        ###DESIGN<18>!!!  MOVE!!! and work on auto-init!
+        g_oFileDump = open("C:/Temp/EroticVR-BlenderScriptDumpFile.txt", "w")        ###DESIGN18:!!!  MOVE!!! and work on auto-init!
         g_oFileDump.write("=== EroticVR Blender Script Dump File ===\n")
     g_oFileDump.writelines(sText + "\n")
     g_oFileDump.flush()

@@ -74,13 +74,15 @@ class CMesh:
         self.UpdateBMeshTables()
         return self.bmLastOpen
 
-    def Close(self):
+    def Close(self, bHide = False):                         ###TODO19: iterate through code to hide when we need
         if (bpy.ops.mesh.select_mode.poll()):
             bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')  # Try to set vert mode
         if (bpy.ops.mesh.select_all.poll()):
             bpy.ops.mesh.select_all(action='DESELECT')      # Try to deselect all verts
         self.ExitFromEditMode()
-        self.Hide()     ###IMPROVE: Update lookup table and verts
+        if bHide:
+            self.Hide()     ###IMPROVE: Update lookup table and verts
+        return None         # Return convenience 'None' so we can set our BMesh variable in one line
 
     def ExitFromEditMode(self):     # Cleanly exit 'EDIT' mode while updating bmesh.  Dont affect anything else!
         try:
@@ -136,6 +138,7 @@ class CMesh:
         #=== Separate all seam edges to create unique verts for each UV coordinate as Client requires ===
         SelectAndActivate(self.oMeshO.name)
         bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.reveal()                       # First un-hide all geometry
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.mesh.quads_convert_to_tris()  ###DESIGN: Keep here??  ###REVIVE: use_beauty=True 
@@ -150,7 +153,7 @@ class CMesh:
         #=== Iterate through all edges to select only the non-sharp seams (The sharp edges have been marked as sharp deliberately by border creation code).  We need to split these edges so Client-bound mesh can meet its (very inconvenient) one-normal-per-vertex requirement ===
         if (bSplitVertsAtUvSeams == True):
             try:
-                bpy.ops.uv.seams_from_islands()  # Update the edge flags so all seams are flagged        ###DESIGN<11>: try still needed??
+                bpy.ops.uv.seams_from_islands()  # Update the edge flags so all seams are flagged        ###DESIGN11: try still needed??
             except:
                 print("###ERROR: Exception running 'uv.seams_from_islands'. Continuing.  Error=", sys.exc_info()[0])
             else:
@@ -163,7 +166,7 @@ class CMesh:
     
     
         #=== Load/create a persistent custom data layer to store the 'SharedNormalID' of duplicated verts accross seams that must have their normal averaged out by Client ===
-        ###TODO<11>: Update docs & cleanup!!
+        ###TODO11: Update docs & cleanup!!
         ###NOTE: as this call can be called multiple times with the mesh getting its edges split each time that this data layer persists and gets added to at each wave of splits.
         ###NOTE: While this data layer is stored in the mesh to persists between call, the 'aMapSharedNormals' below is recreated from this persistent info each time this function is called so Client receives shared normals that had their edges split accross multiple calls
         ###NOTE: An common/important example is Blender taking the morphed body that was client-ready, and appends clothing & separates parts to have result be client-ready again.   
@@ -214,11 +217,11 @@ class CMesh:
     #---------------------------------------------------------------------------    
 
     def Unity_GetMesh(self):  # Called in the constructor of Unity's important CBMesh constructor to return the mesh (possibly skinned depending on mesh anme) + meta info the class needs to run.
-        ###IMPROVE<11>: Rapidly ported... finish integration into CMesh
+        ###IMPROVE11: Rapidly ported... finish integration into CMesh
         print("=== Unity_GetMesh() sending mesh '{}' ===".format(self.GetName()))
 
-        oMeshO = SelectAndActivate(self.GetName())           ###IMPROVE<11>: Move all this crap to CMesh and do only once!!
-        ###NOW<13>: Cleanup_VertGrp_RemoveNonBones(oMeshO, True)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
+        oMeshO = SelectAndActivate(self.GetName())           ###IMPROVE11: Move all this crap to CMesh and do only once!!
+        ###NOW13: VertGrp_RemoveNonBones(oMeshO, True)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
         self.ConvertMeshForUnity(True)  # Client requires a tri-based mesh and verts that only have one UV. (e.g. no polys accross different seams/materials sharing the same vert)
     
         oMesh = oMeshO.data
@@ -239,13 +242,14 @@ class CMesh:
             oMat = oMesh.materials[nMat]
             sImgFilepathEnc = "NoTexture"
             if oMat is not None:
-                if oMat.name.startswith("Material_"):  # Exception to normal texture-path behavior is for special materials such as 'Material_Invisible'.  Just pass in name of special material and Unity will try to fetch it.  It is assume that Blender and client both define this same material!
-                    sImgFilepathEnc = oMat.name  ###IMPROVE: Could pass in more <Unity defined Material>' names to pass special colors and materials??
-                else:  # For non-special material we pass in texture path.
-                    oTextureSlot = oMat.texture_slots[0]
-                    if oTextureSlot:
-                        sImgFilepathEnc = oTextureSlot.texture.image.filepath
-                        # aSplitImgFilepath = oTextureSlot.texture.image.filepath.rsplit(sep='\\', maxsplit=1)    # Returns a two element list with last being the 'filename.ext' of the image and the first being the path to get there.  We only send Client filename.ext
+                sImgFilepathEnc = oMat.name         ###TODO19: Redo whole material import procedure to require materials to be already present in Unity! (Far easier to get the right look by first depending on Unity's awesome FBX importer!!)
+#                 if oMat.name.startswith("Material_"):  # Exception to normal texture-path behavior is for special materials such as 'Material_Invisible'.  Just pass in name of special material and Unity will try to fetch it.  It is assume that Blender and client both define this same material!
+#                     sImgFilepathEnc = oMat.name  ###IMPROVE: Could pass in more <Unity defined Material>' names to pass special colors and materials??
+#                 else:  # For non-special material we pass in texture path.
+#                     oTextureSlot = oMat.texture_slots[0]
+#                     if oTextureSlot:
+#                         sImgFilepathEnc = oTextureSlot.texture.image.filepath
+#                         # aSplitImgFilepath = oTextureSlot.texture.image.filepath.rsplit(sep='\\', maxsplit=1)    # Returns a two element list with last being the 'filename.ext' of the image and the first being the path to get there.  We only send Client filename.ext
             oBA.AddString(sImgFilepathEnc)
     
     
@@ -259,7 +263,7 @@ class CMesh:
     
     
     def Unity_GetMesh_SkinnedInfo(self):          #=== Send skinning info to Unity's CBSkin objects  (vertex groups with names so Unity can map blender bones -> existing Client bones)
-        ###IMPROVE<11>: Rapidly ported... finish integration into CMesh
+        ###IMPROVE11: Rapidly ported... finish integration into CMesh
         print("=== Unity_GetMesh_SkinnedInfo() sending mesh '{}' ===".format(self.GetName()))
     
         #=== Unity can only process 4 bones per vert max.  Ensure cleanup ===
@@ -270,7 +274,7 @@ class CMesh:
     #     bpy.ops.object.vertex_group_clean(group_select_mode='ALL')    # Clean up empty vert groups new Blender insists on creating during skin transfer
     #     bpy.ops.mesh.select_all(action='DESELECT')
     #     bpy.ops.object.mode_set(mode='OBJECT')
-        Cleanup_VertGrp_RemoveNonBones(oMeshO, True)
+        VertGrp_RemoveNonBones(oMeshO, True)
         
         #=== Select mesh and obtain reference to needed mesh members ===
         oMesh = oMeshO.data

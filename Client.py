@@ -55,7 +55,7 @@ import CObject
 #     oMeshComboO = DuplicateAsSingleton(sNameSrcBody, sNameGameMorph, G.C_NodeFolder_Game, False)  ###TODO!!! Rename to MeshCombo??      ###DESIGN: Base skinned mesh on _Morph or virgin body??            
 # 
 #     #=== Cleanup the skinned mesh and ready it for Unity ===
-#     Cleanup_VertGrp_RemoveNonBones(oMeshComboO, True)  # Remove the extra vertex groups that are not skinning related
+#     VertGrp_RemoveNonBones(oMeshComboO, True)  # Remove the extra vertex groups that are not skinning related
 #     Client_ConvertMeshForUnity(oMeshComboO, True)  # With the skinned body + skinned clothing mesh free of non-bone vertex groups, we can safely limit the # of bones per vertex to the Client limit of 4 and normalize all bone weights ===
 # #     bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)  # Limit mesh to four bones each   ###CHECK: Possible our 'non-bone' vertgrp take info away???
 # #     bpy.ops.object.vertex_group_normalize_all(lock_active=False)
@@ -94,7 +94,7 @@ import CObject
 #         sNameVertGroupToCutout = "_Cutout_Penis"
 #     if sNameVertGroupToCutout is not None:
 #         bpy.ops.object.mode_set(mode='EDIT')
-#         Util_SelectVertGroupVerts(oMeshBodyO, sNameVertGroupToCutout)  # This vert group holds the verts that are to be soft-body simulated...
+#         VertGrp_SelectVerts(oMeshBodyO, sNameVertGroupToCutout)  # This vert group holds the verts that are to be soft-body simulated...
 #         bpy.ops.mesh.delete(type='FACE')  # ... and delete the mesh part we didn't want copied to output body
 #         bpy.ops.object.mode_set(mode='OBJECT')
 # 
@@ -109,7 +109,7 @@ import CObject
 #     oMeshBodyO.select = True
 #     bpy.context.scene.objects.active = oMeshBodyO
 #     bpy.ops.object.join()
-#     Util_SelectVertGroupVerts(oMeshBodyO, sNameVertGroupToCutout)  # Reselect the just-removed genitals area from the original body, as the faces have just been removed this will therefore only select the rim of vertices where the new genitals are inserted (so that we may remove_doubles to merge only it)
+#     VertGrp_SelectVerts(oMeshBodyO, sNameVertGroupToCutout)  # Reselect the just-removed genitals area from the original body, as the faces have just been removed this will therefore only select the rim of vertices where the new genitals are inserted (so that we may remove_doubles to merge only it)
 #     bpy.ops.mesh.remove_doubles(threshold=0.000001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###LEARN: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
 #     bpy.ops.mesh.select_all(action='DESELECT')
 #     bpy.ops.object.mode_set(mode='OBJECT')
@@ -300,9 +300,9 @@ import CObject
 #         #=== Create the vagina left and right vertex groups for the main loop below ===    
 #         bpy.ops.mesh.select_all(action='DESELECT')
 #         bpy.ops.object.mode_set(mode='OBJECT')  # Wished there were a way to create & assign to a vert group without leaving edit mode...
-#         oVertGroup_VaginaL = oMeshComboO.vertex_groups.new(name=G.C_VertGrp_Detach + "VaginaL")
+#         oVertGroup_VaginaL = oMeshComboO.vertex_groups.new(name=G.C_VertGrp_CSoftBody + "VaginaL")
 #         oVertGroup_VaginaL.add(index=aVertsVaginaL, weight=1.0, type='REPLACE')
-#         oVertGroup_VaginaR = oMeshComboO.vertex_groups.new(name=G.C_VertGrp_Detach + "VaginaR")
+#         oVertGroup_VaginaR = oMeshComboO.vertex_groups.new(name=G.C_VertGrp_CSoftBody + "VaginaR")
 #         oVertGroup_VaginaR.add(index=aVertsVaginaR, weight=1.0, type='REPLACE')
 #         
 #         #=== Remove the temp vertex group... (Keeping it would badly break the skinning info!!) ===
@@ -314,16 +314,16 @@ import CObject
 #     #===== MAIN SEPERATION PROCESSING FOR EACH 'SEPERABLE CHUNKS' =====  Breasts take ownership of clothing around them to be processed on their mesh as softbody.  Penis and vagina need processing here to to cap, twin and separate
 #     for sNameChunk in aNameChunks:
 #         print("--- Separating chunk " + sNameChunk)
-#         sNamePartChunk = sNameGameBody + G.C_VertGrp_Detach + sNameChunk
+#         sNamePartChunk = sNameGameBody + G.C_VertGrp_CSoftBody + sNameChunk
 #         DeleteObject(sNamePartChunk)
 #         SelectAndActivate(oMeshComboO.name)
 #         bpy.ops.object.mode_set(mode='EDIT')
 #         bmCombo = bmesh.from_edit_mesh(oMeshComboO.data)
 # 
 #         #=== Obtain the 'detach chunks' vertex group from the combo mesh that originally came from the source body.  This 'detach chunk' will be updated for chunks such as breasts to append to it the verts of neighboring clothing so they will also be softbody simulated  ===
-#         nVertGrpIndex_DetachChunk = oMeshComboO.vertex_groups.find(G.C_VertGrp_Detach + sNameChunk)  # vertex_group_transfer_weight() above added vertex groups for each bone.  Fetch the vertex group for this detach area so we can enhance its definition past the bone transfer (which is much too tight)     ###DESIGN: Make area-type agnostic
+#         nVertGrpIndex_DetachChunk = oMeshComboO.vertex_groups.find(G.C_VertGrp_CSoftBody + sNameChunk)  # vertex_group_transfer_weight() above added vertex groups for each bone.  Fetch the vertex group for this detach area so we can enhance its definition past the bone transfer (which is much too tight)     ###DESIGN: Make area-type agnostic
 #         if nVertGrpIndex_DetachChunk == -1:
-#             oMeshComboO.vertex_groups.new(name=G.C_VertGrp_Detach + sNameChunk)
+#             oMeshComboO.vertex_groups.new(name=G.C_VertGrp_CSoftBody + sNameChunk)
 #         oVertGroup_DetachChunk = oMeshComboO.vertex_groups[nVertGrpIndex_DetachChunk]
 #         oMeshComboO.vertex_groups.active_index = oVertGroup_DetachChunk.index
 #     
@@ -481,13 +481,13 @@ import CObject
 #             aMapTwinId2VertRim[nTwinID] = (oVert.index, oVertAdjacent.index)  # Store both the twin vert and an adjacent vert for this twin
 #             # print("TwinVert {:3d} = RimVert {:5d}-{:5d} at {:}".format(nTwinID, oVert.index, oVertAdjacent.index, oVert.co))
 #     bpy.ops.object.mode_set(mode='OBJECT')
-#     Cleanup_VertGrp_RemoveNonBones(oMeshSkinColSrcO, True)  # Remove the extra vertex groups that are not skinning related
+#     VertGrp_RemoveNonBones(oMeshSkinColSrcO, True)  # Remove the extra vertex groups that are not skinning related
 #     
 #     #===== Now that rim is fully formed and the aMapTwinId2VertRim fully populated for to find real rim verts for any TwinID we can finally construct the aMapTwinVerts flat array for each detached part.  (each detached part (no matter if its softbody or cloth simulated) will thereby be able to fix its edge verts to the rim correctly during gameplay) (With both the main skinned mesh and the chunk part with the same set of 'twin ID' in their mesh vertices, we can finally match vertex ID of part to vertex ID of skinned main mesh)
 #     ###NOTE: This flattened is sent with 1) vertex ID on the separated chunk part, 2) Vertex ID of the 'twin vert' at the same location on the main skinned mesh and 3) an adjacent vert on the skinned mesh to #2 for normal Z-orientation
 #     aNameChunksCreated = []  ####OBS? # Append to this list the full names of the chunk meshes this call has created.  Client then fetch each of these in turns via Unity_GetMesh()
 #     for sNameChunk in aNameChunks:
-#         sNamePartChunk = sNameGameBody + G.C_VertGrp_Detach + sNameChunk
+#         sNamePartChunk = sNameGameBody + G.C_VertGrp_CSoftBody + sNameChunk
 #         if sNamePartChunk not in bpy.data.objects:  # Skip processing of this chunk if it wasn't created above.
 #             continue
 #         aNameChunksCreated.append(sNamePartChunk)  # Append name to list so client knows this chunk is available for gametime processing
@@ -511,7 +511,7 @@ import CObject
 #         oMeshPartChunkO[G.C_PropArray_MapTwinVerts] = aMapTwinVerts.tobytes()  # Store the output map as an object property for later access when Client requests this part.  (We store as byte array to save memory as its only for future serialization to Client and Blender has no use for this info)
 # 
 #     #===== Cleanup the main skinned mesh =====
-#     Cleanup_VertGrp_RemoveNonBones(oMeshComboO, True)  # Remove the extra vertex groups that are not skinning related
+#     VertGrp_RemoveNonBones(oMeshComboO, True)  # Remove the extra vertex groups that are not skinning related
 #     Client_ConvertMeshForUnity(oMeshComboO, True)  # With the skinned body + skinned clothing mesh free of non-bone vertex groups, we can safely limit the # of bones per vertex to the Client limit of 4 and normalize all bone weights ===
 # #     bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)  # Limit mesh to four bones each   ###CHECK: Possible our 'non-bone' vertgrp take info away???
 # #     bpy.ops.object.vertex_group_normalize_all(lock_active=False)

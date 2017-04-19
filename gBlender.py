@@ -1,4 +1,4 @@
-###NEW<16>
+###NEW16:
 # Could use layers.shape to obtain shape key pos?  See https://www.blender.org/api/blender_python_api_2_63_2/bmesh.html4
 	# Can also use from_mesh(mesh, use_shape_key=False, shape_key_index=0) ??
 
@@ -95,7 +95,7 @@ g_aSharedMeshes = {}			###OBS? Important map of string-to-bmesh object to hold t
 #---------------------------------------------------------------------------	TOP LEVEL
 #---------------------------------------------------------------------------	
 
-def gBL_Initialize():		###OBS<17> !!
+def gBL_Initialize():		###OBS17: !!
 	print("\n********** gBL_Initialize **********")
 	###DESIGN: Debug flag of any use??? bpy.types.Scene.IsDebuggable = bpy.props.BoolProperty(name="IsDebuggable", default=False)
 
@@ -307,7 +307,7 @@ def Util_CalcSurfDistanceBetweenTwoVerts(bm, oVert1, oVert2):		 # Returns the su
 	oVert1.select_set(True)
 	oVert2.select_set(True)
 	bpy.ops.mesh.shortest_path_select()
-	aEdgesOnPath = [oEdge for oEdge in bm.edges if oEdge.select]
+	aEdgesOnPath = [oEdge for oEdge in bm.edges if oEdge.select]		###OPT!!: Slow!
 	nDistPath = 0
 	for oEdge in aEdgesOnPath:		  # Iterate through the edges of the shortest path to add the lenght of each edge
 		nDistEdge = oEdge.calc_length()
@@ -336,24 +336,6 @@ def Util_TransferWeights(oMeshO, oMeshSrcO):		# Transfer the skinning informatio
 	bpy.ops.object.vertex_group_clean(group_select_mode='ALL')	# Clean up empty vert groups new Blender insists on creating during skin transfer  ###LEARN: Needs weight mode to work!
 	bpy.ops.object.mode_set(mode='OBJECT')
 			
-def Util_SelectVertGroupVerts(oMeshO, sNameVertGrp):			# Select all the verts of the specified vertex group 
-	#=== Obtain access to mesh in edit mode, deselect and go into vert mode ===
-	###SelectAndActivate(oMeshO.name)			 ###IMPROVE? Select fist??  ###IMPROVE: Move into CMesh!
-	bpy.ops.object.mode_set(mode='EDIT')
-	bpy.ops.mesh.select_all(action='DESELECT') 
-	bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')		 # We go to face mode and expand the verts selected.  This will select all faces that have at least one vert selected...
-
-	#=== Find the requested vertex group and select its vertices ===
-	nVertGrpIndex = oMeshO.vertex_groups.find(sNameVertGrp)
-	if (nVertGrpIndex != -1):
-		oMeshO.vertex_groups.active_index = nVertGrpIndex
-		bpy.ops.object.vertex_group_select()
-		oVertGrp = oMeshO.vertex_groups[nVertGrpIndex]
-		return oVertGrp 
-	else:  
-		print("WARNING: Util_SelectVertGroupVerts() could not find vert group '{}' in mesh '{}'".format(sNameVertGrp, oMeshO.name))
-		return None
-
 def Util_GetMapDistToEdges():			# Returns a map of distances of all manifold verts to non-manifold (edge) verts.  used by Breast and Penis mesh preparation to form a 'scaling ratio array' to dampen scaling of verts around the edges of the mesh
 	#=== Enter bmesh edit mode and obtain array of edge verts ===
 	bm = bmesh.from_edit_mesh(bpy.context.object.data)				# We assume mesh is already selected, activated and in edit mode
@@ -427,23 +409,31 @@ def Util_PrintMeshVerts(sDebugMsg, sNameMesh, sNameLayer=None):
 #---------------------------------------------------------------------------	CLEANUP
 #---------------------------------------------------------------------------	
 
-def Cleanup_RemoveDoubles(nRepeats, nDoubleThreshold, nEdgesThreshold):	 ###OBS? Our most important (and simplest) cleaning technique... used throughout to prevent boolean from failing!
-	print("- Cleanup_RemoveDoubles with {} threshold, {}  edge hunt and {} repeats.".format(nDoubleThreshold, nEdgesThreshold, nRepeats))
+def Cleanup_RemoveDoublesAndConvertToTris(nDoubleThreshold, bSelectEverything = True, bOpen = True, bClose = True):			# Removes double verts on a whole mesh.
+	if bOpen:
+		bpy.ops.object.mode_set(mode='EDIT')
+	if bSelectEverything:
+		bpy.ops.mesh.select_all(action='SELECT')
+	bpy.ops.mesh.quads_convert_to_tris()									###DESIGN: Keep in here??
+	bpy.ops.mesh.remove_doubles(threshold=nDoubleThreshold, use_unselected=True)		###LEARN: 'use_unselected' not doing anything!!
+	if bSelectEverything:
+		bpy.ops.mesh.select_all(action='DESELECT')
+	if bClose:
+		bpy.ops.object.mode_set(mode='OBJECT')
+
+def Cleanup_RemoveDoublesAndConvertToTrisAndNonManifold(nRepeats, nDoubleThreshold, nEdgesThreshold):	 ###OBS? Our most important (and simplest) cleaning technique... used throughout to prevent boolean from failing!
+	print("- Cleanup_RemoveDoublesAndConvertToTris with {} threshold, {}  edge hunt and {} repeats.".format(nDoubleThreshold, nEdgesThreshold, nRepeats))
 	for nRepeat in range(nRepeats):	 # Do this cleanup a few times as each time the non-manifold edges clear up without us needing to go near inside verts...
 		bpy.ops.mesh.select_non_manifold(extend=False)	# Select the edges of the cloth...
 		bpy.ops.mesh.edges_select_(ness=radians(nEdgesThreshold))  ###TUNE: Quite aggressive angle!
 		bpy.ops.mesh.remove_doubles(threshold=nDoubleThreshold, use_unselected=False)  ###TUNE: Aggressive remove double!	 # Remove some of the worst small details caused by cuts.  Bigger than 0.0025 and we start damaging open edges!
-				   
+
 def Cleanup_RemoveDegenerateFaces(oObj, nCuttoffAngle):	 ###OBS? Removes faces with tiny angles in them -> likely degenerate faces that can throw off boolean
 	SelectAndActivate(oObj.name)
 	nDeletedFaces = 0
-	bpy.ops.object.mode_set(mode='EDIT')
-	bpy.ops.mesh.select_all(action='SELECT')
-	bpy.ops.mesh.quads_convert_to_tris()		###REVIVE: use_beauty=true 
-	bpy.ops.mesh.remove_doubles(threshold=0.003, use_unselected=False)	###TUNE: Remove the worst of the super-close geometry to help remove degenerate stuff from boolean cuts
-	bpy.ops.mesh.select_all(action='DESELECT') 
-	bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='FACE')
-	bpy.ops.object.mode_set(mode='OBJECT')
+	Cleanup_RemoveDoublesAndConvertToTris(0.003)				###TUNE: Remove the worst of the super-close geometry to help remove degenerate stuff from boolean cuts
+
+	###NOTE: Used to have this in remove doubles! bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='FACE')
 	
 	aVerts = oObj.data.vertices
 	for oPoly in oObj.data.polygons:
@@ -499,7 +489,7 @@ def Cleanup_DecimateEdges(oObj, nness, nRatioOfFacesToKeep):  ###OBS? ###IMPROVE
 	bpy.ops.mesh.select_all(action='DESELECT') 
 	bpy.ops.object.mode_set(mode='OBJECT')
 
-def Cleanup_VertGrp_RemoveNonBones(oMeshO, bCleanUpBones):	 # Remove non-bone vertex groups so skinning normalize & fix below will not be corrupted by non-bone vertex groups  ###IMPROVE: Always clean (remove arg?)
+def VertGrp_RemoveNonBones(oMeshO, bCleanUpBones):	 # Remove non-bone vertex groups so skinning normalize & fix below will not be corrupted by non-bone vertex groups  ###IMPROVE: Always clean (remove arg?)
 	if (len(oMeshO.vertex_groups) == 0):
 		return
 	aVertGrpToRemove = []
@@ -542,14 +532,47 @@ def Cleanup_RemoveMaterial(oMeshO, sNameMaterialPrefix):		# Remove from oMeshO a
 			bpy.ops.object.material_slot_remove()
 
 
-def Cleanup_VertGrp_Remove(oMeshO, sNameVertGrp):			# Removes vertex group 'sNameVertGrp' from specified mesh.  Assumes mesh is selected and opened in edit mode
+
+
+#---------------------------------------------------------------------------	VertGrp Functions: Helper functions centered on Vertex Groups
+
+def VertGrp_FindByName(oMeshO, sNameVertGrp): 
+	nVertGrpIndex = oMeshO.vertex_groups.find(sNameVertGrp)			###LEARN: Can also find directly by oMeshO.vertex_groups[sNameVertGrp] !!! 
+	if (nVertGrpIndex != -1):
+		oVertGrp = oMeshO.vertex_groups[nVertGrpIndex]
+		return oVertGrp 
+	else:
+		raise Exception("\n###EXCEPTION: VertGrp_FindByName() could not find vert group '{}' in mesh '{}'".format(sNameVertGrp, oMeshO.name))
+
+def VertGrp_SelectVerts(oMeshO, sNameVertGrp, bUnselect=False):			# Select all the verts of the specified vertex group 
+	#=== Obtain access to mesh in edit mode, deselect and go into vert mode ===
+	###SelectAndActivate(oMeshO.name)			 ###IMPROVE? Select fist??  ###IMPROVE: Move into CMesh!
+	bpy.ops.object.mode_set(mode='EDIT')
+	if bUnselect == False:
+		bpy.ops.mesh.select_all(action='DESELECT') 
+	bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')		 # We go to face mode and expand the verts selected.  This will select all faces that have at least one vert selected...
+
+	#=== Find the requested vertex group and select its vertices ===
+	nVertGrpIndex = oMeshO.vertex_groups.find(sNameVertGrp)
+	if (nVertGrpIndex != -1):
+		oMeshO.vertex_groups.active_index = nVertGrpIndex
+		if bUnselect:
+			bpy.ops.object.vertex_group_deselect()
+		else:
+			bpy.ops.object.vertex_group_select()
+		oVertGrp = oMeshO.vertex_groups[nVertGrpIndex]
+		return oVertGrp 
+	else:
+		raise Exception("\n###EXCEPTION: VertGrp_SelectVerts() could not find vert group '{}' in mesh '{}'".format(sNameVertGrp, oMeshO.name))
+
+def VertGrp_Remove(oMeshO, sNameVertGrp):			# Removes vertex group 'sNameVertGrp' from specified mesh.  Assumes mesh is selected and opened in edit mode
 	nVertGrpIndex = oMeshO.vertex_groups.find(sNameVertGrp)
 	if (nVertGrpIndex == -1):
-		return "ERROR: Cleanup_VertGrp_Remove() could not find vertex group '" + sNameVertGrp + "'"
+		return "ERROR: VertGrp_Remove() could not find vertex group '" + sNameVertGrp + "'"
 	oMeshO.vertex_groups.active_index = nVertGrpIndex
 	bpy.ops.object.vertex_group_remove()
 
-	
+
 
 #---------------------------------------------------------------------------	
 #---------------------------------------------------------------------------	STREAM / SERIALIZATION

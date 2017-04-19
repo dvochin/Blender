@@ -62,6 +62,11 @@
 
 #=== LEARNED ===
 
+#=== TEST CODE ===
+# oMeshOriginalO = bpy.data.objects["WomanA-Original"]
+# oArm = oMeshOriginalO.modifiers["Armature"].object.data
+# oArmBones = oArm.edit_bones
+
 #=== WISHLIST ===
 
 #=== MOVE ===
@@ -88,7 +93,7 @@
 #                         print("###ERROR: FBXImport.link_hierarchy() Could not find " + str(self))
 #                         continue
     
-
+###INSTRUCTIONS: DAZ export options must set 'Embed Texture', 'Merge Diffuse and Opacity Textures', 'Merge Clothing into Figure Skeleton', 'Allow Degraded Skinning' and 'Allow Degraded Scaling'.  Everything must be 'baked'.  Choose FBX 2014 - Binary as format
 
 
 import bpy
@@ -105,6 +110,18 @@ from gBlender import *
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    FIRST-TIME IMPORT
 #---------------------------------------------------------------------------    
+def Util_AddBone(oArmBones, sNameBoneNew, sNameBoneParent, vecLocation = None):
+    oBoneNew = oArmBones.new(sNameBoneNew)
+    oBoneNew.parent = oArmBones[sNameBoneParent]
+    if vecLocation is None:
+        oBoneNew.use_connect = True
+        oBoneNew.head = oBoneNew.parent.tail
+    else:
+        oBoneNew.use_connect = False
+        oBoneNew.head = vecLocation
+    oBoneNew.tail = oBoneNew.head + Vector((0,0,0.001))       # We *must* have head <> tail or bone will get deleted without warning by Blender!!
+    return oBoneNew
+    
 
 def FirstImport_ProcessRawDazImport(sNameDazImportMesh, sNameMeshPrefix):
     #===== DAZ MESH PROCEDURE AFTER RAW DAZ IMPORT =====
@@ -122,7 +139,8 @@ def FirstImport_ProcessRawDazImport(sNameDazImportMesh, sNameMeshPrefix):
     oArm = oMeshOriginalO.modifiers["Armature"].object.data
     oArm.name = sNameMeshPrefix + "-Armature"
     oArm.name = sNameMeshPrefix + "-Armature"
-    
+    oArm.draw_type = "WIRE"
+
     #=== Rotate the armature bones to nullify node rotation above and rescale to return bones to meter units (and nullify re-scaling above) ===
     SelectAndActivate(oRootNodeO.name, True)           
     bpy.ops.object.mode_set(mode='EDIT')                                        ###LEARN: Modifying armature bones is done by simply editing root node containing armature.
@@ -147,17 +165,17 @@ def FirstImport_ProcessRawDazImport(sNameDazImportMesh, sNameMeshPrefix):
     oArmBones['rSmallToe3'].parent      = oArmBones['rToe']
     oArmBones['lSmallToe4'].parent      = oArmBones['lToe']
     oArmBones['rSmallToe4'].parent      = oArmBones['rToe']
-    bpy.ops.object.mode_set(mode='OBJECT')
-    #oArmBones.remove(oArmBones['Genesis3FemaleGenitalia'])        # Remove extra bones we don't need
-
+    
     #=== Verify bone symmetry ===
+    bpy.ops.object.mode_set(mode='OBJECT')
     FirstImport_VerifyBoneSymmetry(oMeshOriginalO)
     nAdjustments = FirstImport_VerifyBoneSymmetry(oMeshOriginalO)        # Run twice to check if second run had to do anything = bug in the first run!
     if (nAdjustments != 0):
         raise Exception("###EXCEPTION: Could not symmetrize bones!  {} are left!".format(nAdjustments))
 
-    #===== Set bone tail to a reasonable value =====
-    SelectAndActivate(oRootNodeO.name, True)
+
+    #===== SET BONE TAILS TO A REASONABLE VALUE =====
+    #SelectAndActivate(oRootNodeO.name, True)
     bpy.ops.object.mode_set(mode='EDIT')                                        ###LEARN: Modifying armature bones is done by simply editing root node containing armature.
     #=== Iterate a first time to set all bone tails half the vector between parent-to-bone ===
     for oBone in oArmBones:
@@ -205,6 +223,13 @@ def FirstImport_ProcessRawDazImport(sNameDazImportMesh, sNameMeshPrefix):
     ManuallyAdjustRoll2(oArmBones, "Foot", 25)
     ManuallyAdjustRoll2(oArmBones, "Metatarsals", 17)
     ManuallyAdjustRoll2(oArmBones, "Toe", 17)                   ###IMPROVE: Orient toward up instead of these hardcoded angles!!
+
+    #=== Manually add additional bones we need ===
+    bpy.ops.object.mode_set(mode='EDIT') 
+    oBoneVagina = Util_AddBone(oArmBones, "Vagina", "Genitals")
+    Util_AddBone(oArmBones, "VaginaPin0", oBoneVagina.name, Vector((0.00, -0.08,  0.96)))           ###WEAK: Hardcoded vectors... derive from geometry would be better but lenghty to code for not much benefits!
+    Util_AddBone(oArmBones, "VaginaPin1", oBoneVagina.name, Vector((0.00,  0.10,  1.05)))           # Add 'triangulation bones' so every vagina Flex softbody particle doesn't stray too far from where it started in relation to the body.
+    Util_AddBone(oArmBones, "VaginaPin2", oBoneVagina.name, Vector((0.15,  0.00,  0.96)))           # First bone is right above vagina, second right above butt crack. third one at center of left butt check
 
     #=== Exit edit mode and hide rig ===
     bpy.ops.object.mode_set(mode='OBJECT')
@@ -304,16 +329,26 @@ def Import_FirstCleanupOfDazImport(sNameDazImportMesh, sNameMeshNew):
         if oChildNodesO.name != sNameMeshNew:
             DeleteObject(oChildNodesO.name)
 
-    #=== Remove (empty) vertex groups we don't need ===            ###IMPROVE: Genitals too?  ###IMPROVE: Delete all those with zero verts in them?  (slow?)
+    #=== Remove (empty) vertex groups we don't need ===            ###IMPROVE: Delete all those with zero verts in them?  (slow?)
     SelectAndActivate(oMeshImportedO.name, True)
-    Cleanup_VertGrp_Remove(oMeshImportedO, "Genesis3Female")
-    Cleanup_VertGrp_Remove(oMeshImportedO, "hip")
-    Cleanup_VertGrp_Remove(oMeshImportedO, "lowerFaceRig")
-    Cleanup_VertGrp_Remove(oMeshImportedO, "upperFaceRig")
-    Cleanup_VertGrp_Remove(oMeshImportedO, "lToe")
-    Cleanup_VertGrp_Remove(oMeshImportedO, "rToe")
+    VertGrp_Remove(oMeshImportedO, "Genesis3Female")
+    VertGrp_Remove(oMeshImportedO, "hip")
+    VertGrp_Remove(oMeshImportedO, "lowerFaceRig")
+    VertGrp_Remove(oMeshImportedO, "upperFaceRig")
+    VertGrp_Remove(oMeshImportedO, "lToe")
+    VertGrp_Remove(oMeshImportedO, "rToe")
+
+#     #=== Remove the un-needed bones (raw import has duplicate bones for genitalia mesh) ===  ###OBS: not needed if we export from DAZ with FBX option 'Merge Clothing into Figure Skeleton'
+#     SelectAndActivate(oRootNodeO.name, True)           
+#     bpy.ops.object.mode_set(mode='EDIT')                                        ###LEARN: Modifying armature bones is done by simply editing root node containing armature.
+#     oArm = oMeshImportedO.modifiers["Armature"].object.data
+#     oArmBones = oArm.edit_bones
+#     for oBone in oArmBones:
+#         if oBone.name.find(".00") != -1:                # Duplicate bones have names like 'pelvis.001'.  Anything with a .00 in its name can be safely deleted
+#             oArmBones.remove(oBone)
 
     #=== Clean up bone weights and vertex groups ===
+    SelectAndActivate(oMeshImportedO.name)
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='SELECT')
     bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)                    ###CHECK!!! Does this lose any information? (for example limb rotation??)
@@ -324,9 +359,9 @@ def Import_FirstCleanupOfDazImport(sNameDazImportMesh, sNameMeshNew):
     bpy.ops.object.mode_set(mode='OBJECT')
 
     #=== Set the materials to better defaults ===
-    for oMat in oMeshImportedO.data.materials:
-        oMat.diffuse_intensity = 1
-        oMat.specular_intensity = 0
+#     for oMat in oMeshImportedO.data.materials:
+#         oMat.diffuse_intensity = 1
+#         oMat.specular_intensity = 0
 
     #=== Clear the pose (FBX import screws that up royally!) ===
     SelectAndActivate(oRootNodeO.name, True)     # Select parent node (owns the bone rig)
@@ -389,7 +424,7 @@ def ImportShape_AddImportedBodyToGameBody(sNameDazImportMesh, sNameMeshPrefix):
     sNameMeshOriginal = sNameMeshPrefix + "-Original"
     oMeshOriginal = SelectAndActivate(sNameMeshOriginal, True)
     aVertsBreasts = []
-    Util_SelectVertGroupVerts(oMeshOriginal, "_ImportGeometryAdjustment-Breasts")
+    VertGrp_SelectVerts(oMeshOriginal, "_ImportGeometryAdjustment-Breasts")
     bpy.ops.object.mode_set(mode='OBJECT')          ###LEARN: Non-bmesh access must read selections this way  ###IMPROVE: Switch to bmesh?
     for oVert in oMeshOriginal.data.vertices:
         if (oVert.select):

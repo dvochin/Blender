@@ -21,7 +21,7 @@
 #     
 #     #=== Obtain source mesh and cleanup ===
 #     oMeshBodyColClothO = SelectAndActivate(sNameCharacter + G.C_NameSuffix_BodyColCloth)
-#     Cleanup_VertGrp_RemoveNonBones(oMeshBodyColClothO, True)     # Also remove the non-bone extra vert groups so only vert groups meant for skinning remain (to avoid errors during serialization to client)
+#     VertGrp_RemoveNonBones(oMeshBodyColClothO, True)     # Also remove the non-bone extra vert groups so only vert groups meant for skinning remain (to avoid errors during serialization to client)
 #     bpy.ops.object.mode_set(mode='EDIT')
 #     bm = bmesh.from_edit_mesh(oMeshBodyColClothO.data)
 # 
@@ -90,11 +90,11 @@
 #     ###CHECK? del(oMeshBodyColO[G.C_PropArray_MapSharedNormals])      # Source body mesh has shared mesh normals which would make serialization choke on BodyCol as that array is only good for source mesh body.
 # 
 #     #=== Remove the body mesh's unneeded head, hands and feet from the body to speed up this function ===
-#     Util_SelectVertGroupVerts(oMeshBodyColO, G.C_Area_HeadHandFeet)        # Removes about 68% of the mesh so colliders are allocated where most needed.  (Also greatly speed up function!!)
+#     VertGrp_SelectVerts(oMeshBodyColO, G.C_Area_HeadHandFeet)        # Removes about 68% of the mesh so colliders are allocated where most needed.  (Also greatly speed up function!!)
 #     bpy.ops.mesh.delete(type='VERT')
-#     Util_SelectVertGroupVerts(oMeshBodyColO, G.C_VertGrp_Detach + "Breasts")       # If breasts are on this mesh delete them... they are softbody simulated and require special in-PhysX colliders
+#     VertGrp_SelectVerts(oMeshBodyColO, G.C_VertGrp_CSoftBody + "Breasts")       # If breasts are on this mesh delete them... they are softbody simulated and require special in-PhysX colliders
 #     bpy.ops.mesh.delete(type='VERT')
-#     Util_SelectVertGroupVerts(oMeshBodyColO, G.C_VertGrp_Detach + "Penis")         # If penis is on this mesh delete it... it gets its own sophisticated collider chain
+#     VertGrp_SelectVerts(oMeshBodyColO, G.C_VertGrp_CSoftBody + "Penis")         # If penis is on this mesh delete it... it gets its own sophisticated collider chain
 #     bpy.ops.mesh.delete(type='VERT')
 #     
 #     #=== Select all body verts so that we can tell them apart from all the cloth verts after the upcoming join ===    
@@ -247,7 +247,7 @@
 #     bpy.ops.object.mode_set(mode='OBJECT')
 #     oMeshBodyOrigO.hide = False            ###LEARN: Mesh MUST be visible for weights to transfer!
 #     Util_TransferWeights(oMeshBodyColO, oMeshBodyOrigO)
-#     Cleanup_VertGrp_RemoveNonBones(oMeshBodyColO, True)     # Also remove the non-bone extra vert groups so only vert groups meant for skinning remain (to avoid errors during serialization to client)
+#     VertGrp_RemoveNonBones(oMeshBodyColO, True)     # Also remove the non-bone extra vert groups so only vert groups meant for skinning remain (to avoid errors during serialization to client)
 #     
 #     #=== Print stats to see how close we got to the number of desired edges ===
 #     print("\n--- CBBodyCol_GetMesh() creates mesh with %d capsule colliders, %d verts, %d edges and %d faces ---" % (nNumCapsuleColliders, len(oMeshBodyColO.data.vertices), len(oMeshBodyColO.data.edges), len(oMeshBodyColO.data.polygons)))

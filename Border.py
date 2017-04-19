@@ -37,7 +37,7 @@ def Border_Create(oMeshO, oCurveO, nBorderWidth, nBorderHeight, nBorderRound, nT
             sCutName += C_SymmetrySuffixNames[nSymmetryRun]
         print("\n=== Border_Create() Generating cloth border '{}' for mesh '{}' ===".format(sCutName, oMeshO.name))
     
-        oVertGroup_Border = Util_SelectVertGroupVerts(oMeshO, G.C_VertGrp_Border + sCutName)
+        oVertGroup_Border = VertGrp_SelectVerts(oMeshO, G.C_VertGrp_Border + sCutName)
         Border_Smooth()                                     # This mesh comes straight from cloth simulation.  Perform heavy smoothing of the border so that extrusions are not all over the place...
     
         #=== Extrude the border's edge without moving it and remove these new verts from the border vertex group ===    

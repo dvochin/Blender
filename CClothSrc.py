@@ -29,11 +29,11 @@ class CClothSrc:        # CClothSrc: A 'cloth source' is a full-body cloth mesh 
 
         #--- Unity-public properties ===
 #         self.oObj = CObject.CObject("Cloth Global Parameters")
-#         self.oPropNeckStrapThickness     = self.oObj.PropAdd("NeckStrapThickness",    "", 0.01, 0.001, 0.1) ###TODO<17>
+#         self.oPropNeckStrapThickness     = self.oObj.PropAdd("NeckStrapThickness",    "", 0.01, 0.001, 0.1) ###TODO17:
 
 
         #===== CONVERSION TO FLATTENED UV MESH PRIOR TO BOOLEAN CUTS =====
-        self.oMeshO_3DS = bpy.data.objects[self.sNameClothSrc]       # The untouched source 3D cloth mesh ###TODO<17>?          ###IMPROVE<18>: Go all the way toward CMesh?
+        self.oMeshO_3DS = bpy.data.objects[self.sNameClothSrc]       # The untouched source 3D cloth mesh ###TODO17:?          ###IMPROVE18: Go all the way toward CMesh?
     
         #=== Open bmesh of reference mesh ===
         bm3DS = bmesh.new()                                 ###LEARN: Can't access UV data if we open in edit mode! (Have to open bmesh using from_mesh())
@@ -84,7 +84,7 @@ class CClothSrc:        # CClothSrc: A 'cloth source' is a full-body cloth mesh 
                         oVertNewF = bmUVF.verts.new(vecUV3D)
                         oVertNewF[oLayVertUVF] = oLoop.vert.index + G.C_OffsetVertIDs      # Store back-reference to the reference vert so we can reconstruct the 3D mesh from the flat UV one. (add offset so default 0 means new vert)
                     else:
-                        vecUV3D = Vector((vecUV.x - 1, vecUV.y, 0))     ###NOTE: Note the -1 on x so back cloth is coincident with front in UV domain ###DESIGN<17>: Keep??
+                        vecUV3D = Vector((vecUV.x - 1, vecUV.y, 0))     ###NOTE: Note the -1 on x so back cloth is coincident with front in UV domain ###DESIGN17: Keep??
                         aMapUV2VertNewB[vecUV] = len(bmUVB.verts)    # We're adding a new vert at this unique UV coordinate, so the vert ID is the number of verts already inseted in the mesh (by this loop)
                         oVertNewB = bmUVB.verts.new(vecUV3D)
                         oVertNewB[oLayVertUVB] = oLoop.vert.index + G.C_OffsetVertIDs      # Store back-reference to the reference vert so we can reconstruct the 3D mesh from the flat UV one. (add offset so default 0 means new vert)                     
@@ -136,7 +136,7 @@ class CClothSrc:        # CClothSrc: A 'cloth source' is a full-body cloth mesh 
         
 
 class CBodySuitSeamCurve:       # CBodySuitSeamCurve: a seam chain in source bodysuit cloth.  Contains CBodySuitSeamCurvePt seam points along our chain.  Used to position UV-domain boolean cutting points for UV-based cloth cutting
-    def __init__(self, sNameCurve, sSide, oTreeKD, oMeshO, bmCloth3DS, vecLocSearch):       ###TODO<17>: CBodySuit?  Too many args!
+    def __init__(self, sNameCurve, sSide, oTreeKD, oMeshO, bmCloth3DS, vecLocSearch):       ###TODO17: CBodySuit?  Too many args!
         self.sNameCurve = sNameCurve
         self.sSide = sSide
         self.nVertChainStart = 0            # The vert in bodysuit where this seam curve starts.  (Vert is both a boundary vert and on seam)
@@ -157,7 +157,7 @@ class CBodySuitSeamCurve:       # CBodySuitSeamCurve: a seam chain in source bod
         self.aChainPts.append(oPt)
 
         #=== Reset all the edge tags for next loop ===
-        for oEdge in bmCloth3DS.edges:          ###WEAK<17> Why the heck is this required?
+        for oEdge in bmCloth3DS.edges:          ###WEAK17: Why the heck is this required?
             oEdge.tag = False
 
         #=== Iterate through the seams chain beginning at vert self.nVertChainStart until we reach the end ===
@@ -165,7 +165,7 @@ class CBodySuitSeamCurve:       # CBodySuitSeamCurve: a seam chain in source bod
             oVertNext = None
             for oEdge in oVertNow.link_edges:
                 if oEdge.seam and (oEdge.tag == False):
-                    oEdge.tag = True                        # Tag traversed edges as we go so we never go backward    ###BUG<17>? Screws up future iterations?  reset tags?
+                    oEdge.tag = True                        # Tag traversed edges as we go so we never go backward    ###BUG17:? Screws up future iterations?  reset tags?
                     oVertNext = oEdge.other_vert(oVertNow)
                     nVertChainOrdinal += 1
                     oPt = CBodySuitSeamCurvePt(nVertChainOrdinal, oVertNext, oPt, oMeshO, bmCloth3DS, aLayer3DSUV)
@@ -179,7 +179,7 @@ class CBodySuitSeamCurve:       # CBodySuitSeamCurve: a seam chain in source bod
         #print("GetPosAtSeamChainLength() searches for length " + str(nLenChain) + " with chain points: " + str(self.aChainPts))
         for oPt in self.aChainPts:
             if (oPt.nDistInChainUV > nLenChain):
-                vecThisSegment = oPt.vecUVL - oPtPrev.vecUVL        ###TODO<17>: Array for high/low!
+                vecThisSegment = oPt.vecUVL - oPtPrev.vecUVL        ###TODO17: Array for high/low!
                 nLenThisSegment = vecThisSegment.length
                 if nLenThisSegment == 0:        ### Should not happen! 
                     raise Exception("###EXCEPTION: CBodySuitSeamCurve.GetPosAtSeamChainLength() has zero-length segment on seam curve " + self.sNameCurve)
@@ -192,13 +192,13 @@ class CBodySuitSeamCurve:       # CBodySuitSeamCurve: a seam chain in source bod
                 #bpy.context.scene.cursor_location = vec3D
                 return vecFinal 
             oPtPrev = oPt           # Remember previous point so we can interpolate once we find which two points are closest to required distance
-            ###IMPROVE<17>: End of chain test
+            ###IMPROVE17: End of chain test
         raise Exception("###EXCEPTION: CBodySuitSeamCurve.GetPosAtSeamChainLength() could not find position for length ", nLenChain, len(self.aChainPts))
       
 
     @classmethod
     def SeamCurve_CreateBothSides(cls, sNameCurve, aDictSeamCurves, oTreeKD, oMeshO, bm, vecLocSearch):
-        ###OBS<17>? Simplifying assumption where Front / Back are X mirrored and coincident means we no longer need both sides!
+        ###OBS17:? Simplifying assumption where Front / Back are X mirrored and coincident means we no longer need both sides!
         aDictSeamCurves[sNameCurve + "L"] = cls(sNameCurve, 'L', oTreeKD, oMeshO, bm, vecLocSearch)
         vecLocSearch.x = -vecLocSearch.x
         aDictSeamCurves[sNameCurve + "R"] = cls(sNameCurve, 'R', oTreeKD, oMeshO, bm, vecLocSearch)

@@ -73,13 +73,13 @@ class CCloth:
 
         #--- Unity-public properties ===
         self.oObj = CObject.CObject("Cloth Global Parameters")
-        self.oPropNeckStrapThickness     = self.oObj.PropAdd("NeckStrapThickness",    "", 0.01, 0.001, 0.1) ###TODO<17>
+        self.oPropNeckStrapThickness     = self.oObj.PropAdd("NeckStrapThickness",    "", 0.01, 0.001, 0.1) ###TODO17:
 
         #=== Create a empty node in game folder where every mesh related to this body will go ===
         self.oNodeRoot = CreateEmptyBlenderNode(self.oBodyBase.sMeshPrefix + "-Cloth-" + self.sNameCloth, self.oBodyBase.oNodeRoot.name)
 
         #===== Add references to the cutting curves that can cut this cloth =====    ###IMPROVE: More complex cloths will have more complexity here to select which curves...
-        self.aCurves.append(Curve.CCurveNeck(self, "Neck"))                 ###TEMP<18>
+        self.aCurves.append(Curve.CCurveNeck(self, "Neck"))                 ###TEMP18:
         self.aCurves.append(Curve.CCurveSide(self, "Side"))
         self.aCurves.append(Curve.CCurveTorsoSplit(self, "TorsoSplit"))
 
@@ -101,14 +101,14 @@ class CCloth:
         
     def UpdateCutterCurves(self):
         #===== Iterate through our cutter curves to ask them to update themselves from the (just moved) recipe points =====
-        ###OBS<17>? 
+        ###OBS17:? 
         for oCurve in self.aCurves:
             oCurve.UpdateCutterCurve()
         return "OK"
 
 
             
-    def CutClothWithCutterCurves(self):         #===== Cut the source cloth (e.g. bodysuit) and remove the extra fabric the user didn't want with the 'cutter curves' =====        ###DESIGN<17>: Use CMesh?
+    def CutClothWithCutterCurves(self):         #===== Cut the source cloth (e.g. bodysuit) and remove the extra fabric the user didn't want with the 'cutter curves' =====        ###DESIGN17: Use CMesh?
         #=== Copy our source meshes from our assigned cloth source ===
         self.oMeshO_UVF = DuplicateAsSingleton(self.oClothSrc.oMeshO_UVF.name, self.oNodeRoot.name + "-UVF", self.oNodeRoot.name, False)
         self.oMeshO_UVB = DuplicateAsSingleton(self.oClothSrc.oMeshO_UVB.name, self.oNodeRoot.name + "-UVB", self.oNodeRoot.name, False)
@@ -135,7 +135,7 @@ class CCloth:
         self.oMeshO_UVB = None                               # Above join destroyed the copy mesh so set our variable to None
 
         #=== Obtain reference to bmeshes for the meshes we need programmatic access to ===
-        bmUVF = bmesh.new()     ###IMPROVE<17>: Move to part of CMesh?
+        bmUVF = bmesh.new()     ###IMPROVE17: Move to part of CMesh?
         bm3DS = bmesh.new()
         bm3DD = bmesh.new()
         bmUVF.from_mesh(self.oMeshO_UVF.data)
@@ -187,7 +187,7 @@ class CCloth:
         bm3DD.to_mesh(self.oMeshO_3DD.data)
 
         #=== Add a UV layer and set it to the positions of the source UV verts ===
-        ###BUG<18>!!!!!: Crashes Blender upon return from this function!  WTF???  Find another alternative to create UV layer
+        ###BUG18:!!!!!: Crashes Blender upon return from this function!  WTF???  Find another alternative to create UV layer
 #         aLayer3DSUV_Dst = self.oMeshO_3DD.data.uv_layers.active.data    #... and obtain a reference to it
 #         bm3DD.from_mesh(self.oMeshO_3DD.data)
 #         bmUVF.verts.ensure_lookup_table()
@@ -200,7 +200,7 @@ class CCloth:
 #                 oUV.y = oVertUV.co.y              
 
         #=== Cleanup the newly generated 3D mesh ===
-        bpy.ops.object.mode_set(mode='EDIT')        ###TODO<17>
+        bpy.ops.object.mode_set(mode='EDIT')        ###TODO17:
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.mesh.region_to_loop()
         bpy.ops.mesh.select_more()
@@ -214,7 +214,7 @@ class CCloth:
         bpy.ops.object.mode_set(mode='OBJECT')
 
         #=== Obtain CMesh reference to 3D cloth mesh we just created ===        
-        self.oMesh_3DD = CMesh.CMesh.CreateFromExistingObject(self.oMeshO_3DD.name)       ###IMPROVE<17>: Go all on CMesh??
+        self.oMesh_3DD = CMesh.CMesh.CreateFromExistingObject(self.oMeshO_3DD.name)       ###IMPROVE17: Go all on CMesh??
 
 
     def PrepareClothForGame(self, sVertGrp_ClothSkinArea):
@@ -272,7 +272,7 @@ class CCloth:
             #print("- NewVertID {:4d} was {:4d} at {:}".format(oVert.index, oVert[oLayVertOrigID], oVert.co))
         
         #=== Post-process the skinned-part to be ready for Unity ===
-        Cleanup_VertGrp_RemoveNonBones(self.oMeshClothSkinned.GetMesh(), True)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
+        VertGrp_RemoveNonBones(self.oMeshClothSkinned.GetMesh(), True)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
         #Client.Client_ConvertMeshForUnity(self.oMeshClothSkinned.GetMesh(), False)                   ###NOTE: Call with 'False' to NOT separate verts at UV seams  ####PROBLEM!!!: This causes UV at seams to be horrible ####SOON!!!
         self.oMeshClothSkinned.Close()
         
