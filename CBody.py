@@ -98,7 +98,7 @@ class CBodyBase:
         self.nBodyID = nBodyID              # Our ID is passed in by Blender and remains the only public way to access this instance (e.g. CBody._aBodyBases[<OurID>])
         self.sMeshSource = sMeshSource      # The name of the source body mesh (e.g. 'WomanA', 'ManA', etc)        ###TODO11: Separate sex from mesh version!
         self.sSex = sSex                    # The body's sex (one of 'Man', 'Woman' or 'Shemale')
-        self.sGenitals = sGenitals          # The body's genitals (e.g. 'Vagina-Erotic9-A', 'PenisW-Erotic9-A' etc.)
+        self.sGenitals = sGenitals          # The body's genitals (e.g. 'Vagina-EroticVR-A', 'PenisW-EroticVR-A' etc.)
         self.sMeshPrefix = "B" + chr(65 + self.nBodyID) + '-'  # The Blender object name prefix of every submesh (e.g. 'BodyA-Detach-Breasts', etc)
         
         self.oBody = None                   # Our game-time body.  Created when we enter play mode, destroyed when we leave play mode for configure mode.
@@ -147,10 +147,15 @@ class CBodyBase:
         # self.oObjectMeshShapeKeys.PropSet("Breasts-Implants", 1.0)
 
         #=== Form the collection of Flex collider verts Unity will use to form a Flex collider capable of repelling morph-time bodysuit ===
-        VertGrp_SelectVerts(self.oMeshMorphResult.GetMesh(), "_CFlexCollider")
+        bAllVertsInCollider = True          ###NOTE: Bit of a hack to avoid having to define this damn group at every mesh rebuild... should be defined for final game tho!
+        if VertGrp_FindByName(self.oMeshMorphResult.GetMesh(), "_CFlexCollider", False):
+            VertGrp_SelectVerts(self.oMeshMorphResult.GetMesh(), "_CFlexCollider")
+            bAllVertsInCollider = False
+        else:
+            print("\n###WARNING: _CFlexCollider vertex group not found = Inneficient collisions!")
         bmMorphResult = self.oMeshMorphResult.Open()
         for oVert in bmMorphResult.verts:
-            if (oVert.select):
+            if (oVert.select or bAllVertsInCollider):
                 self.aVertsFlexCollider.AddUShort(oVert.index)
         self.oMeshMorphResult.Close()
         

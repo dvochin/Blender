@@ -21,7 +21,7 @@ import Curve
 import Cut
 import Breasts
 import CMesh
-import BodyPrep
+import CBodyImporter
 import COrificeRig
 from operator import itemgetter
 
@@ -198,22 +198,20 @@ class gBL_temp6(bpy.types.Operator):
 
 class gBL_temp7(bpy.types.Operator):
     bl_idname = "gbl.temp7"
-    bl_label = "7: ImportFirst"
+    bl_label = "7: Import"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        #CBody._aBodyBases[0].aCloths["MyShirt"].PrepareClothForGame()
-        BodyPrep.FirstImport_ProcessRawDazImport("Genesis3Female", "WomanA")
+        oBodyImporter = CBodyImporter.CBodyImporter() 
         return {"FINISHED"}
 
 class gBL_temp8(bpy.types.Operator):
     bl_idname = "gbl.temp8"
-    bl_label = "8: ImportShape"
+    bl_label = "8: Pose"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        BodyPrep.ImportShape_AddImportedBodyToGameBody("Genesis3Female", "WomanA")
-        #CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BreastCol", 0.000001)
+        CBodyImporter.CBodyImporter.INSTANCE.DEBUG_ShowDazPose()
         return {"FINISHED"}
 
 class gBL_temp9(bpy.types.Operator):
@@ -222,10 +220,7 @@ class gBL_temp9(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        #CBody._aBodyBases[0].SlaveMesh_ResyncWithMasterMesh("BreastCol")
-        #CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big', 5000)
-        #G.CGlobals._oTempHACK = CMesh.CMeshUV("BodySuit", bpy.data.objects["BodySuit"])
-        #G.CGlobals._oTempHACK.ConvertBackTo3D()
+        #CBodyImporter.CBodyImporter.INSTANCE.CreateVisibleBoneRig()
         oOrificeRig = COrificeRig.COrificeRig(24, 0.15, True)
         return {"FINISHED"}
 
@@ -238,7 +233,6 @@ class gBL_temp10(bpy.types.Operator):
         COrificeRig.COrificeRig.INSTANCE.AdjustAreaSkinWeights()
         #print(COrificeRig.COrificeRig.INSTANCE.SerializeOrificeRig())
         return {"FINISHED"}
-
 
 class gBL_temp11(bpy.types.Operator):
     bl_idname = "gbl.temp11"
@@ -269,3 +263,10 @@ class gBL_temp13(bpy.types.Operator):
 
 #if __name__ == "__main__" :
 bpy.utils.register_module(__name__)
+
+
+        #CBody._aBodyBases[0].SlaveMesh_ResyncWithMasterMesh("BreastCol")
+        #CBody(0, 'WomanA', 'Shemale', 'PenisW-EroticVR-A-Big', 5000)
+        #G.CGlobals._oTempHACK = CMesh.CMeshUV("BodySuit", bpy.data.objects["BodySuit"])
+        #G.CGlobals._oTempHACK.ConvertBackTo3D()
+        #CBody._aBodyBases[0].aCloths["MyShirt"].PrepareClothForGame()

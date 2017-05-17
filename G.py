@@ -18,12 +18,36 @@
 # aEdges = [oEdge for oEdge in bm.edges if oEdge.select]
 # bpy.context.scene.cursor_location = Vector((0,0,0))
 # Debug functionality from http://airplanes3d.net/downloads/pydev/pydev-blender-en.pdf
-
 # bm = bmesh.new()                ###IMPROVE: How to edit a bmesh without EDIT / OBJECT switch?
 # bm.from_mesh(obj.data)
 # # do some stuff to the bmesh
 # bpy.ops.object.mode_set(mode='OBJECT')
 # bm.to_mesh(obj.data) 
+
+#=== Coordinate systems ===
+# Right handed: Blender (+Z Up), DAZ (+Y=Up), OpenGL 
+# Left  Handed: Unity, 3DXMax, DirectX
+# In LH / RH, X = Index, Y = Major, Z = Thumb
+# - Y always point from bone head to tail
+# - For mostly vertical bones: orient their local x axis towards the global x axis (e.g. torso and legs)  (From https://blender.stackexchange.com/questions/15609/in-which-direction-should-bone-axes-be-oriented)
+# - For mostly horizontal bones: orient their local z axis towards their global z axis (e.g. arms)
+# https://docs.blender.org/api/blender_python_api_2_72_1/mathutils.html
+# Quaternion conversions LHR / RHR: http://stackoverflow.com/questions/18818102/convert-quaternion-representing-rotation-from-one-coordinate-system-to-another    
+#- DAZ:        Up = +Y, Left Side of Body = +X, Body forward: +Z
+#- Blender:    Up = +Z, Left Side of Body = +X, Body forward: -Y
+#- Unity:      Up = +Y, Left Side of Body = -X, Body forward: +Z
+#- quatUnity.X   = -quatBlender.X
+#- quatUnity.Y   =  quatBlender.Z
+#- quatUnity.Z   = -quatBlender.Y
+#- quatUnity.W   =  quatBlender.W           (Remember to negate ALL X,Y,Z angles since we're converting accross coordinate systems)
+#- quatUnity.X   = -quatDAZ.X
+#- quatUnity.Y   =  quatDAZ.Y
+#- quatUnity.Z   =  quatDAZ.Z
+#- quatUnity.W   =  quatDAZ.W               (Remember to negate ALL X,Y,Z angles since we're converting accross coordinate systems)
+#- quatBlender.X =  quatDAZ.X
+#- quatBlender.Y = -quatDAZ.Z
+#- quatBlender.Z =  quatDAZ.Y
+#- quatBlender.W =  quatDAZ.W               (Remember to negate ALL X,Y,Z angles since we're converting accross coordinate systems)
 
 #from inspect import currentframe, getframeinfo
 #G.Dump("ConvertBackTo3D: " + str(getframeinfo(currentframe()).lineno))
@@ -191,21 +215,19 @@ def Dump(sText):
 
 
 
-def VectorB2C(vec):           
-    ###NOW### return Vector((-vec[0], vec[1], vec[2]))      
-    return Vector((-vec[0], vec[2], -vec[1]))                ###NOW###: Doesn't match C++!!!!      
-
-def VectorC2B(vec):                    # Same as Util_VectorB2C but copied nonetheless for code readability            
-    #return Vector((-vec[0], vec[1], vec[2]))
+###NOTE: A vert of x=1, y=2, z=3 in Blender has that vert one meter to the left of the character, two meters behind and three meters above.
+###NOTE: In Unity this needs to be x=-1, y=3, z=-2   so xU=-xB, yU=zB, zU=-yB
+def VectorB2U(vec):           
     return Vector((-vec[0], vec[2], -vec[1]))      
 
-def VectorB2C4(vec):           
-    #return Vector((-vec[0], vec[1], vec[2], vec[3]))
+def VectorU2B(vec):                    # Same as VectorB2U but copied nonetheless for code readability            
+    return VectorB2U(vec)      
+
+def VectorB2U4(vec):           
     return Vector((-vec[0], vec[2], -vec[1], vec[3]))      
 
-def VectorC2B4(vec):            
-    #return Vector((-vec[0], vec[1], vec[2], vec[3]))
-    return Vector((-vec[0], vec[2], -vec[1], vec[3]))      
+def VectorU2B4(vec):            
+    return VectorB2U4(vec)      
 
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    DEBUG UTILITIES

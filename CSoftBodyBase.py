@@ -80,10 +80,10 @@ class CSoftBodyBase():          ###DESIGN19: Re-merge CSoftBody in here now that
         #=== Separate the softbody out of the rim + softbody (leaving only the rim) ===  
         self.oMeshSoftBodyRim.Open()                # Open the rim + softbody mesh so we can further process it.
         VertGrp_SelectVerts(self.oMeshSoftBodyRim.GetMesh(), G.C_VertGrp_CSoftBody + self.sSoftBodyPart)
-        if type(self) is CSoftBodySkin:             # If we're a soft body skin we need to keep the rim with the full geometry for further processing as a collider in subclass...       ###LEARN: How to determine type of an object
-            bpy.ops.mesh.duplicate()                # ... so duplicate the vert group instead of splitting it so we have the rim + soft body geometry for subclass processing. (CSoftBodySkin need these vertices skinned as well so the 'soft skinned' can move closely with the actual skinned body part)
-        else:
-            bpy.ops.mesh.split()                    # ... for regular softobdy 'split' the softbody faces to leave in the rim mesh only the rim.  Both 'sides' will now have 'rim verts' where the two submeshes meet
+#         if type(self) is CSoftBodySkin:             # If we're a soft body skin we need to keep the rim with the full geometry for further processing as a collider in subclass...       ###LEARN: How to determine type of an object
+#             bpy.ops.mesh.duplicate()                # ... so duplicate the vert group instead of splitting it so we have the rim + soft body geometry for subclass processing. (CSoftBodySkin need these vertices skinned as well so the 'soft skinned' can move closely with the actual skinned body part)
+#         else:
+        bpy.ops.mesh.split()                    # ... for regular softobdy 'split' the softbody faces to leave in the rim mesh only the rim.  Both 'sides' will now have 'rim verts' where the two submeshes meet
         bpy.ops.mesh.separate()                     # ... and finally 'separate' the softbody geometry into its own softbody presentation + Flex mesh.  It will become our 'softbody mesh'
         self.oMeshSoftBodyRim.Close()
 

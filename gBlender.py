@@ -134,7 +134,7 @@ def DeleteObject(sNameObject):
 		bpy.data.objects.remove(oObj)
 	return None				# Return convenient None so we can set owning variable in one line
 
-def DuplicateAsSingleton(sSourceName, sNewName, sNameParent, bHideSource):
+def DuplicateAsSingleton(sSourceName, sNewName, sNameParent = None, bHideSource = True):
 	#print("-- DuplicateAsSingleton  sSourceName '{}'  sNewName '{}'  sNameParent '{}'".format(sSourceName, sNewName, sNameParent))
 	DeleteObject(sNewName)
 	
@@ -536,13 +536,14 @@ def Cleanup_RemoveMaterial(oMeshO, sNameMaterialPrefix):		# Remove from oMeshO a
 
 #---------------------------------------------------------------------------	VertGrp Functions: Helper functions centered on Vertex Groups
 
-def VertGrp_FindByName(oMeshO, sNameVertGrp): 
+def VertGrp_FindByName(oMeshO, sNameVertGrp, bThrowIfNotFound = True): 
 	nVertGrpIndex = oMeshO.vertex_groups.find(sNameVertGrp)			###LEARN: Can also find directly by oMeshO.vertex_groups[sNameVertGrp] !!! 
 	if (nVertGrpIndex != -1):
 		oVertGrp = oMeshO.vertex_groups[nVertGrpIndex]
 		return oVertGrp 
 	else:
-		raise Exception("\n###EXCEPTION: VertGrp_FindByName() could not find vert group '{}' in mesh '{}'".format(sNameVertGrp, oMeshO.name))
+		if bThrowIfNotFound:
+			raise Exception("\n###EXCEPTION: VertGrp_FindByName() could not find vert group '{}' in mesh '{}'".format(sNameVertGrp, oMeshO.name))
 
 def VertGrp_SelectVerts(oMeshO, sNameVertGrp, bUnselect=False):			# Select all the verts of the specified vertex group 
 	#=== Obtain access to mesh in edit mode, deselect and go into vert mode ===
@@ -644,10 +645,28 @@ class CByteArray(bytearray):
 		self += struct.pack(str(nLenEncoded) + 'p', sContentEncoded)  ###LEARN: First P = Pascal string = first byte of it is lenght < 255 rest are chars
 
 	def AddBone(self, oBone):				# Recursive function that sends a bone and the tree of bones underneath it in 'breadth first search' order.	 Information sent include bone name, position and number of children.
-		self.AddString(oBone.name)		# Precise opposite of this function found in Unity's CBodeEd.ReadBone()
-		self.AddVector(G.VectorB2C(oBone.head))	# Obtain the bone head and convert to client-space (LHS/RHS conversion)		 ###LEARN: 'head' appears to give weird coordinates I don't understand... head_local appears much more reasonable! (tail is the 'other end' of the bone (the part that rotates) while head is the pivot point we need
-		self.AddQuaternion(oBone.matrix.to_quaternion())	# Send the bone orientation quaternion.  Needed to properly rotate bones about the axis they were designed for.  ###IMPROVE: Not rotated for Unity axis!  HOW??
-		print("-AddBone '{}'   {}   {}".format(oBone.name, oBone.head, oBone.matrix.to_quaternion()))
+		print("-AddBone '{}'  P={}   Q={}".format(oBone.name, oBone.head, oBone.matrix.to_quaternion()))
+		self.AddString(oBone.name)			# Precise opposite of this function found in Unity's CBodeEd.ReadBone()
+		self.AddVector(G.VectorB2U(oBone.head))	# Obtain the bone head and convert to client-space (LHS/RHS conversion)		 ###LEARN: 'head' appears to give weird coordinates I don't understand... head_local appears much more reasonable! (tail is the 'other end' of the bone (the part that rotates) while head is the pivot point we need
+
+		#=== Send the quaternion as an axis vector for easier Blender-to-Unity domain traversal via well-understood vectors ===
+		quatBlender = oBone.matrix.to_quaternion()
+		vecAxisBlender = quatBlender.axis
+		vecAxisUnity = G.VectorB2U(vecAxisBlender)
+		self.AddVector(vecAxisUnity)
+		self.AddFloat(-quatBlender.angle)			###NOTE20:!!! We send the INVERSE of the angle of axis-angle as (by observation) the non-inverse appears all wrong.  (Inversing all angles looks great)
+
+		if "RotOrder" in oBone:
+			self.AddString(oBone["RotOrder"])
+		else:		
+			self.AddString("XYZ")		###NOTE: Doesn't matter what we send on generated bones... They are never rotated anyways!
+		if "Rotations" in oBone:
+			self.AddByte(len(oBone["Rotations"]))
+			for sRotationSerialization in oBone["Rotations"]:
+				self.AddString(sRotationSerialization)
+		else:
+			self.AddByte(0)
+
 		self.AddByte(len(oBone.children))
 		for oBoneChild in oBone.children:
 			self.AddBone(oBoneChild)

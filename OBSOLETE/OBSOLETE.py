@@ -66,7 +66,7 @@
 #                     nVertsInMorphGroup += 1
 #             vecCenter /= nVertsInMorphGroup
 #             #print("-Morph '{}' at {}".format(sNameMorph, vecCenter))
-#             Stream_SendVector(oBA, G.VectorB2C(vecCenter))            # We send Blender 3D coord to Client so we must convert space
+#             Stream_SendVector(oBA, G.VectorB2U(vecCenter))            # We send Blender 3D coord to Client so we must convert space
 #     return oBA              # Return raw byte array back to client so it can deserialize our binary message
 
 
@@ -507,12 +507,12 @@
 #        col.operator("gbl.border_create_all")
 #        col.operator("gbl.debug_remove_markers")
 
-        #Penis.gBL_Penis_CalcColliders("PenisM-Erotic9-A-Big")
+        #Penis.gBL_Penis_CalcColliders("PenisM-EroticVR-A-Big")
         #Client.CBMeshMorph_GetMorphVerts('Face', 'Face-MouthOpen')
         #oMeshBodyO = SelectAndActivate("BodyA_Detach_Breasts")
         #oMeshBodyO = SelectAndActivate("WomanA")
-        #oBody = CBody(0, 'WomanA', 'Shemale', 'PenisW-Erotic9-A-Big')
-        #oBody = CBody(0, 'WomanA', 'Woman', 'Vagina-Erotic9-A', 5000)
+        #oBody = CBody(0, 'WomanA', 'Shemale', 'PenisW-EroticVR-A-Big')
+        #oBody = CBody(0, 'WomanA', 'Woman', 'Vagina-EroticVR-A', 5000)
 
         #Client.IsolateHead()
         #print(Client.gBL_GetBones('WomanA'))
@@ -534,7 +534,7 @@
         #Breasts.Breasts_ApplyMorph('WomanA', 'WomanA', 'RESIZE', 'Nipple', 'Center', 'Wide', (1.6,1.6,1.6,0), None)
 
         #CBBodyCol.SlaveMesh_ResyncWithMasterMesh("BodyA-BreastCol-ToBody", "BodyA_Morph")
-        #Client.gBL_Body_Create("BodyA", "WomanA", "Woman", "Vagina-Erotic9-A", [])
+        #Client.gBL_Body_Create("BodyA", "WomanA", "Woman", "Vagina-EroticVR-A", [])
         #Client.gBL_Body_CreateForMorph("WomanA", "BodyA", "BodyA_Morph")
 
 
@@ -546,8 +546,8 @@
 # 
 #     def invoke(self, context, event):
 #         self.report({"INFO"}, "GBOP: " + self.bl_label)
-#         Client.gBL_Body_CreateMorphBody("A", "ManA", "PenisM-Erotic9-A-Big")
-#         Client.gBL_Body_Create("BodyA", "Man", "PenisM-Erotic9-A-Big", [], 1, 0)
+#         Client.gBL_Body_CreateMorphBody("A", "ManA", "PenisM-EroticVR-A-Big")
+#         Client.gBL_Body_Create("BodyA", "Man", "PenisM-EroticVR-A-Big", [], 1, 0)
 #         return {"FINISHED"}
 # 
 # class gBL_body_create_woman(bpy.types.Operator):
@@ -557,8 +557,8 @@
 # 
 #     def invoke(self, context, event):
 #         self.report({"INFO"}, "GBOP: " + self.bl_label)
-#         Client.gBL_Body_CreateMorphBody("B", "WomanA", "Vagina-Erotic9-A")
-#         Client.gBL_Body_Create("BodyB", "Woman", "Vagina-Erotic9-A", ["TiedTop"], 1.3, 0.3)
+#         Client.gBL_Body_CreateMorphBody("B", "WomanA", "Vagina-EroticVR-A")
+#         Client.gBL_Body_Create("BodyB", "Woman", "Vagina-EroticVR-A", ["TiedTop"], 1.3, 0.3)
 #         return {"FINISHED"}
 # 
 # class gBL_body_create_shemale(bpy.types.Operator):
@@ -568,9 +568,9 @@
 # 
 #     def invoke(self, context, event):
 #         self.report({"INFO"}, "GBOP: " + self.bl_label)
-#         Client.gBL_Body_CreateMorphBody("A", "WomanA", "PenisW-Erotic9-A-Big")
-#         ###REV Client.gBL_Body_Create("BodyA", "Shemale", "PenisW-Erotic9-A-Big", ["TiedTop"], 1.3, 0.3)
-#         Client.gBL_Body_Create("BodyA", "Shemale", "PenisW-Erotic9-A-Big", [], 1.0, 0.0)
+#         Client.gBL_Body_CreateMorphBody("A", "WomanA", "PenisW-EroticVR-A-Big")
+#         ###REV Client.gBL_Body_Create("BodyA", "Shemale", "PenisW-EroticVR-A-Big", ["TiedTop"], 1.3, 0.3)
+#         Client.gBL_Body_Create("BodyA", "Shemale", "PenisW-EroticVR-A-Big", [], 1.0, 0.0)
 #         return {"FINISHED"}
 # 
 # class gBL_gamemode_play_prepbody(bpy.types.Operator):
@@ -645,4 +645,363 @@
         #col.operator("gbl.apply_morphs")
 
         #layout.prop(ob, 'myRnaFloat')
+
+
+
+
+
+
+
+
+
+
+
+
+#========================= BODY PREP BONE ROTATION STUFF - April 2017
+                
+
+
+
+
+
+
+#     ###OBS: Can get quite far by passing matrix.  Based on DAZ's matrix  M = oBone.getWSOrientedBox().transform;  //###LEARN: The members related to the 'oriented box' do pass in seemingly-valid matrices with world-space rotation info.  Unfortunately they still require rotating a 'basis vector' by that angle and for the trouble we're better with well-understood eulers instead!
+#     def FixBone_MatrixVersion(self, sNameBone, sLabelBone, nBoneLength, m11, m12, m13, m14, m21, m22, m23, m24, m31, m32, m33, m34):
+#         oBone = self.oArmBones[sNameBone]
+#         oBone.use_connect = False
+#         oBone.use_inherit_rotation = False      ###########
+#         oBone.use_inherit_scale = False      ###########
+# 
+#         M = Matrix([[m11, m12, m13, m14],[m21, m22, m23, m24],[m31, m32, m33, m34],[0,0,0,0]])
+#         oBone.matrix = M                # Wrong!  Need to rotate a 'basis vector'... these are all pointing up!
+#         oBone.length = nBoneLength
+
+
+
+#         if   sRotOrder == 'XYZ':   eulOrientation = Euler((0,0,-pi/2))
+#         elif sRotOrder == 'XZY':   eulOrientation = Euler((0,0, pi/2))
+#         elif sRotOrder == 'YXZ':   eulOrientation = Euler(( pi/2,0,0))
+#         elif sRotOrder == 'YZX':   eulOrientation = Euler((-pi/2,0,0))
+#         elif sRotOrder == 'ZXY':   eulOrientation = Euler((0 ,0,0))          # vecBasis below is +Y unit so 'Up' doesn't need to rotate anything
+#         elif sRotOrder == 'ZYX':   eulOrientation = Euler((pi,0,0))
+#         else: print("\n### ERROR ###\n");
+
+
+#         global g_set1
+#         global g_set2
+#         g_set1 = set()
+#         g_set2 = set()
+#         print(sorted(g_set1))
+#         print(sorted(g_set2))
+
+
+
+
+
+
+        #=== Convert Euler to Quaternion and calculate bone length ===
+        ##quatRot = eulRot.to_quaternion()
+        #vecDiff = vecE - vecO
+        #nLenBone = vecDiff.length
+
+        #=== Calculate the bone's end (rotated by DAZ-provided Euler above) ===
+        #vecAxis = vecBasis.copy()
+        #vecAxis.rotate(quatRot)
+        #vecTail = vecO + (vecAxis * nLenBone)
+
+        #=== Set the bone origin with the end pointing up and zero roll ===
+        ##oBone.head = vecO
+        ##oBone.tail = vecO + Vector((0,0,nLenBone))                    ###NOTE: First set bone tail so bone is pointing up then reset the roll... this way when we set bone end to its proper place the roll will change (to some useless value) but still keep bone rotated at a decent angle (not the roll we want however)
+        ##oBone.roll = 0 #quatRot.angle                 ###NOTE: Fucking roll is USELESS!  Even a zero value is CRAP unless we set the bone along a cardinal axis, set its roll to zero, orient it correctly while letting its roll go to a garbage value to maintain the orientation
+
+        #=== Rotate the bone to its end orientation.  This modifies oBone. tail and roll ===
+        ##oBone.tail = vecTail
+        #oBone.rotate(quatRot)
+        #oBone.roll = oBone.roll - quatRot.angle
+
+        #####quatRot.rotate(eulOrientation)
+
+#         matBone = Matrix().to_3x3()
+#         matBone.rotate(quatRot)
+#         matBone = matBone.to_4x4()
+#         matBone.translation = vecO
+#         oBone.matrix = matBone
+#         #oBone.head = vecO
+#         #oBone.tail = vecTail
+#         #oBone.length = nLenBone
+            
+
+        #oBone.use_inherit_rotation = False      ###########
+        #oBone.use_inherit_scale = False      ###########
+
+
+
+
+        # Have reasonable angles but no roll!  DAZ can export axis + angle... use that instead of euler?  (Can get rid of starting vectors??)  (WTF quaternions no good???)
+        # Then... rotate 90 degrees everything, import to Unity... start thinking about bone boundaries to Unity,  then textures again??
+        # Bone rig visualizer accepting for each bone eulerFromDaz.to_quaternion() has what we need.
+        # To visualize we need to rotate visualizing bone... but we probably need to rotate that quat instead to be like DAZ
+        # Explore DAZ mapping of the bending bones to see how to map.
+        # Then export the whole fucking thing to Unity
+        # Small problem: heel
+        # Can find a way for fucking daz bone roll to get decent value??  wtf????  (set matrix directly?)
+
+
+            ###OBS: Previous (possibly faulty) rotation analysis based on quaternion rotation difference. (New one by comparing angle difference between global ref vector and rotated one
+#         #=== Orient +X toward the requested direction ===  (Note that +Y always flows from the bone parent to the child)  This is to enable Unity's bone to leverage the enhanced flexibility of the X axis with PhysX's D6 configurable joint  (X has different min/max where Y and Z have same min/max)
+#         if sNameBone == "lThumb2":
+#             self.DEBUG_MoveAndRotateDebugGizmo(0, "Start", matBone)
+# 
+#         quatOrientationDesired = Euler((0,0,0)).to_quaternion()
+#         nAngleToDesiredX_Lowest = sys.float_info.max
+#         matBoneRotatedAboutAxisThisQuadrant_Lowest = None
+# 
+#         for nQuadrant in range(4):
+#             matRotateAboutBoneAxisThisQuadrant = Euler((0,nQuadrant*pi/2,0)).to_matrix().to_4x4()
+#             matBoneRotatedAboutAxisThisQuadrant = matBone * matRotateAboutBoneAxisThisQuadrant
+#             if sNameBone == "lThumb2":
+#                 self.DEBUG_MoveAndRotateDebugGizmo(1+nQuadrant, "Rot", matBoneRotatedAboutAxisThisQuadrant)
+# 
+#             quatOrientationThisQuadrant = matBoneRotatedAboutAxisThisQuadrant.to_quaternion()
+#             quatRotateThisQuadrantToDesired = quatOrientationThisQuadrant.rotation_difference(quatOrientationDesired)
+#             nAngleToDesiredX = quatRotateThisQuadrantToDesired.angle
+#             
+#             if nAngleToDesiredX_Lowest > nAngleToDesiredX:
+#                 nAngleToDesiredX_Lowest = nAngleToDesiredX
+#                 matBoneRotatedAboutAxisThisQuadrant_Lowest = matBoneRotatedAboutAxisThisQuadrant.copy()
+# 
+#             #if sNameBone == "lThumb2":
+#             print("-- Angle diff to quadrant {} is {:5.1f} on bone '{}'".format(nQuadrant, degrees(nAngleToDesiredX), oBone.name))
+
+
+
+
+
+#         for oBone in self.oArmBones:        
+#             oBone.parent = None
+#             oBone.use_connect = False
+#             oBone.use_inherit_rotation = False
+#             oBone.use_inherit_scale = False
+#             oBone.use_local_location = False
+#             oBone.use_deform = False
+
+#        bpy.ops.object.mode_set(mode='EDIT')
+#         global g_bCreateBoneArrow
+#         g_bCreateBoneArrow = False
+#         for n in range(2):
+#             print("\n\n================= RUN " + str(n))
+#             if n == 1:
+#                 bpy.ops.object.mode_set(mode='OBJECT')
+#                 g_bCreateBoneArrow = True
+
+
+#NOW:# No use trying to get Blender to have DAZ behavior as it forces bone roll to be Y
+# Unity doesn't have that limitation so we leave Blender less functional (Just proper bone orientation along Y) but it can't interpret DAZ angles without translation code
+# Therefore Unity needs to rotate the bones from DAZ right after it gets them (from DAZ-supplied info)
+# - Create a XYZ rotate visualizer with arrow directions so Unity can render colored RGB bones just like DAZ  (Be wary of orientation)
+# - Also no need to send complete matrix... harder for Blender to accept them while parented.  Quat fine or back to Euler??
+### BONE ROT ALL FUCKED... DO 90 deg right first like old impl.  (Go back to it?)
+
+
+#     def FixBone(self, sNameBone, sLabelBone, sRotOrder, nLenBone, m11, m12, m13, m14, m21, m22, m23, m24, m31, m32, m33, m34):
+#     #def FixBone(self, sNameBone, sLabelBone, sRotOrder, nLenBone, RX, RY, RZ, RW):
+#         
+#         global g_bCreateBoneArrow
+#         
+#         #=== Coalesce the input numbers into their corresponding vectors / angles ===
+#         C_DazToBlenderResize = 100                          ### Everything 100 times bigger in DAZ        
+#         #vecO = Vector((OX/C_DazToBlenderResize, OY/C_DazToBlenderResize, OZ/C_DazToBlenderResize))
+#         nLenBone = nLenBone / C_DazToBlenderResize                
+#         matDAZ = Matrix(((m11, m12, m13, m14/C_DazToBlenderResize), (m21, m22, m23, m24/C_DazToBlenderResize), (m31, m32, m33, m34/C_DazToBlenderResize), (0,0,0,1)))
+#         #quatRot = Quaternion((RW, RX, RY, RZ))
+# 
+#         #=== Obtain the DAZ-provided 'bone orientation'.  Critical to properly orient its Eulers ===
+#         sBoneOrientation = self.mapBoneToOrientation[sNameBone]
+#         if   sBoneOrientation == 'L':   eulRotateToBoneForward = Euler((0, pi/2,0))
+#         elif sBoneOrientation == 'R':   eulRotateToBoneForward = Euler((0,-pi/2,0))
+#         elif sBoneOrientation == 'F':   eulRotateToBoneForward = Euler(( 0,0,0))
+#         elif sBoneOrientation == 'B':   eulRotateToBoneForward = Euler((pi,0,0))
+#         elif sBoneOrientation == 'U':   eulRotateToBoneForward = Euler((0,  0,0))
+#         elif sBoneOrientation == 'D':   eulRotateToBoneForward = Euler((0,-pi,0))
+# #         if   sBoneOrientation == 'L':   eulRotateToBoneForward = Euler((0,0,-pi))
+# #         elif sBoneOrientation == 'R':   eulRotateToBoneForward = Euler((0,0,0))
+# #         elif sBoneOrientation == 'F':   eulRotateToBoneForward = Euler((0,0,-pi/2))
+# #         elif sBoneOrientation == 'B':   eulRotateToBoneForward = Euler((0,0, pi/2))
+# #         elif sBoneOrientation == 'U':   eulRotateToBoneForward = Euler((0,-pi/2,0))
+# #         elif sBoneOrientation == 'D':   eulRotateToBoneForward = Euler((0, pi/2,0))
+# #         if   sBoneOrientation == 'L':   eulRotateToBoneForward = Euler((0,0,0))
+# #         elif sBoneOrientation == 'R':   eulRotateToBoneForward = Euler((0,0,-pi))
+# #         elif sBoneOrientation == 'F':   eulRotateToBoneForward = Euler((0,-pi/2,0))
+# #         elif sBoneOrientation == 'B':   eulRotateToBoneForward = Euler((0, pi/2,0))
+# #         elif sBoneOrientation == 'U':   eulRotateToBoneForward = Euler((0, 0, pi/2))
+# #         elif sBoneOrientation == 'D':   eulRotateToBoneForward = Euler((0, 0,-pi/2))
+#         matRotOrientation = eulRotateToBoneForward.to_matrix().to_4x4()
+# 
+#         #=== Note about mapping of our own 'sBoneOrientation' (generated here from observation in DAZ) and 'sRotOrder' (Provided by DAZ given the angle Euler rotations are applied)  Reveals NO 1:1 RELATIONHIP.  Means we keep using sBoneOrientation to create basis vector!
+#         #g_set1.add(sBoneOrientation + "-" + sRotOrder)      ###LEARN: Mapping of sBoneOrientation to sRotOrder ['D-YZX', 'F-ZXY', 'F-ZYX', 'L-XYZ', 'L-XZY', 'R-XYZ', 'R-XZY', 'U-YZX']
+#         #g_set2.add(sRotOrder + "-" + sBoneOrientation)      ###LEARN: Mapping of sRotOrder to sBoneOrientation ['XYZ-L', 'XYZ-R', 'XZY-L', 'XZY-R', 'YZX-D', 'YZX-U', 'ZXY-F', 'ZYX-F']
+# 
+#         
+#         #=== Rotate every vector and angle DAZ sends us by 90 degrees about the X axis.  Both DAZ and Blender are 'right hand coodinate systems' but DAZ is +Y Up while Blender is +Z Up ===
+#         #eulRotateDazCoordinatesToBlender = Euler((pi/2,0,0))               ###NOTE: Note the IMPORTANT top-level 90 degree rotation to Blender's geometry (up is +Z, forward is -Y, left is -X)   Define top-level transform that converts coordinate and angle from Daz to Blende
+#         #matRot = eulRotateDazCoordinatesToBlender.to_matrix().to_4x4()
+#         matFinal = matDAZ * matRotOrientation                      ###LEARN: Based on https://docs.blender.org/api/2.49/Mathutils-module.html
+# 
+#         if g_bCreateBoneArrow:
+#             oNewO = DuplicateAsSingleton("BoneArrow", sNameBone)
+#             oNewO.matrix_world = matFinal
+#             oNewO.scale = Vector((nLenBone,nLenBone,nLenBone))
+#             print("-Bone  '{}'  LEN={:5.3f}  '{}'\n{}\n{}".format(sRotOrder, nLenBone, sNameBone, matFinal, oNewO.matrix_world))
+#             
+#             #=== Visualize the bone in our external visualizer.  (It alone can show proper bone 'roll') ===
+#             oNodeBone = bpy.data.objects["Bone-" + oBone.name]
+#             oBoneVisualizer = bpy.data.objects["BoneVis-" + oBone.name]
+#             oNodeBone.location = vecO
+#             oNodeBone.rotation_mode = "QUATERNION"
+#             #oNodeBone.rotation_quaternion = oBone.matrix.to_quaternion()
+#             oNodeBone.rotation_quaternion = quatRot
+#             oBoneVisualizer.scale = Vector((nLenBone, nLenBone, nLenBone))
+#             oBoneVisualizer.rotation_euler = eulRotateToBoneForward
+#                 
+#             return
+#         
+#         #=== Obtain reference to the bone we need to fix ===
+# #         oBone.parent = None
+# #         oBone.use_connect = False
+# #         oBone.use_inherit_rotation = False
+# #         oBone.use_inherit_scale = False
+# #         oBone.use_local_location = False
+# 
+#         #=== Assign the just-defined matrix to the bone.  This will propery set the 'roll' as per our defined rotation without Blender's useless roll 'processing' ===
+#         oBone = self.oArmBones[sNameBone]
+#         oBone.matrix = matFinal
+#         oBone.length = nLenBone                     # We could probably scale the matrix but this is easier
+# 
+#         #print("-Bone  '{}'  LEN={:5.3f}  '{}'\n{}".format(sRotOrder, nLenBone, sNameBone, matDAZ))    
+
+
+
+
+
+
+
+
+
+
+        ###OBS: Old fake bone roll code No longer pertinent now that we can extract exact DAZ angles and rolls
+#         #=== Reparent nodes with 'chestUpper' as root node ===
+#         self.oArmBones['chestUpper'].parent      = None
+#         self.oArmBones['chestLower'].parent      = self.oArmBones['chestUpper']
+#         self.oArmBones['abdomenUpper'].parent    = self.oArmBones['chestLower']
+#         self.oArmBones['abdomenLower'].parent    = self.oArmBones['abdomenUpper']
+#         self.oArmBones['hip'].parent             = self.oArmBones['abdomenLower']
+#         self.oArmBones['lBigToe'].parent         = self.oArmBones['lToe']         # Re-parent all toe bones to Toe so that it can act as master transform in Unity
+#         self.oArmBones['rBigToe'].parent         = self.oArmBones['rToe']
+#         self.oArmBones['lSmallToe1'].parent      = self.oArmBones['lToe']
+#         self.oArmBones['rSmallToe1'].parent      = self.oArmBones['rToe']
+#         self.oArmBones['lSmallToe2'].parent      = self.oArmBones['lToe']
+#         self.oArmBones['rSmallToe2'].parent      = self.oArmBones['rToe']
+#         self.oArmBones['lSmallToe3'].parent      = self.oArmBones['lToe']
+#         self.oArmBones['rSmallToe3'].parent      = self.oArmBones['rToe']
+#         self.oArmBones['lSmallToe4'].parent      = self.oArmBones['lToe']
+#         self.oArmBones['rSmallToe4'].parent      = self.oArmBones['rToe']
+#         
+#         #=== Verify bone symmetry ===
+#         bpy.ops.object.mode_set(mode='OBJECT')
+#         self.FirstImport_VerifyBoneSymmetry(self.oMeshOriginalO)
+#         nAdjustments = self.FirstImport_VerifyBoneSymmetry(self.oMeshOriginalO)        # Run twice to check if second run had to do anything = bug in the first run!
+#         if (nAdjustments != 0):
+#             raise Exception("###EXCEPTION: Could not symmetrize bones!  {} are left!".format(nAdjustments))
+#     
+#     
+#         #===== SET BONE TAILS TO A REASONABLE VALUE =====
+#         #SelectAndActivate(oRootNodeO.name, True)
+#         bpy.ops.object.mode_set(mode='EDIT')                                        ###LEARN: Modifying armature bones is done by simply editing root node containing armature.
+#         #=== Iterate a first time to set all bone tails half the vector between parent-to-bone ===
+#         for oBoneO in self.oArmBones:
+#             if (oBoneO.parent):
+#                 vecParentToBone = oBoneO.head - oBoneO.parent.head
+#                 oBoneO.tail = oBoneO.head + vecParentToBone * 0.5            # Makes tail of this node protrude a portion of the distance from bone-parent (so it looks nice)
+#         #=== Iterate a second time to set the tail of non-leaf bones to its last child (to give 'continuity' between the bones')
+#         aBonesSumOfChildHeadPos = {}                        # Contains a vector that sums up all the child heads for each parent bone
+#         aBonesCountOfChildBones = {}                        # Contains an int that counts how many children added their head position into aBonesSumOfChildHeadPos
+#         for oBoneO in self.oArmBones:                                                    # Iterate through all bones...
+#             if (oBoneO.parent):                                                    # ... and for each bone with a parent...
+#                 if (oBoneO.parent not in aBonesSumOfChildHeadPos):                # ... create the entries into our dictionary if this parent has not been traversed before...
+#                     aBonesSumOfChildHeadPos[oBoneO.parent] = Vector((0,0,0))
+#                     aBonesCountOfChildBones[oBoneO.parent] = 0
+#                 aBonesSumOfChildHeadPos[oBoneO.parent] += oBoneO.head.copy()        #... and add this bone's head position to the sum...
+#                 aBonesCountOfChildBones[oBoneO.parent] += 1                        #... and increment the count.
+#         #=== Iterate through our map of parents to set the tail to the average of their children's positions ===
+#         for oBoneO in aBonesSumOfChildHeadPos:
+#             vecTail = aBonesSumOfChildHeadPos[oBoneO] / aBonesCountOfChildBones[oBoneO]
+#             oBoneO.tail = vecTail   
+#     
+#         #=== Ensure key bone chains are properly linked ===  (Loop above sets bone tail to center of average of children.  This is fine for most purposes EXCEPT the key spine bones)
+#         self.ConnectParentTailToHeadOfMostImportantChild1("chestUpper",   "chestLower")
+#         self.ConnectParentTailToHeadOfMostImportantChild1("chestLower",   "abdomenUpper")
+#         self.ConnectParentTailToHeadOfMostImportantChild1("abdomenUpper", "abdomenLower")
+#         self.ConnectParentTailToHeadOfMostImportantChild1("abdomenLower", "hip")                  ###CHECK: abdomenUpper -> abdomenLower -> hip -> pelvis do a 360 loop!  ###NOW### What to do???
+#         self.ConnectParentTailToHeadOfMostImportantChild1("hip",          "pelvis")
+#         self.ConnectParentTailToHeadOfMostImportantChild1("head",         "upperFaceRig")         ###CHECK: Safe to do?  Rotation side to side would be off-angle to what is intuitive.  ###IMPROVE: Manually set tail upward??
+#         self.ConnectParentTailToHeadOfMostImportantChild2("Foot",         "Metatarsals")
+#         self.ConnectParentTailToHeadOfMostImportantChild2("Metatarsals",  "Toe")
+#         self.ConnectParentTailToHeadOfMostImportantChild2("ForearmTwist", "Hand")
+#         
+#         #=== Bone chain above fixes a lot of problems but some very short bones still have very poor orientations.  Fix small bones by key bone vectors ===
+#         self.OrientSmallBoneFromParents1("abdomenLower",   "chestUpper", "pelvis")     # abdomentLower -> hip -> pelvis form a 360 loop that horribly corrupt Y-axis twist!  Fix orientation from most important torso chain
+#         self.OrientSmallBoneFromParents1("hip",            "chestUpper", "pelvis")
+#         self.OrientSmallBoneFromParents1("pelvis",         "chestUpper", "pelvis")
+#         self.OrientSmallBoneFromParents1("head",           "neckLower",  "head")        # Make both neck bones and head bone point in the same direction so it's easy to orient head
+#         self.OrientSmallBoneFromParents1("neckUpper",      "neckLower",  "head")
+#         self.OrientSmallBoneFromParents1("neckLower",      "neckLower",  "head")
+#         self.OrientSmallBoneFromParents2("Hand",           "ForearmTwist", "Hand")     # Hand is a very short bone that needs to be based on its parent
+#         self.OrientSmallBoneFromParents2("Toe",            "Metatarsals", "Toe")       # Toe is poorly oriented toward average of toes.  Set orientation like its parent
+#     
+#         #=== Apply manual roll to some bones that would deform very poorly with PhysX's configurable joint limits of only having X axis being assymetrical ===
+#         self.ManuallyAdjustRoll2("ForearmBend", 90)           # Forearm by default has important elbow bend along Z axis (Needs to be on X-axis for assymetrical X-axis with PhysX configurable joint)
+#         self.ManuallyAdjustRoll2("Foot", 25)
+#         self.ManuallyAdjustRoll2("Metatarsals", 17)
+#         self.ManuallyAdjustRoll2("Toe", 17)                   ###IMPROVE: Orient toward up instead of these hardcoded angles!!
+
+
+#         SelectAndActivate(self.oMeshOriginalO.parent.name)
+#         bpy.ops.object.mode_set(mode='EDIT')
+#         for oBoneO in self.oArmBones:
+#             oBoneVisualizer = bpy.data.objects["BoneVis-" + oBoneO.name]
+#             oBoneO.matrix = oBoneVisualizer.matrix_world
+#             oBoneO.length = oBoneVisualizer.scale.x
+
+
+
+
+
+
+
+
+#            ###OBS: Old implementation where axis entered was DAZ-based  (needed two-way domain traversal)
+#             #=== Convert the requested full rotation to a matrix ===
+#             eulNewRotationDAZ  = Euler(oBone.vecRotationBuild, oBone.sRotOrder)
+#             quatNewRotationDAZ = eulNewRotationDAZ.to_quaternion()          
+#             matNewRotationDAZ  = quatNewRotationDAZ.to_matrix().to_4x4()
+# 
+#             #=== Convert old rotation from Blender to Daz domain, append new rotation, convert back to Blender domain and apply to bone ===            
+#             quatRotationOld = oRigVisBone.rotation_quaternion                       # Obtain the existing bone rotation quaternion...                ###IMPROVE: Can do local rotations by quaternion multiplications instead of matrix multiplication??
+#             matRotationOld = quatRotationOld.to_matrix().to_4x4()                   #... and convert to its matrix...
+#             matRotationOldDaz = matRotationOld * oBone.matBlenderToDaz              #... then convert the existing rotation to Daz-domain...
+#             matRotationNewDaz = matRotationOldDaz * matNewRotationDAZ               #... then apply the daz-domain new rotation requested...
+#             matRotationNew = matRotationNewDaz * oBone.matDazToBlender              #... then convert form daz-domain back to Blender-domain...
+#             oRigVisBone.rotation_quaternion = matRotationNew.to_quaternion()        #... and finally apply the Blender-domain rotation.  Simple no?
+
+            #=== Rotate the Blender pose bone ===
+#             if False:
+#                 oBonePoseO = self.oMeshOriginalO.parent.pose.bones[sNameBone]            ###IMPROVE20: Find way to directly affect bones.  (They are zero-based so we have to fetch the edit bone world orientation to properly convert to DAZ-domain and back to Blender
+#                 matBoneEditRotation = oBone.matBoneEdit.to_quaternion().to_matrix().to_4x4()        ###TODO20: Don't know why this is not working!  Likely we're getting global and local coordinates mixed??
+#                 matBoneNew = matRotationNew * matBoneEditRotation.inverted()
+#                 ##quatRotationNew = matRotationNew.to_quaternion()
+#                 ##quatBoneAtRest = oBone.matBoneEdit.to_quaternion()
+#                 ##quatRotationNewLessAtRest = quatRotationNew * quatBoneAtRest.inverted() 
+#                 #matBoneAtRest = quatBoneAtRest.to_matrix().to_4x4()
+#                 #matRotationBoneNew = matRotationNew * matBoneAtRest.inverted()
+#                 oBonePoseO.rotation_quaternion = matBoneNew.to_quaternion() 
 

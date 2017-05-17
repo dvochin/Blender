@@ -100,7 +100,7 @@ import CObject
 # 
 #     #=== Import and preprocess the genitals mesh and assemble into this mesh ===
 #     oMeshGenitalsO = DuplicateAsSingleton(sNameSrcGenitals, "TEMP_Genitals", G.C_NodeFolder_Game, True)  ###TEMP!! Commit to file-based import soon!
-# #     bpy.ops.import_scene.obj(filepath="D:/Src/E9/Unity/Assets/Resources/Textures/Woman/A/Vagina/Erotic9/A/Mesh.obj")        ###HACK!!!: Path & construction of full filename!
+# #     bpy.ops.import_scene.obj(filepath="D:/Src/EroticVR/Unity/Assets/Resources/Textures/Woman/A/Vagina/EroticVR/A/Mesh.obj")        ###HACK!!!: Path & construction of full filename!
 # #     oMeshGenitalsO = bpy.context.selected_objects[0]        ###LEARN: object importer will deactivate everything and select only the newly imported object
 #     ###CHECK: Not needed? bpy.context.scene.objects.active = oMeshGenitalsO
 #     bpy.ops.object.shade_smooth()  ###IMPROVE: Fix the diffuse_intensity to 100 and the specular_intensity to 0 so in Blender the genital texture blends in with all our other textures at these settings
@@ -584,7 +584,7 @@ def gBL_GetBones(sNameMesh):  # Called by the CBodeEd (Unity's run-in-edit-mode 
     #=== Send bone tree (without bone positions) Unity needs our order to map to its existing bone which remain the authority ===
     SelectAndActivate(oMeshO.parent.name)       # Select mesh parent so we can read armature
     bpy.ops.object.mode_set(mode='EDIT')
-    oBA.AddBone(oArmature.edit_bones[0])   # Recursively send the bone tree starting at root node (0) 
+    oBA.AddBone(oArmature.edit_bones[0])        # Recursively send the bone tree starting at root node (0) 
     bpy.ops.object.mode_set(mode='OBJECT')
 
     return oBA.CloseArray() 

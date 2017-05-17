@@ -199,7 +199,7 @@ class COrificeRig():            # COrificeRig: Blender class to modify bones and
         oArm = oMesh.GetMesh().modifiers["Armature"].object.data
     
     
-        #=== Modify the vagina root bone (created during BodyPrep) ===
+        #=== Modify the vagina root bone (created during BodyImporter) ===
 #         self.oBoneRoot = oArm.edit_bones.new("VaginaBones")
 #         self.oBoneRoot.parent = oArm.edit_bones[sNameBoneRoot]                 ###BUG19: What about Anus?
         self.oBoneRoot = oArm.edit_bones["Vagina"]
