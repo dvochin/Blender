@@ -20,7 +20,7 @@ import Border
 import Curve
 import Cut
 import Breasts
-import CMesh
+from CMesh import *
 import CBodyImporter
 import COrificeRig
 from operator import itemgetter
@@ -137,7 +137,9 @@ class gBL_temp1(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBodyBase_Create(0, 'WomanA', 'WomanA','JUNK')
+        #CBodyBase_Create(0, 'Woman', 'WomanA', None)
+        G.CGlobals.Initialize(0.02)
+        CBodyBase_Create(0, 'Shemale', 'WomanA-Base', None)
         CBodyBase_GetBodyBase(0).CreateCBody()
 #         CBodyBase_GetBodyBase(0).OnChangeBodyMode('Play')
 #         CBodyBase_GetBodyBase(0).oBody.oMeshBody.GetMesh().hide = True    ###HACK17:
@@ -153,7 +155,8 @@ class gBL_temp2(bpy.types.Operator):
     def invoke(self, context , event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
         G.CGlobals.cm_nFlexParticleSpacing = 0.005       ###HACK!!!!!
-        CBodyBase_GetBodyBase(0).oBody.CreateSoftBodySkin('Vagina', 1, 0.03)
+        CBodyBase_GetBodyBase(0).oBody.CreateSoftBodySkin('Penis', 1, 0.03)
+        #CBodyBase_GetBodyBase(0).oBody.CreateSoftBodySkin('Vagina', 1, 0.03)
         return {"FINISHED"}
 
 class gBL_temp3(bpy.types.Operator):
@@ -259,7 +262,8 @@ class gBL_temp13(bpy.types.Operator):
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
         COrificeRig.COrificeRig.INSTANCE.Test_MoveBones(0.025)
-        return {"FINISHED"}
+        
+
 
 #if __name__ == "__main__" :
 bpy.utils.register_module(__name__)

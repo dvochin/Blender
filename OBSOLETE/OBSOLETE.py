@@ -90,7 +90,7 @@
 #     nDegreesPerBone = 360 / nBones 
 # 
 #     #=== Create the vertex groups to store the new bone weights for vagina radial expansion bones ===
-#     oMesh = CMesh.CMesh.CreateFromExistingObject("WomanA-Original")
+#     oMesh = CMesh.CreateFromExistingObject("WomanA-Original")
 # 
 #     #=== Obtain reference to vertex group we remove weight from ===
 #     nVertGrpIndex = oMesh.GetMesh().vertex_groups.find("_TEST_VAGINA")
@@ -125,7 +125,7 @@
 #     VertGrp_SelectVerts(oMesh.GetMesh(), "_TEST_VAGINA_CENTER")
 #     bpy.ops.object.mode_set(mode='OBJECT')          ###LEARN: We must return to object mode to be able to read-back the vert select flag! (Annoying!)
 #     nVertCenter = None
-#     for oVert in oMesh.GetMesh().data.vertices:
+#     for oVert in oMesh.GetMeshData().vertices:
 #         if oVert.select == True:
 #             nVertCenter = oVert.index
 #             print("- Center vert is " + str(nVertCenter))
@@ -155,7 +155,7 @@
 #     for i in range(len(aVertsInRange)):
 #         nVert = aVertsInRange[i]
 #         nDist = aVertsInRangeDist[i]
-#         oVert = oMesh.GetMesh().data.vertices[nVert]
+#         oVert = oMesh.GetMeshData().vertices[nVert]
 #         vecVertDiff = oVert.co - vecCenter
 #         
 #         nDistRatio = nDist / nDistMax
@@ -208,7 +208,7 @@
 #         nDegreesPerBone = 360 / nBones 
 # 
 #         #=== Create the vertex groups to store the new bone weights for vagina radial expansion bones ===
-#         oMesh = CMesh.CMesh.CreateFromExistingObject("WomanA-Original")
+#         oMesh = CMesh.CreateFromExistingObject("WomanA-Original")
 # 
 #         #=== Obtain reference to vertex group we remove weight from ===
 #         nVertGrpIndex = oMesh.GetMesh().vertex_groups.find("_TEST_VAGINA")
@@ -243,7 +243,7 @@
 #         VertGrp_SelectVerts(oMesh.GetMesh(), "_TEST_VAGINA_CENTER")
 #         bpy.ops.object.mode_set(mode='OBJECT')          ###LEARN: We must return to object mode to be able to read-back the vert select flag! (Annoying!)
 #         nVertCenter = None
-#         for oVert in oMesh.GetMesh().data.vertices:
+#         for oVert in oMesh.GetMeshData().vertices:
 #             if oVert.select == True:
 #                 nVertCenter = oVert.index
 #                 print("- Center vert is " + str(nVertCenter))
@@ -273,7 +273,7 @@
 #         for i in range(len(aVertsInRange)):
 #             nVert = aVertsInRange[i]
 #             nDist = aVertsInRangeDist[i]
-#             oVert = oMesh.GetMesh().data.vertices[nVert]
+#             oVert = oMesh.GetMeshData().vertices[nVert]
 #             vecVertDiff = oVert.co - vecCenter
 #             
 #             nDistRatio = nDist / nDistMax
@@ -340,7 +340,7 @@
         
         
 #         #=== Obsolete Code to delete edge rings ===
-#         oMeshOrificeRig = CMesh.CMesh.CreateFromExistingObject("WomanA.002")     ###HACK!!!!!!
+#         oMeshOrificeRig = CMesh.CreateFromExistingObject("WomanA.002")     ###HACK!!!!!!
 #         bmOrificeRig = oMeshOrificeRig.Open()
 #  
 #         VertGrp_SelectVerts(oMeshOrificeRig.GetMesh(), "Opening")
@@ -1004,4 +1004,419 @@
 #                 #matBoneAtRest = quatBoneAtRest.to_matrix().to_4x4()
 #                 #matRotationBoneNew = matRotationNew * matBoneAtRest.inverted()
 #                 oBonePoseO.rotation_quaternion = matBoneNew.to_quaternion() 
+
+
+
+
+
+
+
+
+
+
+### Large amount of very difficult code written during penis fitting procedure.  REALLY struggled with this!!
+#         for nVertRim in aVertsBodyRim:                      # Iterate through the rim verts to find the verts at X=0.  There should be exactly two: One for top of hole the other for bottom of hole
+#             oVertRim = bmBody.verts[nVertRim]
+#             vecVertRim = oVertRim.co
+#             vecVertPenisClosestToRimVertBody, nVertPenisClosestToRimVertBody, nDist = oKDTreePenis.find(vecVertRim)
+#             if nDist > 0.05:
+#                 raise Exception("###EXCEPTION: CPenis.MountPenisToBody() could not find vert near enough to {}.  Closest dist = {}".format(vecVertRim, nDist))
+#             
+#             #=== Obtain reference to the 'closest vert' on penis to this body hole vert ===
+#             oVertPenisClosestToRimVertBody = bmPenis.verts[nVertPenisClosestToRimVertBody]
+#             oVertPenisClosestToRimVertBody.select_set(True)             ###LEARN: BMesh select_set() only appears to work when BMesh created from 'bmesh.from_edit_mesh()'  (not from_mesh())
+#             oVertPenisClosestToRimVertBody.co = vecVertRim 
+#             
+#             #=== Obtain the length of the shortest edge on the hole edge.  We need this to search for penis verts too close below ===
+#             nLenEdgeRimSearchDist = 9999
+#             for oEdge in oVertRim.link_edges:
+#                 oVertRimOther = oEdge.other_vert(oVertRim)
+#                 if oVertRimOther.index in aVertsBodyRim:
+#                     nLenEdgeRimSearchDistNow = oEdge.calc_length()
+#                     if nLenEdgeRimSearchDist > nLenEdgeRimSearchDistNow:
+#                         nLenEdgeRimSearchDist = nLenEdgeRimSearchDistNow
+#             if nLenEdgeRimSearchDist < 0.003:                                     # Make sure we consider removing verts that are at least this close.        ###TUNE
+#                 nLenEdgeRimSearchDist = 0.003
+#             if nLenEdgeRimSearchDist > 0.0065:                                     # Prevent removing vertices that are too far away
+#                 nLenEdgeRimSearchDist = 0.0065
+#             #print("- BodyVert Rim={:5}  Pen={:5}  DST={:.5f}  LEN={:.5f}".format(oVertRim.index, nVertPenisClosestToRimVertBody, nDist, nLenEdgeRimSearchDist))
+# 
+#             #=== Create the dictionary entry for this 'penis vert closest to rim vert'.  We will need it to collapse its 'too close' neighbors later ===
+#             dictPenisCollapseVerts[nVertRim] = [oVertPenisClosestToRimVertBody]
+#             
+#             #=== Accumulate in a set two levels of neighbors around the rim vert.  We need to assemble these in one big set for collapse in loop below ===
+#             setVertsTooCloseToRimVertBodys = set()
+#             Util_FindCloseVertAlongEdges_RECURSIVE(setVertsTooCloseToRimVertBodys, oVertPenisClosestToRimVertBody, oVertPenisClosestToRimVertBody, nLenEdgeRimSearchDist)
+#             #for oVertTooClose in setVertsTooCloseToRimVertBodys:
+#             #    setVertsTooCloseToRimVertBodys_All.add(oVertTooClose)
+#                 #oVertTooClose.select_set(True)
+
+#         #=== Dissolve verts that are too close to edge mid-points
+#         oRimVertBodyPrev = oRimVertBodyRoot
+#         oRimVertBodyNow = oRimVertBodyPrev.oRimVertBodyNext
+#         while oRimVertBodyNow != None:
+#             print(oRimVertBodyPrev, oRimVertBodyNow)
+#             if oRimVertBodyPrev.oRimVertPenis != None and oRimVertBodyNow.oRimVertPenis != None:      # Only process edges that have two valid penis verts
+#                 vecRimVertPenisPrev = oRimVertBodyPrev.oRimVertPenis.oVertPenis.co 
+#                 vecRimVertPenisNext = oRimVertBodyNow.oRimVertPenis.oVertPenis.co
+#                 vecEdgeCenter = (vecRimVertPenisPrev + vecRimVertPenisNext) / 2
+#                 nLenEdge = (vecRimVertPenisPrev - vecRimVertPenisNext).length 
+#     
+#                 for oEdge in oRimVertBodyPrev.oRimVertPenis.oVertPenis.link_edges:
+#                     oVertToDissolve = oEdge.other_vert(oRimVertBodyPrev.oRimVertPenis.oVertPenis) 
+#                     nDistFromEdgeCenter = (oVertToDissolve.co - vecEdgeCenter).length
+#                     if nDistFromEdgeCenter < nLenEdge: 
+#                         oVertToDissolve.select_set(True)
+#     
+#                 for oEdge in oRimVertBodyNow.oRimVertPenis.oVertPenis.link_edges:
+#                     oVertToDissolve = oEdge.other_vert(oRimVertBodyNow.oRimVertPenis.oVertPenis) 
+#                     nDistFromEdgeCenter = (oVertToDissolve.co - vecEdgeCenter).length
+#                     if nDistFromEdgeCenter < nLenEdge: 
+#                         oVertToDissolve.select_set(True)
+#               
+#             oRimVertBodyPrev = oRimVertBodyNow 
+#             oRimVertBodyNow = oRimVertBodyNow.oRimVertBodyNext
+#         bpy.ops.object.vertex_group_deselect()
+
+#         #=== Destroy verts that are further from the rim verts ===
+#         oRimVertBodyNow = oRimVertBodyRoot
+#         while True:
+#             print("- Rim vert destroy on {}".format(oRimVertBodyNow))
+#             oVertPenis = oRimVertBodyNow.oRimVertPenis.oVertPenis
+#             nDistRimCenterToRimVert = (vecPenisRimCenter - oVertPenis.co).length + 0.001        ###HACK21:!!!!!!! 
+# 
+#             for (vecVertClose, nVertClose, nDist) in oKDTreePenis.find_range(oVertPenis.co, 0.007):             ###TODO21:!!! Duplicate code!        ###IMPROVE: Edge lenght in loop strcutre!
+#                 oVertClose = bmPenis.verts[nVertClose]
+#                 if oVertClose.index not in dictRimVertPenis:             # Avoid penis rim verts
+#                     nDistRimCenterToCloseVert = (vecPenisRimCenter - vecVertClose).length
+#                     if nDistRimCenterToCloseVert > nDistRimCenterToRimVert: 
+#                         self.oVisualizerCubes.GetCube("VertOut{:02d}-{}".format(oVertClose.index, nVertClose),  oVertClose.co, "Red", self.C_Layer_VertRemoved, True)
+#                         oVertClose.select_set(True)
+#  
+#             if oRimVertBodyNow.bLastInLoop:
+#                 break
+#             oRimVertBodyNow = oRimVertBodyNow.oRimVertBodyNext
+# 
+#         #=== Destroy the verts that are past the rim verts and edge midpoints.  This makes it possible to form clean edges featuring only the rim verts and makes it possible to separate the parts of the penis mesh we want to keep and which part to throw away ===
+#         bpy.ops.mesh.delete(type='VERT')
+# 
+# 
+#         #=== Construct faces between the rim verts where no edges exist ===    Vert deletion above destroyed edges (and faces) that reached inside the geometry we want to keep.  Re-create faces on all rim edges that have no common edge
+#         oRimVertBodyNow = oRimVertBodyRoot
+#         while True:
+#             oVertPenisPrev = oRimVertBodyNow.oRimVertBodyPrev.oRimVertPenis.oVertPenis 
+#             oVertPenisNow  = oRimVertBodyNow.oRimVertPenis.oVertPenis
+# 
+#             if oVertPenisNow .is_valid == False:
+#                 raise Exception("\n###ERROR: Invalid vert1 {}".format(oVertPenisNow))
+#             if oVertPenisPrev.is_valid == False:
+#                 raise Exception("\n###ERROR: Invalid vert2 {}".format(oVertPenisPrev))
+# 
+#             oEdgeOnRim = bmPenis.edges.get([oVertPenisPrev, oVertPenisNow])         ###LEARN: How to find an existing edge
+#             if oEdgeOnRim == None:                 
+#                 oEdgeOnRim = bmPenis.edges.new([oVertPenisPrev, oVertPenisNow])     ###LEARN: How to create a new edge between two verts
+#                 print("- Edge created between {} and {} ".format(oVertPenisPrev, oVertPenisNow))
+#                 
+#             if oRimVertBodyNow.bLastInLoop:
+#                 break
+#             oRimVertBodyNow = oRimVertBodyNow.oRimVertBodyNext
+# 
+# 
+# 
+#         #=== Starting at the non-manifold penis base edges keep selecting 'more' and de-selecting the rim verts... this will select all geometry we can delete ===         
+#         bpy.ops.mesh.select_all(action='DESELECT')
+#         self.oMeshPenisFitted.GetMesh().vertex_groups.active_index = oVertGrp_PenisBaseNonManifold.index
+#         bpy.ops.object.vertex_group_select()
+#         bpy.ops.mesh.select_mode(use_extend=False, use_expand=True, type='FACE')            ###LEARN: Expanding by faces doesn't go through simple edges! 
+#         self.oMeshPenisFitted.GetMesh().vertex_groups.active_index = oVertGrp_PenisRimVerts.index
+#         for n in range(30):
+#             bpy.ops.object.vertex_group_deselect()      #... and de-selecting rim verts...
+#             bpy.ops.mesh.select_more()                  #... selecting one more layer of verts...
+#         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT') 
+#         bpy.ops.object.vertex_group_deselect()
+
+
+#         #=== Destroy verts that are further from the midpoint of each rim edge ===
+#         bpy.ops.mesh.select_all(action='DESELECT')
+#         oRimVertBodyNow = oRimVertBodyRoot
+#         while True:
+#             print("- Mid-edge vert destroy on {}".format(oRimVertBodyNow))
+#             oRimVertPenis1 = oRimVertBodyNow.oRimVertBodyPrev.oRimVertPenis.oVertPenis 
+#             oRimVertPenis2 = oRimVertBodyNow.oRimVertPenis.oVertPenis
+# 
+#             if True:#oRimVertBodyNow.nRimVertBodyID == 13:
+#                 oEdgeOnRim = bmPenis.edges.get([oRimVertPenis1, oRimVertPenis2])         ###LEARN: How to find an existing edge
+#                 if oEdgeOnRim == None:                 
+#                     oRimVertPenis1.select_set(True)
+#                     oRimVertPenis2.select_set(True)
+#                     bpy.ops.mesh.shortest_path_select()
+#                     oRimVertPenis1.select_set(False)
+#                     oRimVertPenis2.select_set(False)
+#                     bpy.ops.mesh.delete(type='VERT')
+#                     #bpy.ops.mesh.dissolve_verts()
+#                     print("- Edge dissolved verts between {} and {} ".format(oRimVertPenis1, oRimVertPenis2))
+# 
+#                     oEdgeOnRim = bmPenis.edges.get([oRimVertPenis1, oRimVertPenis2])         ###LEARN: How to find an existing edge
+#                     if oEdgeOnRim == None:                 
+#                         oEdgeOnRim = bmPenis.edges.new([oRimVertPenis1, oRimVertPenis2])     ###LEARN: How to create a new edge between two verts
+#                         print("- Edge created between {} and {} ".format(oRimVertPenis1, oRimVertPenis2))
+# 
+#             if oRimVertBodyNow.bLastInLoop:
+#                 break
+#             oRimVertBodyNow = oRimVertBodyNow.oRimVertBodyNext
+            
+
+#         #=== Destroy verts that are further from the midpoint of each rim edge ===
+#         bpy.ops.mesh.select_all(action='DESELECT')
+#         oRimVertBodyNow = oRimVertBodyRoot
+#         while True:
+#             print("- Mid-edge vert destroy on {}".format(oRimVertBodyNow))
+#             vecRimVertPenisPrev = oRimVertBodyNow.oRimVertBodyPrev.oRimVertPenis.oVertPenis.co 
+#             vecRimVertPenisNext = oRimVertBodyNow.oRimVertPenis.oVertPenis.co
+#             vecEdgeCenter = (vecRimVertPenisPrev + vecRimVertPenisNext) / 2
+#             nLenEdge = (vecRimVertPenisPrev - vecRimVertPenisNext).length 
+#             nLenEdgeSearchDistance = (nLenEdge / 2)                         # Search distance is half the edge length (search from rim verts itself in loop below)
+#             nDistRimCenterToEdgeCenter = (vecPenisRimCenter - vecEdgeCenter).length 
+# 
+#             self.oVisualizerCubes.GetCube("EdgeCenter{:02d}".format(oRimVertBodyNow.nRimVertBodyID),  vecEdgeCenter, "Yellow", self.C_Layer_EdgeCenters, True)
+#             for (vecVertClose, nVertClose, nDist) in oKDTreePenis.find_range(vecEdgeCenter, nLenEdgeSearchDistance):      ###LEARN: How to find a range of verts in a KDTree ###SOURCE:https://docs.blender.org/api/blender_python_api_2_71_release/mathutils.kdtree.html
+#                 oVertClose = bmPenis.verts[nVertClose]
+#                 if oVertClose.index not in dictRimVertPenis:             # Avoid penis rim verts
+#                     nDistRimCenterToCloseVert = (vecPenisRimCenter - vecVertClose).length
+#                     #print("-- Close to {} = vert {:5d} at dist {:.4f} / {:.4f} {:4.0f}%".format(oRimVertBodyNow, nVertClose, nDistRimCenterToCloseVert, nDistRimCenterToEdgeCenter, 100 * nDistRimCenterToCloseVert / nDistRimCenterToEdgeCenter))
+#                     if nDistRimCenterToCloseVert > nDistRimCenterToEdgeCenter: 
+#                         self.oVisualizerCubes.GetCube("EdgeOut{:02d}-{}".format(oRimVertBodyNow.nRimVertBodyID, nVertClose),  vecVertClose, "Orange", self.C_Layer_EdgeRemoved, True)
+#                         print("= Destroying vert {}".format(oVertClose))
+#                         oVertClose.select_set(True)
+#                     else:
+#                         self.oVisualizerCubes.GetCube("EdgeIn{:02d}-{}".format(oRimVertBodyNow.nRimVertBodyID, nVertClose),  vecVertClose, "Pink", 6, True)
+#             if oRimVertBodyNow.bLastInLoop:
+#                 break
+#             oRimVertBodyNow = oRimVertBodyNow.oRimVertBodyNext
+
+
+#             for oEdge in oVertPenis.link_edges:
+#                 oVertOther = oEdge.other_vert(oVertPenis)
+#                 if oVertOther.index not in dictRimVertPenis:             # Avoid penis rim verts
+#                     nDistRimCenterToOtherVert = (vecPenisRimCenter - oVertOther.co).length
+#                     if nDistRimCenterToOtherVert > nDistRimCenterToRimVert:
+#                         self.oVisualizerCubes.GetCube("VertOut{:02d}-{}".format(oVertPenis.index, nVertClose),  oVertOther.co, "Red", self.C_Layer_VertRemoved, True)
+#                         oVertOther.select_set(True)
+ 
+
+
+# #         #=== Dissolve inner penis verts that are too close to penis rim verts.  (inner = toward penis rim center) Dissolving them will make the rim verts have edges between one another when we re-triangulate ===
+# #         bpy.ops.mesh.select_all(action='DESELECT')
+# #         aVertsPastRimToDestroy = []
+# #         for nRimVertPenis in dictRimVertPenis:
+# #             oRimVertPenis = dictRimVertPenis[nRimVertPenis]
+# #             oRimVertBody  = oRimVertPenis.oRimVertBody
+# #             nDistCenterToRimVertBody = (vecPenisRimCenter - oRimVertPenis.oVertPenis.co).length 
+# #             for oEdge in oRimVertPenis.oVertPenis.link_edges:
+# #                 oVertToDissolve = oEdge.other_vert(oRimVertPenis.oVertPenis) 
+# #                 if oVertToDissolve.index not in dictRimVertPenis:
+# #                     nDistCenterToOtherVert = (vecPenisRimCenter - oVertToDissolve.co).length
+# #                     if nDistCenterToOtherVert < nDistCenterToRimVertBody:                      
+# #                         if oEdge.calc_length() < oRimVertBody.nLenEdgeToChildLen:
+# #                             oVertToDissolve.select_set(True)
+# #                     else:
+# #                         aVertsPastRimToDestroy.append(oVertToDissolve)      # Vert is away from rim verts (toward non-manifold base edge verts) = tag for deletion in next loop
+# # #                 if oEdge.calc_length() < oRimVertBody.nLenEdgeToChildLen:
+# # #                     oVertToDissolve = oEdge.other_vert(oRimVertPenis.oVertPenis) 
+# # #                     if oVertToDissolve.index not in dictRimVertPenis:
+# # #                         nDistCenterToOtherVert = (vecPenisRimCenter - oVertToDissolve.co).length
+# # #                         if nDistCenterToOtherVert < nDistCenterToRimVertBody:                      
+# # #                             oVertToDissolve.select_set(True)
+# # #                         else:
+# # #                             aVertsPastRimToDestroy.append(oVertToDissolve)      # Vert is away from rim verts (toward non-manifold base edge verts) = tag for deletion in next loop
+# 
+#         xxxxxxxxxxxxxxxxxxxx
+# 
+# 
+# 
+#         bpy.ops.mesh.dissolve_verts()                   # Dissolve the verts that are too close to rim verts (and toward rim center).
+#         bpy.ops.mesh.select_all(action='SELECT')
+#         bpy.ops.mesh.quads_convert_to_tris()
+#         bpy.ops.mesh.select_all(action='DESELECT')
+
+
+                
+                
+                #bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
+                #oEdgeOnRim.select_set(True)
+                #oVertPenisNow .select_set(True)
+                #oVertPenisPrev.select_set(True)
+                
+#                 bHasEdgeBetweenRimVerts = False
+#                 for oEdge in oVertPenisNow.link_edges:
+#                     oVertOther = oEdge.other_vert(oVertPenisNow)
+#                     if oVertOther == oVertPenisPrev:                # The 'Now' vert has an edge that connects it to the 'Prev' vert = This edge is ready for joining and no face creation is needed below
+#                         bHasEdgeBetweenRimVerts = True
+#                         break               
+#             
+#             if bHasEdgeBetweenRimVerts == False:                    # There are no edges (or faces) between the 'Prev' and 'Next' rim verts.  Find a vertex they share in common and create a face there
+#                 print("- Face creation on {}".format(oRimVertBodyNow))
+#                 if oVertPenisNow.is_valid and oVertPenisPrev.is_valid:
+#                     oVertPenisNow .select_set(True)
+#                     oVertPenisPrev.select_set(True)
+#                     bpy.ops.mesh.select_more()
+#                     bpy.ops.mesh.edge_face_add()
+#                     bpy.ops.mesh.select_all(action='DESELECT')
+#                 else:
+#                     print("###ERROR: Invalid vert in {} or {}".format(oVertPenisNow, oVertPenisPrev))
+
+
+#         #=== Destroy verts that are further from the rim verts ===
+#         oRimVertBodyNow = oRimVertBodyRoot
+#         while True:
+#             print("- Rim vert destroy on {}".format(oRimVertBodyNow))
+#             oVertPenis = oRimVertBodyNow.oRimVertPenis.oVertPenis
+#             nDistRimCenterToRimVert = (vecPenisRimCenter - oVertPenis.co).length 
+# 
+#             for oEdge in oVertPenis.link_edges:
+#                 oVertOther = oEdge.other_vert(oVertPenis)
+#                 if oVertOther.index not in dictRimVertPenis:             # Avoid penis rim verts
+#                     nDistRimCenterToOtherVert = (vecPenisRimCenter - oVertOther.co).length
+#                     if nDistRimCenterToOtherVert > nDistRimCenterToRimVert:
+#                         self.oVisualizerCubes.GetCube("VertOut{:02d}-{}".format(oVertPenis.index, nVertClose),  oVertOther.co, "Red", 5, True)
+#                         oVertOther.select_set(True)
+# 
+#             if oRimVertBodyNow.bLastInLoop:
+#                 break
+#             oRimVertBodyNow = oRimVertBodyNow.oRimVertBodyNext
+
+
+
+#         #=== Move the penis rim verts - and their neighbors - to their positions.  This will not only move the rim verts but also their neighbors much closer to where they should go ===
+#         bpy.ops.mesh.select_all(action='DESELECT')
+#         for n in range(1):                                                              ###OPT:!!! EXPENSIVE ###KEEP??
+#             for oVertPenisRim in mapPenisRimToBodyRim:
+#                 oVertBodyRim = mapPenisRimToBodyRim[oVertPenisRim]
+#                 vecTranslation = oVertBodyRim.co - oVertPenisRim.co 
+#                 oVertPenisRim.select_set(True)
+#                 bpy.ops.transform.translate(value=vecTranslation, proportional='ENABLED', proportional_edit_falloff='SPHERE', proportional_size=0.01)           ###TUNE
+#                 oVertPenisRim.select_set(False)
+#         for oVertPenisRim in mapPenisRimToBodyRim:                  # Now move the rim verts exactly where they should be.  Neighbors are now closer
+#             oVertBodyRim = mapPenisRimToBodyRim[oVertPenisRim]
+#             oVertPenisRim.co = oVertBodyRim.co
+
+
+#         #=== Select the 'chosen closest penis rim verts' so we can smooth neighboring verts closer to the body rim.  Also store them in their own vertex group ===
+#         aVertPenisRim = []
+#         for nVertPenisClosestToRimVertBody in mapPenisVertToRimVertBody:
+#             oVertPenisRim = bmPenis.verts[nVertPenisClosestToRimVertBody] 
+#             aVertPenisRim.append(oVertPenisRim)
+#             oVertPenisRim.select_set(True)
+#         oVertGrp_PenisRimVerts = self.oMeshPenisFitted.GetMesh().vertex_groups.new("_CPenis_RimVerts") 
+#         bpy.ops.object.vertex_group_assign()
+# 
+#         #=== Move the vertices around the 'closest penis rim verts' so neighbors get much closer to body rim (so we can dissolve them)
+#         for n in range(5):
+#             bpy.ops.mesh.select_more()
+#         bpy.ops.object.vertex_group_deselect()
+#         bpy.ops.mesh.vertices_smooth(10)            
+            
+
+
+
+
+
+
+#         mapPenisVertToRimVertBody = {}                          # Map that collects for each penis vert which rim vert report as being 'closest'.  As we have a many-to-many we go the inverse way in the next loop to find those that are truly 'closest possible matches'
+#         for nVertRim in aVertsBodyRim:                      # Iterate through the rim verts to find the verts at X=0.  There should be exactly two: One for top of hole the other for bottom of hole
+#             oVertRim = bmBody.verts[nVertRim]
+#             vecVertRim = oVertRim.co
+#             vecVertPenisClosestToRimVertBody, nVertPenisClosestToRimVertBody, nDist = oKDTreePenis.find(vecVertRim)
+#             if nDist > 0.05:
+#                 raise Exception("###EXCEPTION: CPenis.ctor() could not find vert near enough to {}.  Closest dist = {}".format(vecVertRim, nDist))
+#             if nVertPenisClosestToRimVertBody not in mapPenisVertToRimVertBody: 
+#                 mapPenisVertToRimVertBody[nVertPenisClosestToRimVertBody] = []
+#             mapPenisVertToRimVertBody[nVertPenisClosestToRimVertBody].append(nVertRim) 
+# 
+#         #=== Iterate through the 'closest penis verts' to find the corresponding closest rim vert (flagged in its dictionary entry in loop above).  This is to find the closest match in the 'many to many' mapping that exists between the two rims ===
+#         mapPenisRimToBodyRim = {}                                       # Map that traverses between the chosen penis rim verts to their corresponding body rim verts
+#         mapBodyRimToPenisRim = {}                                       # Map that traverses between the body rim verts and their corresponding chosen penis rim verts
+#         for nVertPenisClosestToRimVertBody in mapPenisVertToRimVertBody: 
+#             aListOfRimVerts = mapPenisVertToRimVertBody[nVertPenisClosestToRimVertBody]
+#             oVertPenisClosestToRimVertBody = bmPenis.verts[nVertPenisClosestToRimVertBody]
+#             oRimVertBody_Closest = None
+#             nDistMin = 9999
+#             for nRimVert in aListOfRimVerts:
+#                 oRimVertBody = bmBody.verts[nRimVert]
+#                 nDist = (oVertPenisClosestToRimVertBody.co - oRimVertBody.co).length
+#                 if nDistMin > nDist:
+#                     nDistMin = nDist
+#                     oRimVertBody_Closest = oRimVertBody
+#             print("-- Closest Rim={:5d}   Penis={:5d}  Dist={:.4f}  {}".format(oRimVertBody_Closest.index, nVertPenisClosestToRimVertBody, nDistMin, oRimVertBody_Closest.tag))
+#             oRimVertBody_Closest.tag = True                         # Tag the closest rim vert has having been 'used'.  This is so we can collapse the unused ones in next loop to avoid gaps in the two meshes
+#             #oVertPenisClosestToRimVertBody.co = oRimVertBody_Closest.co         # Set the position of the 'closest' penis vert to the position if its closest rim vert.
+#             mapPenisRimToBodyRim[oVertPenisClosestToRimVertBody] = oRimVertBody_Closest 
+#             mapBodyRimToPenisRim[oRimVertBody_Closest] = oVertPenisClosestToRimVertBody
+
+#         #=== Identify the rim verts that had no 'closest penis vert' mapped to them.  We will need to dissolve them to avoid leaving holes in the joined meshes ===
+#         aRimVertsToDissolve = []                  
+#         for nVertRim in aVertsBodyRim:                      # Iterate through the rim verts to find the verts at X=0.  There should be exactly two: One for top of hole the other for bottom of hole
+#             oVertRim = bmBody.verts[nVertRim]
+#             if oVertRim.tag == False:
+#                 aRimVertsToDissolve.append(nVertRim)
+#                 print("-- Unused Rim Vert: {:5d}".format(oVertRim.index))
+
+        #FUCK!!!!!!!
+        # really close with the rewrite!  New code truly matches accross many-to-many but having serious problems properly collapsing the verts that should be removed on penis!
+        # It would be helpful to move verts around chosen ones closer but that is expensive.
+        # Edge dissove doesn't appear to work well!  What we need is to compare each vert around the penis rim vert to see if they are too close to the rim somewhere... (including middle points!)
+        # But we need to dissolve verts!
+
+
+
+
+#         #=== Fix the penis vertex groups after vertex weld ===
+#         oVertGrp_Penis = VertGrp_SelectVerts(self.oBody.oMeshBody.GetMesh(), oVertGrp_Penis.name)
+#         self.oBody.oMeshBody.GetMesh().vertex_groups.active_index = oVertGrp_PenisMountingHole.index
+#         bpy.ops.object.vertex_group_select()
+#         self.oBody.oMeshBody.GetMesh().vertex_groups.active_index = oVertGrp_Penis.index
+#         bpy.ops.object.vertex_group_assign()            # Append rim to penis vertex group so now it is complete
+# 
+#         #=== Fix the penis rim vertex groups after vertex weld ===
+#         bpy.ops.mesh.region_to_loop()                   # With entire penis selected this call returns only the rim
+#         self.oBody.oMeshBody.GetMesh().vertex_groups.active_index = oVertGrp_PenisMountingHole.index
+#         bpy.ops.object.vertex_group_assign()
+
+
+
+
+
+
+
+
+
+
+#         #=== Merge vertices ===  DOES NOT WORK!  (Pelvis loses info!)
+#         oRimVertBodyNow = oRimVertBodyRoot
+#         while True:
+#             bpy.ops.mesh.select_all(action='DESELECT')
+#             oRimVertBodyNow.oVertBody.select_set(True)
+#             oRimVertBodyNow.oRimVertPenis.oVertPenis.select_set(True)
+#             bpy.context.scene.cursor_location = oRimVertBodyNow.oVertBody.co 
+#             bpy.ops.mesh.merge(type='CURSOR', uvs=False)
+#             #bpy.ops.mesh.merge(type='FIRST', uvs=True)
+#             if oRimVertBodyNow.bLastInLoop:
+#                 break
+#             oRimVertBodyNow = oRimVertBodyNow.oRimVertBodyNext
+
+
+            #oEdgeBridgeAcrossRims = bmBody.edges.new([oRimVertBodyNow.oVertBody, oRimVertBodyNow.oRimVertPenis.oVertPenis])
+            #oRimVertBodyNow.oRimVertPenis.oVertPenis.select_set(True)
+            #oRimVertBodyNow.oVertBody.select_set(True)
+            #bpy.context.scene.cursor_location = oRimVertBodyNow.oVertBody.co 
+            #bpy.ops.mesh.merge(type='CURSOR', uvs=True)
+            #bpy.ops.mesh.merge(type='FIRST', uvs=True)
+
+        #bpy.ops.mesh.bridge_edge_loops()
+
+
+
+
+
+
 

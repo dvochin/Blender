@@ -1,8 +1,8 @@
 ###NEW16:
+###OBS: Cleanup!!
+
 # Could use layers.shape to obtain shape key pos?  See https://www.blender.org/api/blender_python_api_2_63_2/bmesh.html4
 	# Can also use from_mesh(mesh, use_shape_key=False, shape_key_index=0) ??
-
-
 
 ### NEXT ###
 ### Reconsider these other 'GetMesh' functions.  Always call getMesh and get extra arrays in a common method!!!
@@ -37,6 +37,8 @@
 #? CBMesh objects created from Client are highly transient??
 	
 ### IDEAS ###
+# There's a nice attribute called select_history in the bmesh module (https://blender.stackexchange.com/questions/1412/efficient-way-to-get-selected-vertices-via-python-without-iterating-over-the-en)
+	# Read https://blender.stackexchange.com/questions/69796/selection-history-from-shortest-path
 # See bmesh.select_mode, select_flush() and select_flush_mode()!!!
 # def v3d_refresh(ctx): for a in ctx.window.screen.areas: if a.type == 'VIEW_3D': for r in a.regions: r.tag_redraw() a.tag_redraw()
 # Consider ditching all skinning info on all meshes (including intermediate bodies) and re-skin by proximity on source DAZ body at the very last step
@@ -134,14 +136,17 @@ def DeleteObject(sNameObject):
 		bpy.data.objects.remove(oObj)
 	return None				# Return convenient None so we can set owning variable in one line
 
-def DuplicateAsSingleton(sSourceName, sNewName, sNameParent = None, bHideSource = True):
+def DuplicateAsSingleton(sSourceName, sNewName, sNameParent = None, bHideSource = True, bLinked = False):
 	#print("-- DuplicateAsSingleton  sSourceName '{}'  sNewName '{}'  sNameParent '{}'".format(sSourceName, sNewName, sNameParent))
 	DeleteObject(sNewName)
 	
 	oSrcO = SelectAndActivate(sSourceName, False)
 	if oSrcO is None:
 		raise Exception("###EXCEPTION: DuplicateAsSingleton() could not select object '{}'".format(sSourceName))
-	bpy.ops.object.duplicate()
+	if bLinked:
+		bpy.ops.object.duplicate_move_linked(OBJECT_OT_duplicate={"linked":True, "mode":'TRANSLATION'}, TRANSFORM_OT_translate={"value":(0, 0, 0)})
+	else:
+		bpy.ops.object.duplicate()
 	oNewO = bpy.context.object		  # Duplicate above leaves the duplicated object as the context object...
 	oSrcO.select = False		   #... but source object is still left selected.  Unselect it now to leave new object the only one selected and active.
 	oNewO.name = oNewO.data.name = sNewName				###CHECK: Do we really want to enforce name this way?  Can have side effects?  Should display error??
@@ -168,8 +173,8 @@ def SetParent(sNameObject, sNameParent):
 # 		oParentO.select = False				  
 # 		oParentO.hide = oParentO.hide_select = True			###WEAK: Show & hide of parent to enable reparenting... (lose previous state of parent but OK for folder nodes made up of 'empty'!)
 
-def CreateEmptyBlenderNode(sNameNode, sNameParent):			# Create an empty Blender object (a hidden cube in this case) as a child of 'sNameParent'.  Used to create a useful hierarchy in Blender's outliner so tons of unrelated objects don't have to be under the same parent
-	bpy.ops.object.empty_add(type='CUBE', radius=0.01)		# Create an empty we will reparent to game folder
+def CreateEmptyBlenderNode(sNameNode, sNameParent, nRadius=0.01):			# Create an empty Blender object (a hidden cube in this case) as a child of 'sNameParent'.  Used to create a useful hierarchy in Blender's outliner so tons of unrelated objects don't have to be under the same parent
+	bpy.ops.object.empty_add(type='CUBE', radius=nRadius)		# Create an empty we will reparent to game folder
 	oNodeNew = bpy.context.object						 	# Obtain reference empty we just created above
 	oNodeNew.parent = bpy.data.objects[sNameParent]			# Set as child of game folder
 	oNodeNew.name = sNameNode	   							# Name it (twice so it sticks) 
@@ -280,6 +285,13 @@ def Util_FindClosestMirrorVertInGroups(bm, aVerts1, aVerts2):			# Find the close
 			print("-WARNING: Vert {:5d} has MirrorX at {:5d} with tolerance {:7.6f}".format(oVert1.index, oVertClosest.index, nDistMin))
 	return aVertsMirrorX
 
+def Util_GetFirstSelectedVert(bm):		# Returns the first selected vertex of BMesh bm
+	###IMPROVE: Wished there was a way to mark verts and not have to iterate through all of them to find the right one!
+	for oVert in bm.verts:								 
+		if oVert.select:
+			return oVert
+	raise Exception("###EXCEPTION: Util_GetFirstSelectedVert() could not a selected vertex!")
+
 
 #---------------------------------------------------------------------------	VERT CALCULATIONS
 def Util_CalcSurfDistanceBetweenTwoVertGroups(bm, aVerts1, aVerts2):	 # Calculates the minimum surface distance between the verts in aVerts1 and the verts in aVerts2
@@ -323,7 +335,7 @@ def Util_CreateMirrorModifierX(oMeshO):
 	oModMirror.use_mirror_vertex_groups = False
 	return oModMirror
 			
-def Util_TransferWeights(oMeshO, oMeshSrcO):		# Transfer the skinning information from mesh oMeshSrcO to oMeshO
+def Util_TransferWeights(oMeshO, oMeshSrcO, bCleanGroups = True):		# Transfer the skinning information from mesh oMeshSrcO to oMeshO
 	SelectAndActivate(oMeshO.name, True)
 	oMeshSrcO.hide = False			###BUG on hide??
 	oModTransfer = oMeshO.modifiers.new(name="DATA_TRANSFER", type="DATA_TRANSFER")
@@ -332,8 +344,9 @@ def Util_TransferWeights(oMeshO, oMeshSrcO):		# Transfer the skinning informatio
 	oModTransfer.data_types_verts = { "VGROUP_WEIGHTS" }
 	bpy.ops.object.datalayout_transfer(modifier=oModTransfer.name)	###LEARN: Operation acts upon the setting of 
 	AssertFinished(bpy.ops.object.modifier_apply(modifier=oModTransfer.name))
-	bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
-	bpy.ops.object.vertex_group_clean(group_select_mode='ALL')	# Clean up empty vert groups new Blender insists on creating during skin transfer  ###LEARN: Needs weight mode to work!
+	if bCleanGroups:
+		bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
+		bpy.ops.object.vertex_group_clean(group_select_mode='ALL')	###LEARN: Needs weight mode to work! (???)
 	bpy.ops.object.mode_set(mode='OBJECT')
 			
 def Util_GetMapDistToEdges():			# Returns a map of distances of all manifold verts to non-manifold (edge) verts.  used by Breast and Penis mesh preparation to form a 'scaling ratio array' to dampen scaling of verts around the edges of the mesh
@@ -489,6 +502,21 @@ def Cleanup_DecimateEdges(oObj, nness, nRatioOfFacesToKeep):  ###OBS? ###IMPROVE
 	bpy.ops.mesh.select_all(action='DESELECT') 
 	bpy.ops.object.mode_set(mode='OBJECT')
 
+def VertGrp_RemoveAll(oMeshO):
+	for oVertGrp in oMeshO.vertex_groups:
+		oMeshO.vertex_groups.remove(oVertGrp)
+	
+def VertGrp_RemoveByName(oMeshO, sNameSearchPattern):			# Removes vert groups that have 'sNameSearchPattern' in their name
+	for oVertGrp in oMeshO.vertex_groups:
+		if oVertGrp.name.find(sNameSearchPattern) != -1:
+			oMeshO.vertex_groups.remove(oVertGrp)
+	
+def VertGrp_RemoveByNameInv(oMeshO, sNameSearchPattern):		# Removes vert groups that do NOT have 'sNameSearchPattern' in their name
+	for oVertGrp in oMeshO.vertex_groups:
+		if oVertGrp.name.find(sNameSearchPattern) == -1:
+			oMeshO.vertex_groups.remove(oVertGrp)
+	
+
 def VertGrp_RemoveNonBones(oMeshO, bCleanUpBones):	 # Remove non-bone vertex groups so skinning normalize & fix below will not be corrupted by non-bone vertex groups  ###IMPROVE: Always clean (remove arg?)
 	if (len(oMeshO.vertex_groups) == 0):
 		return
@@ -545,19 +573,19 @@ def VertGrp_FindByName(oMeshO, sNameVertGrp, bThrowIfNotFound = True):
 		if bThrowIfNotFound:
 			raise Exception("\n###EXCEPTION: VertGrp_FindByName() could not find vert group '{}' in mesh '{}'".format(sNameVertGrp, oMeshO.name))
 
-def VertGrp_SelectVerts(oMeshO, sNameVertGrp, bUnselect=False):			# Select all the verts of the specified vertex group 
+def VertGrp_SelectVerts(oMeshO, sNameVertGrp, bDeselect=False):			# Select all the verts of the specified vertex group 
 	#=== Obtain access to mesh in edit mode, deselect and go into vert mode ===
-	###SelectAndActivate(oMeshO.name)			 ###IMPROVE? Select fist??  ###IMPROVE: Move into CMesh!
+	###SelectAndActivate(oMeshO.name)			 ###IMPROVE? Should make sure we're select fist but this call is makes too many things happen for here!  ###IMPROVE: Move into CMesh!
 	bpy.ops.object.mode_set(mode='EDIT')
-	if bUnselect == False:
+	if bDeselect == False:
 		bpy.ops.mesh.select_all(action='DESELECT') 
-	bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')		 # We go to face mode and expand the verts selected.  This will select all faces that have at least one vert selected...
+	bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
 
 	#=== Find the requested vertex group and select its vertices ===
 	nVertGrpIndex = oMeshO.vertex_groups.find(sNameVertGrp)
 	if (nVertGrpIndex != -1):
 		oMeshO.vertex_groups.active_index = nVertGrpIndex
-		if bUnselect:
+		if bDeselect:
 			bpy.ops.object.vertex_group_deselect()
 		else:
 			bpy.ops.object.vertex_group_select()
@@ -779,6 +807,20 @@ def Body_InitialPrep(sNameSource):
 # 	#===== Define cloth colliders =====			###IMPROVE: Auto-generate these from a naming pattern??
 # 	CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BodyColCloth-Top", 0.000001, bMirror=True, bSkin=True)
 
+
+###OBS: Recursive search through BMesh topology... replaced by KDTree but can still be useful in some cases?
+# def Util_FindCloseVertAlongEdges_RECURSIVE(setVertsTooCloseToRimVertBodys, oVertRoot, oVert, nDistMax):
+#     # Recursive function used in penis fitting algorithm.  Traverses the mesh geometry around 'oVertRoot' to insert into 'setVertsTooCloseToRimVertBodys' the verts within 'nDistMax' distance
+#     for oEdge in oVert.link_edges:
+#         oVertNeighbor = oEdge.other_vert(oVert)
+#         if oVertNeighbor not in setVertsTooCloseToRimVertBodys:                    # Avoid verts that have already been traversed
+#             if oVertNeighbor.select == False:                           # Avoid verts that are selected (they are the ones at root of this search)
+#                 vecRootToThisVert = oVertNeighbor.co - oVertRoot.co 
+#                 nLenRootToThisVert = vecRootToThisVert.length
+#                 if nLenRootToThisVert < nDistMax:                       # Avoid verts that are too far from root 
+#                     setVertsTooCloseToRimVertBodys.add(oVertNeighbor)
+#                     #print("-- Vert {:5d} gets {:5d} at dist {:.5f} of {:.5f}".format(oVertRoot.index, oVertNeighbor.index, nLenRootToThisVert, nDistMax))
+#                     Util_FindCloseVertAlongEdges_RECURSIVE(setVertsTooCloseToRimVertBodys, oVertRoot, oVertNeighbor, nDistMax)     # Recursively call self on this neighboring vert so we recursively find ALL verts within 'nDistMax' of 'oVertRoot'
 
 #---------------------------------------------------------------------------	
 #---------------------------------------------------------------------------	APP GLOBAL TOP LEVEL

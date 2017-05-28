@@ -10,7 +10,7 @@ from bpy.props import *
 from gBlender import *
 import G
 import CBody
-import CMesh
+from CMesh import *
 import Client
 import CObject
 

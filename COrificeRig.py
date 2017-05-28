@@ -78,7 +78,7 @@ class COrificeRig():            # COrificeRig: Blender class to modify bones and
         bpy.ops.object.mode_set(mode='OBJECT')
         self.vecCenter = Vector((0,0,0))
         nVertsInOpening = 0
-        for oVert in oMesh.GetMesh().data.vertices:
+        for oVert in oMesh.GetMeshData().vertices:
             if oVert.select == True:
                 self.vecCenter = self.vecCenter + oVert.co
                 nVertsInOpening = nVertsInOpening + 1
@@ -93,7 +93,7 @@ class COrificeRig():            # COrificeRig: Blender class to modify bones and
             bpy.ops.object.mode_set(mode='OBJECT')          ###LEARN: We must return to object mode to be able to read-back the vert select flag! (Annoying!)
     
             self.aOrificeRigVertThisRing = []
-            for oVert in oMesh.GetMesh().data.vertices:
+            for oVert in oMesh.GetMeshData().vertices:
                 if oVert.select == True:
                     oORV = COrificeRigVert(oVert.index, oVert.co)
                     self.aOrificeRigVertThisRing.append(oORV)
@@ -170,7 +170,7 @@ class COrificeRig():            # COrificeRig: Blender class to modify bones and
 #         bpy.ops.object.mode_set(mode='OBJECT')          ###LEARN: We must return to object mode to be able to read-back the vert select flag! (Annoying!)
 #         self.vecCenter = Vector((0,0,0))
 #         nVertsInOpening = 0
-#         for oVert in oMesh.GetMesh().data.vertices:
+#         for oVert in oMesh.GetMeshData().vertices:
 #             if oVert.select == True:
 #                 oORV = COrificeRigVert(oVert.index, oVert.co)
 #                 self.aOrificeRigVert.append(oORV)
@@ -294,7 +294,7 @@ class COrificeRig():            # COrificeRig: Blender class to modify bones and
             nDist = aVertsInRangeDist[i]
             oORV1 = aVertsInRangeOpening[i]
     
-            oVert = oMesh.GetMesh().data.vertices[nVert]
+            oVert = oMesh.GetMeshData().vertices[nVert]
     
     #         vecVertDiff = oVert.co - self.vecCenter
     #         
@@ -309,7 +309,7 @@ class COrificeRig():            # COrificeRig: Blender class to modify bones and
     #             nOrificeRigVert2 = 0
     #         oORV2 = mapOrificeRigVert[nOrificeRigVert2] 
     
-            oVertOrificeRigVert1 = oMesh.GetMesh().data.vertices[oORV1.nVert]
+            oVertOrificeRigVert1 = oMesh.GetMeshData().vertices[oORV1.nVert]
             #nDist = Util_CalcSurfDistanceBetweenTwoVerts(bm, oVert, oVertOrificeRigVert1)
             nDistRatio = nDist / self.nDistMax
             nWeightGoal = (cos(nDistRatio*pi) + 1) / 2             # Convert linear ratio to smooth curve (cos(x) from 0 to pi gives smooth curve) 

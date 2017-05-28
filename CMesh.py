@@ -36,6 +36,7 @@ class CMesh:
         self.bDeleteUponDestroy = True             # By default we delete our Blender object when we get destroyed
         self.SetName(sNameMesh)
         self.bmLastOpen = None                      # The last-opened BMesh.
+        self.bOpenNonEditMode = None                # BMesh was opened in non-edit mode. (Does not require ExitFromEditMode() when closing)
         self.aMapSharedNormals = None               # Shared normals array (computed by ConvertMeshForUnity() to fix normals accross seams
         
 #         if (self.oMeshParent != None):         ###DESIGN ###BUG Confusion with node parent and morph parent!!!
@@ -67,19 +68,36 @@ class CMesh:
         return oInstance
 
     def Open(self):
+        if self.bmLastOpen:
+            raise Exception("###EXCEPTION: CMesh.Open('{}') called while it was already open!".format(self.oMeshO.name))
         SelectAndActivate(self.oMeshO.name)         ###DEV: Best way by name??        ###IMPROVE: Remember hidden flag??
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')  # Make sure we're in vert mode
-        self.bmLastOpen = bmesh.from_edit_mesh(self.oMeshO.data)          ###DEV: Store as member?
+        self.bmLastOpen = bmesh.from_edit_mesh(self.oMeshO.data)
+        self.bOpenNonEditMode = False
         self.UpdateBMeshTables()
         return self.bmLastOpen
 
-    def Close(self, bHide = False):                         ###TODO19: iterate through code to hide when we need
+    def OpenInNonEditMode(self):                      # Obtain a BMesh reference while NOT in Edit mode.  Useful in cases when another BMesh needs to be opened in edit mode (more ops allowed in edit mode)
+        ###BUG: OpenInNonEditMode() has been observed to result in CORRUPT BMesh data!  (e.g. edges with null verts on one side!!) -> DON"T USE!!
+        if self.bmLastOpen:                             ###TODO21: Propage this new call throughout codebase
+            raise Exception("###EXCEPTION: CMesh.OpenInNonEditMode('{}') called while it was already open!".format(self.oMeshO.name))
+        self.bmLastOpen = bmesh.new()
+        self.bmLastOpen.from_mesh(self.oMeshO.data)
+        self.bOpenNonEditMode = True
+        self.UpdateBMeshTables()
+        return self.bmLastOpen
+
+    def Close(self, bHide = False, bDeselect = True):                         ###TODO19: iterate through code to hide when we need
         if (bpy.ops.mesh.select_mode.poll()):
             bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')  # Try to set vert mode
-        if (bpy.ops.mesh.select_all.poll()):
-            bpy.ops.mesh.select_all(action='DESELECT')      # Try to deselect all verts
-        self.ExitFromEditMode()
+        if bDeselect:
+            if (bpy.ops.mesh.select_all.poll()):
+                bpy.ops.mesh.select_all(action='DESELECT')      # Try to deselect all verts
+        if self.bOpenNonEditMode == False:
+            self.ExitFromEditMode()
+        self.bOpenNonEditMode = None
+        self.bmLastOpen = None
         if bHide:
             self.Hide()     ###IMPROVE: Update lookup table and verts
         return None         # Return convenience 'None' so we can set our BMesh variable in one line
@@ -95,7 +113,7 @@ class CMesh:
 
     def UpdateBMeshTables(self):
         if (self.bmLastOpen != None):
-            self.bmLastOpen.verts.index_update()             ###IMPROVE: Also do edges and faces?
+            self.bmLastOpen.verts.index_update()             ###OPT: Can all of this be too expensive every time we open a mesh?
             self.bmLastOpen.edges.index_update()
             self.bmLastOpen.faces.index_update()
             self.bmLastOpen.verts.ensure_lookup_table()
@@ -114,6 +132,9 @@ class CMesh:
 
     def GetMesh(self):
         return self.oMeshO 
+
+    def GetMeshData(self):
+        return self.oMeshO.data 
 
     def SetParent(self, sNameParent):           
         SetParent(self.oMeshO.name, sNameParent)       ###MOVE: Merge in here?

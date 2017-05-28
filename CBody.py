@@ -78,12 +78,12 @@ import G
 import CSoftBody
 import CCloth
 import CClothSrc
-import CMesh
+from CMesh import *
 import Client
 import CFlexSkin
 import COrificeRig
 import CObject
-
+import CPenis
 
 
 
@@ -94,11 +94,11 @@ import CObject
 class CBodyBase:
     _aBodyBases = []  # The global array of bodies.  Unity acceses body instances through this one global collection
 
-    def __init__(self, nBodyID, sMeshSource, sSex, sGenitals):
+    def __init__(self, nBodyID, sSex, sMeshSource, sGenitals):
         self.nBodyID = nBodyID              # Our ID is passed in by Blender and remains the only public way to access this instance (e.g. CBody._aBodyBases[<OurID>])
-        self.sMeshSource = sMeshSource      # The name of the source body mesh (e.g. 'WomanA', 'ManA', etc)        ###TODO11: Separate sex from mesh version!
         self.sSex = sSex                    # The body's sex (one of 'Man', 'Woman' or 'Shemale')
-        self.sGenitals = sGenitals          # The body's genitals (e.g. 'Vagina-EroticVR-A', 'PenisW-EroticVR-A' etc.)
+        self.sMeshSource = sMeshSource      # The name of the source body mesh (e.g. 'WomanA', 'ManA', etc)        ###TODO11: Separate sex from mesh version!
+        self.sGenitals = sGenitals          # The body's genitals (e.g. Penis-EroticVR-A' etc.)  ###OBS21:??? Changed meaning now that we no longer support different penises?  Keep in case we have different ones?  (Always one vagina now)
         self.sMeshPrefix = "B" + chr(65 + self.nBodyID) + '-'  # The Blender object name prefix of every submesh (e.g. 'BodyA-Detach-Breasts', etc)
         
         self.oBody = None                   # Our game-time body.  Created when we enter play mode, destroyed when we leave play mode for configure mode.
@@ -123,24 +123,25 @@ class CBodyBase:
         
         CBodyBase._aBodyBases.append(self)  # Append ourselves to global array.  The only way Unity can find our instance is through CBody._aBodyBases[<OurID>]
         SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', True)     # Make sure we're starting Blender operations with Blender in a known state...
-        self.oMeshSource = CMesh.CMesh.CreateFromExistingObject(self.sMeshSource, bpy.data.objects[self.sMeshSource])  ###DEV: Special ctor??
+        self.oMeshSource = CMesh.CreateFromExistingObject(self.sMeshSource, bpy.data.objects[self.sMeshSource])  ###DEV: Special ctor??
 
         #=== Create a empty node in game folder where every mesh related to this body will go ===
         self.oNodeRoot = CreateEmptyBlenderNode("Body" + chr(65 + self.nBodyID), G.C_NodeFolder_Game)
 
         #=== Duplicate the source body (kept in pristine condition) as the assembled body. Delete unwanted parts and attach the user-specified genital mesh instead ===
-        self.oMeshAssembled = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + "Assembled", self.oMeshSource)  # Creates the top-level body object named like "BodyA", "BodyB", that will accept the various genitals we tack on to the source body.
+        self.oMeshAssembled = CMesh.CreateFromDuplicate(self.sMeshPrefix + "Assembled", self.oMeshSource)  # Creates the top-level body object named like "BodyA", "BodyB", that will accept the various genitals we tack on to the source body.
         self.oMeshAssembled.SetParent(self.oNodeRoot.name)
         self.oMeshAssembled.ConvertMeshForUnity(True)  ###DESIGN13: This early??
 
         #=== Prepare a ready-for-morphing body for Unity.  Also create the 'body' mesh that will have parts detached from it where softbodies are ===
-        self.oMeshMorph = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + 'Morph', self.oMeshAssembled)   
+        self.oMeshMorph = CMesh.CreateFromDuplicate(self.sMeshPrefix + 'Morph', self.oMeshAssembled)   
         self.oMeshMorph.SetParent(self.oNodeRoot.name)
 
         #=== Prepare the Unity-serialized mesh that is updated every time player adjusts a slider ===
-        self.oMeshMorphResult = CMesh.CMesh.CreateFromDuplicate(self.sMeshPrefix + 'MorphResult', self.oMeshMorph)   
+        self.oMeshMorphResult = CMesh.CreateFromDuplicate(self.sMeshPrefix + 'MorphResult', self.oMeshMorph)   
         self.oMeshMorphResult.SetParent(self.oNodeRoot.name)
-        bpy.ops.object.shape_key_remove(all=True)  # Remove all the shape keys of the outgoing mesh.  We set its verts manually at every morph change.
+        if bpy.ops.object.shape_key_remove.poll():      ###KEEP?
+            bpy.ops.object.shape_key_remove(all=True)  # Remove all the shape keys of the outgoing mesh.  We set its verts manually at every morph change.
 
         #=== Connect our Unity-editable collection of properties so Unity player can edit our body mesh ===
         self.oObjectMeshShapeKeys = CObject.CObjectMeshShapeKeys("Body Mesh Shape Keys", self.oMeshMorph.GetName())  # The Unity-visible CObject properties.  Enables Unity to manipulate morphing body's morphs
@@ -163,14 +164,14 @@ class CBodyBase:
     def UpdateMorphResultMesh(self):  # 'Bake' the morphing mesh as per the player's morphing parameters into a 'MorphResult' mesh that can be serialized to Unity.  Matches Unity's CBodyBase.UpdateMorphResultMesh()
         #=== 'Bake' all the shape keys in their current position into one and extract its verts ===
         SelectAndActivate(self.oMeshMorph.GetName())
-        aKeys = self.oMeshMorph.GetMesh().data.shape_keys.key_blocks
+        aKeys = self.oMeshMorph.GetMeshData().shape_keys.key_blocks
         bpy.ops.object.shape_key_add(from_mix=True)  ###LEARN: How to 'bake' the current shape key mix into one.  (We delete it at end of this function)
         nKeys = len(aKeys)
         aVertsBakedKeys = aKeys[nKeys - 1].data  # We obtain the vert positions from the 'baked shape key'
     
         #=== Obtain reference to the morphing mesh and the morphing result mesh ===
         bmMorph = self.oMeshMorph.Open()
-        aVertsMorphResults = self.oMeshMorphResult.GetMesh().data.vertices
+        aVertsMorphResults = self.oMeshMorphResult.GetMeshData().vertices
     
         #=== Iterate through the verts, extract the 'baked' position of the just-created 'mix' shape key to set the position of the outgoing MorphResult mesh
         for oVert in bmMorph.verts:
@@ -244,7 +245,7 @@ class CBodyBase:
         return "OK"
 
     def SelectClothSrc_HACK(self, sNameClothSrc):           ###HACK18: To overcome Unity's CBMesh.Create requiring every mesh to be accessible from a CBodyBase instance.
-        self.oClothSrcSelected_HACK = CMesh.CMesh.CreateFromExistingObject(G.CGlobals.cm_aClothSources[sNameClothSrc].oMeshO_3DS.name)       # 'Select' the current cloth src and put it in this variable.  It will the be pulled by Unity to interact with the cloth source
+        self.oClothSrcSelected_HACK = CMesh.CreateFromExistingObject(G.CGlobals.cm_aClothSources[sNameClothSrc].oMeshO_3DS.name)       # 'Select' the current cloth src and put it in this variable.  It will the be pulled by Unity to interact with the cloth source
         return "OK"
 
     def CreateOrificeRig(self):
@@ -262,6 +263,7 @@ class CBody:
         self.oMeshBody = None               # The 'body' skinned mesh.   Orinally copied from oMeshMorph.  Has softbody parts (like breasts and penis) removed. 
         self.oMeshFlexCollider = None       # The 'Flex collider' skinned mesh.  Responsible for repelling clothing, softbody body parts and fluid away from the body. 
         self.oMeshSrcBreast = None          # Our copy of source separated breast.  Used for breast morphs        ###OBS?
+        self.oPenis = None                  # Penis instance (only if body is man on shemale)
 
         self.aSoftBodies = {}               # Dictionary of CSoftBody objects representing softbody-simulated meshes.  (Contains items such as "BreastL", "BreastR", "Penis", to point to the object responsible for their meshes)
         
@@ -270,9 +272,15 @@ class CBody:
         print("\n=== CBody()  nBodyID:{}  sMeshPrefix:'{}' ===".format(self.oBodyBase.nBodyID, self.oBodyBase.sMeshPrefix))
     
         #=== Create the main skinned body from the base's MorphResult mesh.  This mesh will have softbody body parts cut out from it ===
-        self.oMeshBody = CMesh.CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + 'Body' , self.oBodyBase.oMeshMorphResult)
-        Cleanup_RemoveDoublesAndConvertToTris(0.000001)                                 # Convert to tris and remove the super-close geometry                             
+        self.oMeshBody = CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + 'Body' , self.oBodyBase.oMeshMorphResult)
         self.oMeshBody.SetParent(self.oBodyBase.oNodeRoot.name)
+
+        # Convert to tris and remove the super-close geometry
+        Cleanup_RemoveDoublesAndConvertToTris(0.000001)                                                              
+
+        #=== Create penis if body is man or shemale ===
+        if oBodyBase.sSex != "Woman":
+            self.oPenis = CPenis.CPenis(self)
         
         #=== Create a data layer that will store source body verts for possible vert domain traversal (e.g. soft body skin) ===
         bmBody = self.oMeshBody.Open()
@@ -320,7 +328,7 @@ class CBody:
         
         print("=== CBody.CreateFlexCollider()  on '{}' ===".format(self.oBodyBase.sMeshPrefix))
         #=== Start the Flex collider from the current self.oMeshBody.  (It just had all softbody bits removed) ===
-        self.oMeshFlexCollider = CMesh.CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + 'FlexCollider' , self.oMeshBody)
+        self.oMeshFlexCollider = CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + 'FlexCollider' , self.oMeshBody)
         oMeshFlexCollider = self.oMeshFlexCollider.GetMesh()
         
         #=== Simplify the mesh so remesh + shrink below work better (e.g. remove teeth, eyes, inside of ears & nostrils, etc) ===
@@ -349,6 +357,57 @@ class CBody:
         
         return "OK"         # Called from Unity so we must return something it can understand
 
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+    
     #---------------------------------------------------------------------------    BREASTS
 
 #     def Breasts_ApplyMorph(self, sOpMode, sOpArea, sOpPivot, sOpRange, vecOpValue, vecOpAxis):
@@ -360,18 +419,18 @@ class CBody:
 #         bpy.ops.object.mode_set(mode='OBJECT')
 #     
 #         #=== If a previous shape key for our operation exists we must delete it in order to guarantee that we can undo our previous ops and keep our op from influencing the other ops and keep everything 'undoable' ===
-#         if self.oMeshSrcBreast.GetMesh().data.shape_keys is None:  # Add the 'basis' shape key if shape_keys is None
+#         if self.oMeshSrcBreast.GetMeshData().shape_keys is None:  # Add the 'basis' shape key if shape_keys is None
 #             bpy.ops.object.shape_key_add(from_mix=False)
-#         if sOpName in self.oMeshSrcBreast.GetMesh().data.shape_keys.key_blocks:
-#             self.oMeshSrcBreast.GetMesh().active_shape_key_index = self.oMeshSrcBreast.GetMesh().data.shape_keys.key_blocks.find(sOpName)  ###LEARN: How to find a key's index in a collection!
+#         if sOpName in self.oMeshSrcBreast.GetMeshData().shape_keys.key_blocks:
+#             self.oMeshSrcBreast.GetMesh().active_shape_key_index = self.oMeshSrcBreast.GetMeshData().shape_keys.key_blocks.find(sOpName)  ###LEARN: How to find a key's index in a collection!
 #             bpy.ops.object.shape_key_remove()
-#         for oShapeKey in self.oMeshSrcBreast.GetMesh().data.shape_keys.key_blocks:  # Disable the other shape keys so our operation doesn't bake in their modifications 
+#         for oShapeKey in self.oMeshSrcBreast.GetMeshData().shape_keys.key_blocks:  # Disable the other shape keys so our operation doesn't bake in their modifications 
 #             oShapeKey.value = 0
 #     
 #         #=== Create a unique shape key to this operation to keep this transformation orthogonal from the other so we can change it later or remove it regardless of transformations that occur after ===
 #         bpy.ops.object.mode_set(mode='EDIT')
 #         oShapeKey = self.oMeshSrcBreast.GetMesh().shape_key_add(name=sOpName)  ###TODO: Add shape key upon first usage so we remain orthogonal and unable to touch-up our own modifications.
-#         self.oMeshSrcBreast.GetMesh().active_shape_key_index = self.oMeshSrcBreast.GetMesh().data.shape_keys.key_blocks.find(sOpName)  ###LEARN: How to find a key's index in a collection!
+#         self.oMeshSrcBreast.GetMesh().active_shape_key_index = self.oMeshSrcBreast.GetMeshData().shape_keys.key_blocks.find(sOpName)  ###LEARN: How to find a key's index in a collection!
 #         self.oMeshSrcBreast.GetMesh().active_shape_key.vertex_group = G.C_VertGrp_Area_BreastMorph  ###TODO: Finalize the name of the breast vertex groups 
 #         oShapeKey.value = 1
 #         
@@ -416,7 +475,7 @@ class CBody:
 #             print(sResult)
 #             return sResult
 #     
-#         for oShapeKey in self.oMeshSrcBreast.GetMesh().data.shape_keys.key_blocks:  # Re-enable all modifications now that we've commited our transformation has been isolated to just our shape key 
+#         for oShapeKey in self.oMeshSrcBreast.GetMeshData().shape_keys.key_blocks:  # Re-enable all modifications now that we've commited our transformation has been isolated to just our shape key 
 #             oShapeKey.value = 1
 #     
 #         sResult = "OK: Breasts_ApplyMorph() applying op '{}' on area '{}' with pivot '{}' and range '{}' with {}".format(sOpMode, sOpArea, sOpPivot, sOpRange, vecOpValue)
@@ -428,11 +487,11 @@ class CBody:
 #     def Breast_ApplyMorphOntoMorphBody(self):
 #         "Apply a breast morph operation onto this body's morphing body (and update the dependant softbodies)"
 # 
-#         aVertsBodyMorph = self.oMeshMorph.GetMesh().data.vertices
+#         aVertsBodyMorph = self.oMeshMorph.GetMeshData().vertices
 #     
 #         #=== 'Bake' all the shape keys in their current position into one and extract its verts ===
 #         SelectAndActivate(self.oMeshSrcBreast.GetName())
-#         aKeys = self.oMeshSrcBreast.GetMesh().data.shape_keys.key_blocks
+#         aKeys = self.oMeshSrcBreast.GetMeshData().shape_keys.key_blocks
 #         bpy.ops.object.shape_key_add(from_mix=True)  ###LEARN: How to 'bake' the current shape key mix into one.  (We delete it at end of this function)
 #         nKeys = len(aKeys)
 #         aVertsBakedKeys = aKeys[nKeys - 1].data  # We obtain the vert positions from the 'baked shape key'
@@ -481,7 +540,7 @@ class CBody:
 #         oLaySlaveMeshVerts = bm.verts.layers.int[G.C_DataLayer_SlaveMeshVerts]
 #         
 #         #=== Iterate through the slave mesh, find the corresponding vert in the morph body (going through map from source mesh to morph mesh) and set slave vert
-#         aVertsMorph = self.oMeshMorph.GetMesh().data.vertices
+#         aVertsMorph = self.oMeshMorph.GetMeshData().vertices
 #         for oVert in bm.verts:
 #             nVertSource = oVert[oLaySlaveMeshVerts]  # Master/Slave relationship setup with master as source body...
 #             nVertMorph = self.aMapVertsSrcToMorph[nVertSource]  # ... but we need to set our verts to morphing body!  Use the map we have for this purpose
@@ -615,9 +674,9 @@ class CBody:
 #---------------------------------------------------------------------------    CBODY PUBLIC ACCESSOR
 #---------------------------------------------------------------------------    
 
-def CBodyBase_Create(nBodyID, sMeshSource, sSex, sGenitals):
+def CBodyBase_Create(nBodyID, sSex, sMeshSource, sGenitals):
     "Proxy for CBody ctor as we can only return primitives back to Unity"
-    oBodyBase = CBodyBase(nBodyID, sMeshSource, sSex, sGenitals)
+    oBodyBase = CBodyBase(nBodyID, sSex, sMeshSource, sGenitals)
     return str(oBodyBase.nBodyID)           # Strings is one of the only things we can return to Unity
 
 def CBodyBase_GetBodyBase(nBodyID):
@@ -643,8 +702,8 @@ def CBodyBase_GetBodyBase(nBodyID):
 #     
 #         #=== Import and preprocess the genitals mesh and assemble into this mesh ===
 #         if (self.sGenitals.startswith("Vagina") == False):      ###V ###CHECK!!!
-#             oMeshGenitalsSource = CMesh.CMesh.CreateFromExistingObject(self.sGenitals)          ###WEAK: Create another ctor?
-#             oMeshGenitals = CMesh.CMesh.CreateFromDuplicate("TEMP_Genitals", oMeshGenitalsSource)
+#             oMeshGenitalsSource = CMesh.CreateFromExistingObject(self.sGenitals)          ###WEAK: Create another ctor?
+#             oMeshGenitals = CMesh.CreateFromDuplicate("TEMP_Genitals", oMeshGenitalsSource)
 #             bpy.context.scene.objects.active = oMeshGenitals.GetMesh()
 #             bpy.ops.object.shade_smooth()  ###IMPROVE: Fix the diffuse_intensity to 100 and the specular_intensity to 0 so in Blender the genital texture blends in with all our other textures at these settings
 #          
@@ -682,8 +741,8 @@ def CBodyBase_GetBodyBase(nBodyID):
         #=== Create our own local copy of the breast mesh for breast morphs ===
         ###OBS
 #         if (sSex != "Man"):
-#             oMeshSrcBreast = CMesh.CMesh.CreateFromExistingObject(self.oBodyBase.sMeshSource + "-Breast")          ###WEAK: Create another ctor?
-#             self.oMeshSrcBreast = CMesh.CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + "Breast", oMeshSrcBreast)        
+#             oMeshSrcBreast = CMesh.CreateFromExistingObject(self.oBodyBase.sMeshSource + "-Breast")          ###WEAK: Create another ctor?
+#             self.oMeshSrcBreast = CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + "Breast", oMeshSrcBreast)        
 #             self.oMeshSrcBreast.SetParent(G.C_NodeFolder_Game)
 #             self.oMeshSrcBreast.Hide()    
 # 

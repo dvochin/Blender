@@ -22,7 +22,7 @@
 # from gBlender import *
 # import G
 # import CBody
-# import CMesh
+# from CMesh import *
 # 
 # 
 # 
@@ -60,7 +60,7 @@
 # 
 # 
 # 
-#         self.oMeshFlexSkin = CMesh.CMesh.CreateFromExistingObject(self.sFlexSkinPart)      ###HACK!!!! 
+#         self.oMeshFlexSkin = CMesh.CreateFromExistingObject(self.sFlexSkinPart)      ###HACK!!!! 
 #         bmFlexSkin = self.oMeshFlexSkin.Open()
 # 
 #         #=== Iterate through all verts to populate either aShapeVerts or aShapeParticleIndices collections for Unity ===

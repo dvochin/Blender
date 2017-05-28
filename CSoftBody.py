@@ -192,7 +192,7 @@ class CSoftBody(CSoftBodyBase):
 #         #=== Iterate through this softbody mesh and update our vert position to our corresponding morph source body ===
 #         bmSoftBody = self.oMeshSoftBody.Open()
 #         oLayVertAssy = bmSoftBody.verts.layers.int[G.C_DataLayer_VertsAssy]
-#         aVertsMorph = self.oBody.oMeshMorph.GetMesh().data.vertices
+#         aVertsMorph = self.oBody.oMeshMorph.GetMeshData().vertices
 #         for oVert in bmSoftBody.verts:
 #             if (oVert[oLayVertAssy] >= G.C_OffsetVertIDs):
 #                 nVertMorph = oVert[oLayVertAssy] - G.C_OffsetVertIDs        # Obtain the vertID from the assembled mesh (removing offset added during creation)

@@ -65,6 +65,11 @@ class CObjectMeshShapeKeys(CObject):
     def __init__(self, sName, sNameMesh):
         super(self.__class__, self).__init__(sName)
         self.oMeshO = bpy.data.objects[sNameMesh]
+        
+        if self.oMeshO.data.shape_keys is None:
+            print("###WARNING: Mesh has no shape keys.  Cancelling access to morph properties in CObjectMeshShapeKeys.")
+            return
+        
         self.oMeshShapeKeyBlocks = self.oMeshO.data.shape_keys.key_blocks
 
         #=== Populate our properties with our mesh shape keys ===

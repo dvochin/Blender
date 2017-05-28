@@ -81,6 +81,8 @@ import sys
 import CClothSrc
 from math import *
 from mathutils import *
+from gBlender import *
+
 
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    CONSTANTS
@@ -264,6 +266,52 @@ def DumpStr(sMsg):          # Simple utility dumper that constructs string, prin
     return sMsg
 
 
+
+#---------------------------------------------------------------------------    
+#---------------------------------------------------------------------------    VISUALIZER CUBES
+#---------------------------------------------------------------------------    
+
+class CVisualizerCubes():           # CVisualizeCubes:  Extremely useful little cubes of different colors that can be moved wherever            ###MOVE21:?
+    def __init__(self, nMaxCubes):  # Create a pool of 'visualizer cubes' that we can move to different entities (to visualize the inner working of various algorithms.  MUST be called in object mode
+        self.nMaxCubes = nMaxCubes
+        self.aCubes = []
+        self.nCubeNext = 0          # Index in self.aCubes we will provide in next call to 'GetCube()'
+        
+        if self.nMaxCubes > 0:
+            print("--- CVisualizerCubes creating {} cubes ---".format(self.nMaxCubes))
+            oSrcO = SelectAndActivate("VisualizerCube")
+            for nCube in range(self.nMaxCubes):     # Create LINKED duplicates (far more efficient than copies!)
+                sName = "VisCube{:03d}".format(nCube)
+                oObj = bpy.data.objects[oSrcO.name]
+                oObj.select = True
+                bpy.context.scene.objects.active = oObj ###LEARN: How to quickly link-duplicate objects!
+                bpy.ops.object.duplicate_move_linked(OBJECT_OT_duplicate={"linked":True, "mode":'TRANSLATION'}, TRANSFORM_OT_translate={"value":(0, 0, 0)})
+                oVisualizerCube= bpy.context.object          # Duplicate above leaves the duplicated object as the context object...
+                oVisualizerCube.name = sName
+                oVisualizerCube.select = False
+                oVisualizerCube.hide = True
+                self.aCubes.append(oVisualizerCube)     ###IMPROVE? Blender has support for object that can share the same mesh... would be perfect here!!
+        else:
+            print("--- CVisualizerCubes deactivated ---")
+            
+    def GetCube(self, sName, vecLocation, sColor, nLayer, bIsXray):
+        if self.nMaxCubes == 0:     # If globally deactivated return nothing (e.g. not 'debug mode')
+            return None
+        
+        if self.nCubeNext >= self.nMaxCubes:
+            print("###ERROR in CVisualizerCubes.GetCube()  Not enough cubes to service request!")
+            return None
+            #raise Exception("###EXCEPTION in CVisualizerCubes.GetCube()  Not enough cubes to service request!")
+        oVisualizerCube = self.aCubes[self.nCubeNext]
+        oVisualizerCube.name = oVisualizerCube.name = sName     # Change mesh name too?
+        oVisualizerCube.location = vecLocation
+        oVisualizerCube.material_slots[0].material = bpy.data.materials['VisualizerCube-' + sColor]
+        oVisualizerCube.hide = False
+        oVisualizerCube.show_x_ray = bIsXray
+        oVisualizerCube.layers[nLayer] = 1
+        self.nCubeNext += 1
+        return oVisualizerCube
+        
 
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    BLENDER CONFIGURATION
