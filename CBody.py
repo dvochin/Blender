@@ -334,15 +334,17 @@ class CBody:
         #=== Simplify the mesh so remesh + shrink below work better (e.g. remove teeth, eyes, inside of ears & nostrils, etc) ===
         ###TODO15: Cleanup mesh!
 
-        #=== Gut the mesh's armature, vertex groups, etc as it has to be reskined after the remesh ===
+        #=== Gut the mesh's armature, vertex groups, materials, etc as it has to be reskined after the remesh ===
         #oMeshFlexCollider.modifiers.remove(oMeshFlexCollider.modifiers['Armature'])     ###LEARN: How to remove a modifier by name
         bpy.ops.object.vertex_group_remove(all=True)
+        Cleanup_RemoveMaterials(self.oMeshFlexCollider.GetMesh())
 
         #=== Remesh the Flex collider mesh so that it has particles spaced evenly to efficiently repell other Flex objects ===
-        oModRemesh = oMeshFlexCollider.modifiers.new(name="REMESH", type="REMESH")
+        oModRemesh = oMeshFlexCollider.modifiers.new(name="REMESH", type="REMESH")  ###OPT!!! Expensive operation!  Can design this away from init flow??
         oModRemesh.mode = 'SMOOTH'
         oModRemesh.octree_depth = 7         ###IMPROVE15: Need to convert remesh arguments based on body height to inter-particular distance
-        oModRemesh.scale = 0.90 
+        ###DEV23:!!!!!!!! oModRemesh.scale = 0.90 
+        oModRemesh.scale = 0.40 
         oModRemesh.use_remove_disconnected = True
         AssertFinished(bpy.ops.object.modifier_apply(modifier=oModRemesh.name))     # This call destroys skinning info / vertex groups
 
