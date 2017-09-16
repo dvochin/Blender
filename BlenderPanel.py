@@ -10,31 +10,52 @@ from gBlender import *
 import SourceReloader
 import G
 
+from CBodyBase import *
 from CBody import *
 import CCloth
 import CClothSrc
 import CSoftBody
+import CBodyBase
 
 import Client
 import Border
 import Curve
 import Cut
 import Breasts
+import CPenis
 from CMesh import *
 import CBodyImporter
-import COrificeRig
+import CHoleRig
 from operator import itemgetter
+from bpy.props import *
 
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    PANEL & UI
 #---------------------------------------------------------------------------    
 
-class Panel_gBL_Object(bpy.types.Panel):      ###LEARN: Docs at http://www.blender.org/documentation/blender_python_api_2_67_release/bpy.types.Panel.html
-    bl_space_type = "VIEW_3D"       ###LEARN: From "EMPTY", "VIEW_3D", "GRAPH_EDITOR", "OUTLINER", "PROPERTIES", "FILE_BROWSER", "IMAGE_EDITOR", "INFO", "SEQUENCE_EDITOR", "TEXT_EDITOR", "AUDIO_WINDOW", "DOPESHEET_EDITOR", "NLA_EDITOR", "SCRIPTS_WINDOW", "TIMELINE", "NODE_EDITOR", "LOGIG.C_EDITOR", "CONSOLE", "USER_PREFERENCES"
-    bl_region_type = "TOOLS"        ###LEARN: From "WINDOW", "HEADER", "CHANNELS", "TEMPORARY", "UI", "TOOLS", "TOOL_PROPS", "PREVIEW"
-    bl_context = "objectmode"       ###LEARN: From "mesh_edit", "curve_edit", "surface_edit", "text_edit", "armature_edit", "mball_edit", "lattice_edit", "posemode", "sculpt_mode", "weightpaint", "vertexpaint", "texturepaint", "particlemode", "objectmode"
-    bl_label = "gBlender V.083A"
-    bl_category = "gBlender"        ###LEARN: Shows up as tab name in blender panel!
+def Debug_InitDebugProperties(scn):
+    bpy.types.Scene.SafetyChecks    = BoolProperty(name = "SafetyChecks")     # Set to true when some Blender-side debug actions are taken.  Read by some costly algorithms to 'less quality' so development is faster
+    bpy.types.Scene.QuickMode       = BoolProperty(name = "QuickMode")     # Set to true when some Blender-side debug actions are taken.  Read by some costly algorithms to 'less quality' so development is faster
+    bpy.types.Scene.Int1            = IntProperty(name = "Int1")            ###TEMP: ###IMPROVE: Improve upon this technique to dynamically create properties + widgets to control code in development?
+    bpy.types.Scene.Int2            = IntProperty(name = "Int2")
+    bpy.types.Scene.Int3            = IntProperty(name = "Int3")
+    bpy.types.Scene.Float1          = FloatProperty(name = "Float1")
+    bpy.types.Scene.Float2          = FloatProperty(name = "Float2")
+    bpy.types.Scene.Float3          = FloatProperty(name = "Float3")
+    bpy.types.Scene.String1         = StringProperty(name = "String1")
+    bpy.types.Scene.String2         = StringProperty(name = "String2")
+    bpy.types.Scene.String3         = StringProperty(name = "String3")
+    return
+ 
+Debug_InitDebugProperties(bpy.context.scene)
+
+
+class Panel_gBL_Object(bpy.types.Panel):      ###INFO: Docs at http://www.blender.org/documentation/blender_python_api_2_67_release/bpy.types.Panel.html
+    bl_space_type = "VIEW_3D"       ###INFO: From "EMPTY", "VIEW_3D", "GRAPH_EDITOR", "OUTLINER", "PROPERTIES", "FILE_BROWSER", "IMAGE_EDITOR", "INFO", "SEQUENCE_EDITOR", "TEXT_EDITOR", "AUDIO_WINDOW", "DOPESHEET_EDITOR", "NLA_EDITOR", "SCRIPTS_WINDOW", "TIMELINE", "NODE_EDITOR", "LOGIG.C_EDITOR", "CONSOLE", "USER_PREFERENCES"
+    bl_region_type = "TOOLS"        ###INFO: From "WINDOW", "HEADER", "CHANNELS", "TEMPORARY", "UI", "TOOLS", "TOOL_PROPS", "PREVIEW"
+    bl_context = "objectmode"       ###INFO: From "mesh_edit", "curve_edit", "surface_edit", "text_edit", "armature_edit", "mball_edit", "lattice_edit", "posemode", "sculpt_mode", "weightpaint", "vertexpaint", "texturepaint", "particlemode", "objectmode"
+    bl_label = "gBlender V.083A"    ###:EARM: idname_must.be_all_lowercase_and_contain_one_dot
+    bl_category = "gBlender"        ###INFO: Shows up as tab name in blender panel!
   
     def draw_header(self, context):
         layout = self.layout
@@ -43,6 +64,7 @@ class Panel_gBL_Object(bpy.types.Panel):      ###LEARN: Docs at http://www.blend
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
+        scn = context.scene
         col.operator("gbl.reload_source_files")
         col.operator("gbl.remove_game_meshes")
         col.operator("gbl.hide_game_meshes")
@@ -62,7 +84,18 @@ class Panel_gBL_Object(bpy.types.Panel):      ###LEARN: Docs at http://www.blend
         col.operator("gbl.temp11")
         col.operator("gbl.temp12")
         col.operator("gbl.temp13")
-
+        layout.prop(scn, 'SafetyChecks')
+        layout.prop(scn, 'QuickMode')
+        layout.prop(scn, 'Float1')
+        layout.prop(scn, 'Float2')
+        layout.prop(scn, 'Float3')
+        layout.prop(scn, 'Int1')
+        #layout.prop(scn, 'Int2')
+        #layout.prop(scn, 'Int3')
+        layout.prop(scn, 'String1')
+        #layout.prop(scn, 'String2')
+        #layout.prop(scn, 'String3')
+        
         
 
 class gBL_reload_source_files(bpy.types.Operator):
@@ -139,7 +172,7 @@ class gBL_temp1(bpy.types.Operator):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
         #CBodyBase_Create(0, 'Woman', 'WomanA', None)
         G.CGlobals.Initialize(0.02)
-        CBodyBase_Create(0, 'Shemale', 'WomanA-Base', None)
+        CBodyBase_Create(0, 'Shemale', 'WomanA-Base.001', None)
         CBodyBase_GetBodyBase(0).CreateCBody()
 #         CBodyBase_GetBodyBase(0).OnChangeBodyMode('Play')
 #         CBodyBase_GetBodyBase(0).oBody.oMeshBody.GetMesh().hide = True    ###HACK17:
@@ -210,58 +243,65 @@ class gBL_temp7(bpy.types.Operator):
 
 class gBL_temp8(bpy.types.Operator):
     bl_idname = "gbl.temp8"
-    bl_label = "8: Pose"
+    bl_label = "8: PenisFit"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBodyImporter.CBodyImporter.INSTANCE.DEBUG_ShowDazPose()
+        oMeshSrc = CMesh.Create("WomanA-Source")          
+        oMeshBody = CMesh.CreateFromDuplicate("ShemaleA-Source", oMeshSrc)        ###DEV24:!!
+        ShapeKeys_RemoveAll()
+        CPenis.CPenisFit(oMeshBody)
+        #CBodyImporter.CBodyImporter.INSTANCE.DEBUG_ShowDazPose()
         return {"FINISHED"}
 
 class gBL_temp9(bpy.types.Operator):
     bl_idname = "gbl.temp9"
-    bl_label = "9:COrificeRig()"
+    bl_label = "9: PenisRig"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
+        CPenis.CPenisRig("ShemaleA-Source-Penis-Fitted", "ShemaleA-Source")        ###DEV24:!!!! Referemce!!
         #CBodyImporter.CBodyImporter.INSTANCE.CreateVisibleBoneRig()
-        oOrificeRig = COrificeRig.COrificeRig(24, 0.15, True)
         return {"FINISHED"}
 
 class gBL_temp10(bpy.types.Operator):
     bl_idname = "gbl.temp10"
-    bl_label = "10:Or-Skin()"
+    bl_label = "10: HoleRig()"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        COrificeRig.COrificeRig.INSTANCE.AdjustAreaSkinWeights()
-        #print(COrificeRig.COrificeRig.INSTANCE.SerializeOrificeRig())
+        CHoleRig.CHoleRig("WomanA", 0.15)
         return {"FINISHED"}
 
 class gBL_temp11(bpy.types.Operator):
     bl_idname = "gbl.temp11"
-    bl_label = "11:Or-Move1()"
+    bl_label = "11:Hole-Skin()"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        COrificeRig.COrificeRig.INSTANCE.Test_MoveBones(0.0)
+        CHoleRig.CHoleRig.INSTANCE.AdjustAreaSkinWeights()
+        #print(CHoleRig.CHoleRig.INSTANCE.SerializeHoleRig())
         return {"FINISHED"}
 
 class gBL_temp12(bpy.types.Operator):
     bl_idname = "gbl.temp12"
-    bl_label = "12:Or-Move2()"
+    bl_label = "12:Rig:Wom"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
-        self.report({"INFO"}, "GBOP: " + self.bl_label)
-        COrificeRig.COrificeRig.INSTANCE.Test_MoveBones(0.0125)
+        #self.report({"INFO"}, "GBOP: " + self.bl_label)
+        CBodyBase_Create(0, 'Woman', 'WomanA', None)
+        CBodyBase_GetBodyBase(0).CreateCBody()
         return {"FINISHED"}
 
 class gBL_temp13(bpy.types.Operator):
     bl_idname = "gbl.temp13"
-    bl_label = "13:Or-Move3()"
+    bl_label = "13:Rig:Shem"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
-        self.report({"INFO"}, "GBOP: " + self.bl_label)
-        COrificeRig.COrificeRig.INSTANCE.Test_MoveBones(0.025)
+        #self.report({"INFO"}, "GBOP: " + self.bl_label)
+        CBodyBase_Create(0, 'Shemale', 'ShemaleA', None)
+        CBodyBase_GetBodyBase(0).CreateCBody()
+        return {"FINISHED"}
         
 
 

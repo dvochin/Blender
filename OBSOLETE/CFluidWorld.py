@@ -56,7 +56,7 @@ def CreateBoxCollidersFromMesh(oMeshWorkO, oMeshOrigO):  # Break down a mesh int
     oFolderColliders.name = sNameCollidersFolder
     oMeshOrigO.select = True
     bpy.context.scene.objects.active = oMeshOrigO
-    bpy.ops.object.parent_set(keep_transform=True)  ###LEARN: keep_transform=True is critical to prevent reparenting from destroying the previously set transform of object!!
+    bpy.ops.object.parent_set(keep_transform=True)  ###INFO: keep_transform=True is critical to prevent reparenting from destroying the previously set transform of object!!
     oFolderColliders.hide = True
     
     #=== Iterate through all seperated faces of the mesh to calculate its smallest-possible bounding *plane rectangle* (a rectangular plane oriented like the face of minimum size) ===

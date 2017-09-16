@@ -20,7 +20,7 @@
 #     sNameCharacter = sNameMesh[:nPosSuffix]                 ####SOON: Get rid of this naming SHIT!
 #     
 #     #=== Obtain source mesh and cleanup ===
-#     oMeshBodyColClothO = SelectAndActivate(sNameCharacter + G.C_NameSuffix_BodyColCloth)
+#     oMeshBodyColClothO = SelectObject(sNameCharacter + G.C_NameSuffix_BodyColCloth)
 #     VertGrp_RemoveNonBones(oMeshBodyColClothO, True)     # Also remove the non-bone extra vert groups so only vert groups meant for skinning remain (to avoid errors during serialization to client)
 #     bpy.ops.object.mode_set(mode='EDIT')
 #     bm = bmesh.from_edit_mesh(oMeshBodyColClothO.data)
@@ -178,7 +178,7 @@
 #     nRatioFacesToDecimate = nNumDesiredFaces / nFacesNow 
 #     oModDecimate.ratio = nRatioFacesToDecimate
 #     oModDecimate.use_collapse_triangulate = True
-#     AssertFinished(bpy.ops.object.modifier_apply(modifier=oModDecimate.name))  ###LEARN: Have to specify 'modifier' or this won't work!        
+#     AssertFinished(bpy.ops.object.modifier_apply(modifier=oModDecimate.name))  ###INFO: Have to specify 'modifier' or this won't work!        
 # 
 #     #=== Cleanup the freshly-created decimated mesh by removing verts that are too close to one-another and removing separated geometry ===
 #     bpy.ops.object.mode_set(mode='EDIT')
@@ -245,7 +245,7 @@
 #     bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
 #     bpy.ops.mesh.select_all(action='DESELECT')
 #     bpy.ops.object.mode_set(mode='OBJECT')
-#     oMeshBodyOrigO.hide = False            ###LEARN: Mesh MUST be visible for weights to transfer!
+#     oMeshBodyOrigO.hide = False            ###INFO: Mesh MUST be visible for weights to transfer!
 #     Util_TransferWeights(oMeshBodyColO, oMeshBodyOrigO)
 #     VertGrp_RemoveNonBones(oMeshBodyColO, True)     # Also remove the non-bone extra vert groups so only vert groups meant for skinning remain (to avoid errors during serialization to client)
 #     

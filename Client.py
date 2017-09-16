@@ -1,31 +1,3 @@
-###DISCUSSION: Blender Client-side processing 
-### NEXT ### MAN
-# _Cutout_Penis group
-# which cock?  man crotch much narrower!  Cannot create adaptor!
-# Hack remming out shemale
-# Problem clearing game meshes (extra prop)
-
-### TODO ###
-
-### LATER ###
-
-### DESIGN ###
-
-### IDEAS ###
-
-### LEARNED ###
-
-### PROBLEMS ###
-# How do we extract penis area from penis from obj file?  (only manifold verts?)
-#+++ Re-evaluate usage of global scene args like sNameBody... will cause problem with multiple body!!
-# Split chunks still have all materials... write utility function to remove unused materials!
-
-### PROBLEMS: ASSETS ###
-
-### PROBLEMS??? ###
-    
-### WISHLIST ###
-
 import bpy
 import sys
 import bmesh
@@ -101,7 +73,7 @@ import CObject
 #     #=== Import and preprocess the genitals mesh and assemble into this mesh ===
 #     oMeshGenitalsO = DuplicateAsSingleton(sNameSrcGenitals, "TEMP_Genitals", G.C_NodeFolder_Game, True)  ###TEMP!! Commit to file-based import soon!
 # #     bpy.ops.import_scene.obj(filepath="D:/Src/EroticVR/Unity/Assets/Resources/Textures/Woman/A/Vagina/EroticVR/A/Mesh.obj")        ###HACK!!!: Path & construction of full filename!
-# #     oMeshGenitalsO = bpy.context.selected_objects[0]        ###LEARN: object importer will deactivate everything and select only the newly imported object
+# #     oMeshGenitalsO = bpy.context.selected_objects[0]        ###INFO: object importer will deactivate everything and select only the newly imported object
 #     ###CHECK: Not needed? bpy.context.scene.objects.active = oMeshGenitalsO
 #     bpy.ops.object.shade_smooth()  ###IMPROVE: Fix the diffuse_intensity to 100 and the specular_intensity to 0 so in Blender the genital texture blends in with all our other textures at these settings
 # 
@@ -110,7 +82,7 @@ import CObject
 #     bpy.context.scene.objects.active = oMeshBodyO
 #     bpy.ops.object.join()
 #     VertGrp_SelectVerts(oMeshBodyO, sNameVertGroupToCutout)  # Reselect the just-removed genitals area from the original body, as the faces have just been removed this will therefore only select the rim of vertices where the new genitals are inserted (so that we may remove_doubles to merge only it)
-#     bpy.ops.mesh.remove_doubles(threshold=0.000001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###LEARN: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
+#     bpy.ops.mesh.remove_doubles(threshold=0.000001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###INFO: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
 #     bpy.ops.mesh.select_all(action='DESELECT')
 #     bpy.ops.object.mode_set(mode='OBJECT')
 # 
@@ -120,7 +92,7 @@ import CObject
 # 
 #     #=== Reskin the body from the original body mesh now that all body parts have been merged onto the same mesh... This is essential for our previous-unskinned combination mesh (that possibly had a sex change) to regain skinning info from base body so that it can in-turn skin clothing we need to add next.   (Re-skinning is a hugely important benefit that Blender brings us) ===
 #     oMeshBodySrcO.select = True
-#     oMeshBodySrcO.hide = False  ###LEARN: Mesh MUST be visible for weights to transfer!
+#     oMeshBodySrcO.hide = False  ###INFO: Mesh MUST be visible for weights to transfer!
 #     bpy.ops.object.vertex_group_transfer_weight()  ###OPT!! Very expensive call!
 # 
 #     #=== Now that the expensive weight transfer is done, ditch the vertex groups that are of lesser quality and restore to the ones we saved ===
@@ -154,7 +126,7 @@ import CObject
 # 
 #     #===== Begin the complex task of assembling the requested body =====    
 #     #=== Obtain references to all the source meshes needed ===
-#     oMeshMorphO = SelectAndActivate(sNameGameBody + G.C_NameSuffix_Morph)  # Obtain reference to previously constructed body for morphing
+#     oMeshMorphO = SelectObject(sNameGameBody + G.C_NameSuffix_Morph)  # Obtain reference to previously constructed body for morphing
 #     sNameBodyRim = sNameGameBody + G.C_NameSuffix_BodyRim
 #     DeleteObject(sNameBodyRim)
 #     oMeshComboO = DuplicateAsSingleton(oMeshMorphO.name, sNameGameBody + G.C_NameSuffix_BodySkin, G.C_NodeFolder_Game, False)  ###TODO!!! Rename to MeshCombo??      ###DESIGN: Base skinned mesh on _Morph or virgin body??            
@@ -170,7 +142,7 @@ import CObject
 #             oMeshClothO = DuplicateAsSingleton(sNameGameBody + G.C_NameSuffix_ClothFit  , "_TEMP_ClothPart-Body", G.C_NodeFolder_Game, True)  ###DESIGN: Pass in cloth by array?  Support array iteration ###DESIGN: ###SOON: This is ALL clothing on the character, not just fit!
 #         
 #             #=== Remove information from all-cloth Client doesn't need (such as the vertex groups used for border creation) ===
-#             SelectAndActivate(oMeshClothO.name)
+#             SelectObject(oMeshClothO.name)
 #             Util_ConvertToTriangles()
 #             if bpy.ops.object.vertex_group_remove.poll():
 #                 bpy.ops.object.vertex_group_remove(all=True)
@@ -182,13 +154,13 @@ import CObject
 #             AssertFinished(bpy.ops.object.modifier_apply(modifier=oModEdgeSplit.name))
 #             
 #             #=== Transfer the skinning information from the skinned body mesh to the clothing.  Some vert groups are useful to move non-simulated area of cloth as skinned cloth, other _Detach_xxx vert groups are to define areas of the cloth that are simulated ===
-#             SelectAndActivate(oMeshClothO.name)
+#             SelectObject(oMeshClothO.name)
 #             oMeshMorphO.select = True
-#             oMeshMorphO.hide = False  ###LEARN: Mesh MUST be visible for weights to transfer!
+#             oMeshMorphO.hide = False  ###INFO: Mesh MUST be visible for weights to transfer!
 #             bpy.ops.object.vertex_group_transfer_weight()
 #         
 #             #=== Join the all-cloth onto the main skinned body to form the composite mesh that currently has all geometry for body and all clothing...  From this composite mesh we separate 'chunks' such as breasts are surrounding clothing, or penis or vagina for non-skinned simulation by the game engine ===
-#             SelectAndActivate(oMeshComboO.name)
+#             SelectObject(oMeshComboO.name)
 #             oMeshClothO.select = True
 #             bpy.ops.object.join()  # This will join the cloth and its properly-set 'detach chunk' vertex groups to the body with matching chunk vertex groups.
 #             oMeshClothO = None  # Past this point clothing mesh doesn't exist... only oMeshComboO which has entire body and all clothing
@@ -197,14 +169,14 @@ import CObject
 #     #=== Prepare the composite mesh for 'twin vert' mapping: The map that tells Client what vert from this detached chunk match what vert from the main skinned body ===
 #     bpy.ops.object.mode_set(mode='EDIT')
 #     bmCombo = bmesh.from_edit_mesh(oMeshComboO.data)  # Create a 'custom data layer' to store unique IDs into mesh vertices so matching parts of the chunks we separate into other meshes can be easily matched to the main skinned mesh (for Client pinning)
-#     oLayRimVerts = bmCombo.verts.layers.int.new(G.C_DataLayer_TwinID)  # Create a temp custom data layer to store IDs of split verts so we can find twins easily.    ###LEARN: This call causes BMesh references to be lost, so do right after getting bmesh reference
+#     oLayRimVerts = bmCombo.verts.layers.int.new(G.C_DataLayer_TwinID)  # Create a temp custom data layer to store IDs of split verts so we can find twins easily.    ###INFO: This call causes BMesh references to be lost, so do right after getting bmesh reference
 #     nNextRimVertID = 1  # We set the next twin vert ID to one.  New IDs for all detachable chunks will be created from this variable by incrementing.  This will enable each detached chunk to find what skinned vert from the body it needs to connect to during gameplay.
 #     aaMapTwinId2VertChunk = {}  # Map of maps we use to enable aMapTwinId2VertChunk to traverse the major loop that creates it to another loop at the end that needs it.
 # 
 # 
 #     #===== For woman & vagina, perform pre-processing of the vagina-area of the mesh.  We must split that part of the mesh into the '_Detach_VaginaL' and '_Detach_VaginaR' for the main loop below to properly detach the left&right vagina meshes for proper PhysX softbody processing =====
 #     if sSex == "Woman":         ####OBS?? Go for non-softbody vagina now??
-#         SelectAndActivate(oMeshComboO.name)
+#         SelectObject(oMeshComboO.name)
 #         bpy.ops.object.mode_set(mode='EDIT')
 #         bmCombo = bmesh.from_edit_mesh(oMeshComboO.data)
 #         nVertGrpIndex_Vagina = oMeshComboO.vertex_groups.find(G.C_VertGrp_Area + "Vagina")  # Find the rough-cut vagina-area part of our combo mesh that previous 'transfer_weight()' has transfered from source skinned body to our combo mesh       
@@ -216,7 +188,7 @@ import CObject
 #         bpy.ops.object.vertex_group_select()
 #         bpy.ops.mesh.select_mode(use_extend=False, use_expand=True, type='FACE')  # Expand the rough-cut verts into faces (so any found vert selects any attached face) to avoid cutting away faceless geometry
 #         ###bpy.ops.mesh.select_less()                                                      # Select less than original body has as we deliberately overshoot its selection to produce a 'less jagged' result after vertex group transfer between source mesh and our combo mesh
-#         bpy.ops.mesh.select_mode(use_extend=False, use_expand=True, type='VERT')  ###LEARN: Changing mode while expanding is an excellent / easy way to smooth out a selection
+#         bpy.ops.mesh.select_mode(use_extend=False, use_expand=True, type='VERT')  ###INFO: Changing mode while expanding is an excellent / easy way to smooth out a selection
 #         
 #         #=== Find the edges that would split the vagina into left and right halves.  To do this we store the edges at the boundary of the entire vagina, we compute the boundary edges on the left side and we subtract the 2nd from the 1st
 #         aVertsVagina = [oVert for oVert in bmCombo.verts if oVert.select]  # Store vagina verts for quicker iteration below (True?)
@@ -229,7 +201,7 @@ import CObject
 #         for oVert in aVertsVagina:  # Reselect left vagina half only
 #             if oVert.co.x >= 0:
 #                 oVert.select_set(True)
-#         bpy.ops.mesh.select_mode(use_extend=True, use_expand=False, type='EDGE')  ###LEARN:  Yes... all these damn mode changes are a must to convert selection from one domain to another!  (Extend in this case a must as we're going from low-order selection (verts) to a higher order (edges)
+#         bpy.ops.mesh.select_mode(use_extend=True, use_expand=False, type='EDGE')  ###INFO:  Yes... all these damn mode changes are a must to convert selection from one domain to another!  (Extend in this case a must as we're going from low-order selection (verts) to a higher order (edges)
 #         bpy.ops.mesh.region_to_loop()  # Select the edges at the boundary of the left vagina half
 #     
 #         #=== Remove the edges found at the boundary of the entire Vagina.  This will leave only the edges between the two halves selected
@@ -266,7 +238,7 @@ import CObject
 #                     oVert.co.x = 0.000001  # If we go too close normal for these tiny slivers of polygons won't be accurate and mesh will look horrible in that area!
 #                 else:
 #                     oVert.co.x = -0.000001  ###IMPROVE: Would be nice to fix UVs too 
-#         for oEdge in oVertHighestY.link_edges:  ###LEARN: Selected higher-order geometry like edges & (even higher) polygons is a huge hassle!  Deselecting verts won't deselect edges & polys as they keep their own independent set
+#         for oEdge in oVertHighestY.link_edges:  ###INFO: Selected higher-order geometry like edges & (even higher) polygons is a huge hassle!  Deselecting verts won't deselect edges & polys as they keep their own independent set
 #             oEdge.select_set(False)
 #         for oEdge in oVertLowestZ.link_edges:
 #             oEdge.select_set(False)
@@ -316,7 +288,7 @@ import CObject
 #         print("--- Separating chunk " + sNameChunk)
 #         sNamePartChunk = sNameGameBody + G.C_VertGrp_CSoftBody + sNameChunk
 #         DeleteObject(sNamePartChunk)
-#         SelectAndActivate(oMeshComboO.name)
+#         SelectObject(oMeshComboO.name)
 #         bpy.ops.object.mode_set(mode='EDIT')
 #         bmCombo = bmesh.from_edit_mesh(oMeshComboO.data)
 # 
@@ -332,12 +304,12 @@ import CObject
 #             bpy.ops.mesh.select_all(action='DESELECT')
 #             bmCombo = bmesh.from_edit_mesh(oMeshComboO.data)
 #             oCutSphere = bpy.data.objects["CutSphere-" + sNameChunk]  ###CHECK!            ###IMPROVE?: Cut sphere for penis changes with starting position of penis?? (Not if starts straight as soft body!)
-#             vecSphereCenterL = oCutSphere.location.copy()  ###LEARN: If we don't copy next line moves sphere!!
-#             vecSphereCenterR = vecSphereCenterL.copy()  ###LEARN: If we don't copy, next line inverts x on both vectors!
+#             vecSphereCenterL = oCutSphere.location.copy()  ###INFO: If we don't copy next line moves sphere!!
+#             vecSphereCenterR = vecSphereCenterL.copy()  ###INFO: If we don't copy, next line inverts x on both vectors!
 #             vecSphereCenterR.x = -vecSphereCenterR.x  # The '2nd' sphere is just the sphere #1 mirrored about x
 #             vecSphereCenterC = (vecSphereCenterL + vecSphereCenterR) / 2 
 #             nSphereRadius = oCutSphere.dimensions.x / 2
-#             bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')  ###LEARN: If View3D were in any other mode the following code would NOT select!!  WTF???
+#             bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')  ###INFO: If View3D were in any other mode the following code would NOT select!!  WTF???
 #             for oVert in bmCombo.verts:
 #                 if oVert.link_faces[0].material_index >= nBodyMats:  # We're only interested in non-body verts for cloth area-detection.  (Body already has well formed vert groups for these chunks.)
 #                     vecVert = oMeshComboO.matrix_world * oVert.co                                   
@@ -355,7 +327,7 @@ import CObject
 #         bpy.ops.object.mode_set(mode='EDIT')
 #         bpy.ops.mesh.select_all(action='DESELECT')
 #         bpy.ops.object.vertex_group_select()  # Select only the just-updated vertex group of the vertices we need to separate from the composite mesh.
-#         bmCombo = bmesh.from_edit_mesh(oMeshComboO.data)  ###LEARN!!: We must re-obtain new bmesh everytime we re-enter edit mode.  (And of course old bmesh object references are gone but IDs persist!)
+#         bmCombo = bmesh.from_edit_mesh(oMeshComboO.data)  ###INFO!!: We must re-obtain new bmesh everytime we re-enter edit mode.  (And of course old bmesh object references are gone but IDs persist!)
 #         oLayRimVerts = bmCombo.verts.layers.int[G.C_DataLayer_TwinID]  # Refetch our custom data layer because we exited edit mode...
 #         aFacesToSplit = [oFace for oFace in bmCombo.faces if oFace.select]  # Obtain array of all faces to separate
 #     
@@ -410,7 +382,7 @@ import CObject
 #         bmPartChunk = bmesh.from_edit_mesh(oMeshPartChunkO.data)
 #         oLayRimVerts = bmPartChunk.verts.layers.int[G.C_DataLayer_TwinID]
 #         aMapTwinId2VertChunk = {}
-#         for oVert in bmPartChunk.verts:  ###LEARN: Interestingly, both the set and retrieve list their verts in the same order... with different topology!
+#         for oVert in bmPartChunk.verts:  ###INFO: Interestingly, both the set and retrieve list their verts in the same order... with different topology!
 #             nTwinID = oVert[oLayRimVerts]
 #             if nTwinID != 0:
 #                 aMapTwinId2VertChunk[nTwinID] = oVert.index
@@ -421,7 +393,7 @@ import CObject
 #         
 #         #=== Cap the body part that is part of the chunk (edge verts from only that body part are now selected)  If this chunk has no body verts (e.g. PenisClothing) then no capping will occur) ===
 #         bpy.ops.mesh.select_mode(use_extend=True, use_expand=False, type='EDGE')  ###BUG?? ###CHECK: Possible that edge collapse could fail depending on View3D mode...
-#         bpy.ops.mesh.extrude_edges_indiv()  ###LEARN: This is the function we need to really extrude!
+#         bpy.ops.mesh.extrude_edges_indiv()  ###INFO: This is the function we need to really extrude!
 #         bpy.ops.mesh.edge_collapse()  ###DESIGN ###IMPROVE Do we always cap whatever body part is ripped out?
 #         for oVert in bmPartChunk.verts:  # The cap vert(s) created will have copied one of the 'VertTwinID'.  Wipe it out to avoid corrupting matching below 
 #             if oVert.select:
@@ -435,7 +407,7 @@ import CObject
 #     #===== Create the 'Skinned Rim' skinned mesh that Client can use to use 'BakeMesh()' on a heavily-simplified version of the main body mesh that contains only the 'rim' polygons that attach to all the detacheable chunks this code separates.  It is this 'Rim' skinned mesh that quickly calculates the position of all the pins and that therfore 'owns' the CPinSkinned and therefore the CPinTetra === 
 #     ####DESIGN: Vert topology changes at every split!  MUST map twinID to body verts once all cuts done ###NOW!!!
 #     #=== Iterate through the verts of the main skinned mesh (now that all chunks have been removed) to select all the twin verts so we can create the rim mesh
-#     SelectAndActivate(oMeshComboO.name)
+#     SelectObject(oMeshComboO.name)
 #     bpy.ops.object.mode_set(mode='EDIT')
 #     bpy.ops.mesh.select_all(action='DESELECT')
 #     bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
@@ -542,7 +514,7 @@ def GameMode_ClothFit(sNameBody):  # Prepare for the cloth fit game mode
     return G.DumpStr("OK: GameMode_ClothFit() copied cut '{}' into fit '{}'".format(sNameBody + G.C_NameSuffix_ClothCut, sNameBody + G.C_NameSuffix_ClothFit))
 
 def GameMode_ClothFit_End(sNameBody):  # Cleanup the Flex-simulated cloth.  Assumes Client uploaded its latest verts of this cloth before.
-    SelectAndActivate(sNameBody + G.C_NameSuffix_ClothFit)
+    SelectObject(sNameBody + G.C_NameSuffix_ClothFit)
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='SELECT')
     bpy.ops.mesh.vertices_smooth_laplacian(repeat=1, lambda_factor=0.005, lambda_border=0.000)  ###TUNE!
@@ -561,7 +533,7 @@ def GameMode_ClothFit_End(sNameBody):  # Cleanup the Flex-simulated cloth.  Assu
 def Unity_GetMesh_Array_OBSOLETE(sNameMesh, sNameArray):        #=== Send Unity the requested serialized bytearray of the previously-calculated custom property of mesh 'sNameMesh'
     oBA = CByteArray()
 
-    oMeshO = SelectAndActivate(sNameMesh)
+    oMeshO = SelectObject(sNameMesh)
     aArray = oMeshO.get(sNameArray)
     Stream_SerializeArray(oBA, aArray)
 
@@ -573,18 +545,17 @@ def Unity_GetMesh_Array_OBSOLETE(sNameMesh, sNameArray):        #=== Send Unity 
 def gBL_GetBones(sNameMesh):  # Called by the CBodeEd (Unity's run-in-edit-mode code for CBody) to update the position of the bones for the selected Unity template.  Non destructive call that assumes existing bones are already there with much extra information such as ragdoll colliders, components on bones, etc.)
     # This call only updates bones position and creates bones if they are missing.  Rotation isn't touched and extraneous bones have to be deleted in Unity if needed.
     print("\n=== gBL_GetBones('{}') ===".format(sNameMesh))
-    oMeshO = SelectAndActivate(sNameMesh)
+    oMeshO = SelectObject(sNameMesh)
     if "Armature" not in oMeshO.modifiers:
         return G.DumpStr("ERROR: gBL_GetBones() cannot find armature modifier for '" + sNameMesh + "'")
-    oArmature = oMeshO.modifiers["Armature"].object.data
-
-    #=== Send the 'header' containing a magic number, the number of verts, tris, materials ===
-    oBA = CByteArray()
-
+    oArmObject = oMeshO.modifiers["Armature"].object        ###INFO: How to get Blender node that holds bones
+    oArm = oArmObject.data
+    
     #=== Send bone tree (without bone positions) Unity needs our order to map to its existing bone which remain the authority ===
-    SelectAndActivate(oMeshO.parent.name)       # Select mesh parent so we can read armature
+    oBA = CByteArray()
+    SelectObject(oArmObject.name)          # Select armature node
     bpy.ops.object.mode_set(mode='EDIT')
-    oBA.AddBone(oArmature.edit_bones[0])        # Recursively send the bone tree starting at root node (0) 
+    oBA.AddBone(oArm.edit_bones[0])             # Recursively send the bone tree starting at root bone (0) 
     bpy.ops.object.mode_set(mode='OBJECT')
 
     return oBA.CloseArray() 
@@ -604,7 +575,7 @@ def gBL_ReleaseMesh(sNameMesh):  # Release the python-side and blender-c-side st
 def gBL_UpdateClientVerts(sNameMesh):  # Update only the Client verts from the Blender verts.  Most of the magic happens in our modified Blender C code while calling update()
     if (sNameMesh not in bpy.data.objects):     ###NOW######BROKEN???
         return G.DumpStr("ERROR: gBL_UpdateClientVerts() cannot find object '" + sNameMesh + "'")
-    oMeshO = SelectAndActivate(sNameMesh)
+    oMeshO = SelectObject(sNameMesh)
     oMeshO.data.use_fake_user = False  ###NOTE: We use this mesh flag in our modified Blender C code to indicate 'load verts from client'.  Make sure this is off in this context
     oMeshO.data.update(True, True)  ###IMPORTANT: Our modified Blender C code traps the above flags to update its shared data structures with client...        
     return G.DumpStr("OK: gBL_UpdateClientVerts() has updated Client mesh verts on mesh '{}'".format(sNameMesh))
@@ -612,7 +583,7 @@ def gBL_UpdateClientVerts(sNameMesh):  # Update only the Client verts from the B
 def gBL_UpdateBlenderVerts(sNameMesh):  # Update the Blender verts from the Client verts.  Most of the magic happens in our modified Blender C code while calling update()
     if (sNameMesh not in bpy.data.objects):
         return G.DumpStr("ERROR: gBL_UpdateBlenderVerts() cannot find object '" + sNameMesh + "'")
-    oMeshO = SelectAndActivate(sNameMesh)
+    oMeshO = SelectObject(sNameMesh)
     oMeshO.data.use_fake_user = True        ###IMPORTANT: We turn on this flag to indicate to our Blender C code that we LOAD the verts from client (instead of sending arrays to client)  NOTE: We use this mesh flag in our modified Blender C code to indicate 'load verts from client'.
     oMeshO.data.update(True, True)          ###IMPORTANT: Our modified Blender C code traps the above flags to update its shared data structures with client...        
     oMeshO.data.use_fake_user = False       # Turn off the 'update Blender verts from Client' flag right away as it's created only for this call.
@@ -636,16 +607,16 @@ def gBL_UpdateBlenderVerts(sNameMesh):  # Update the Blender verts from the Clie
 #- Keep rotation as is (90x) on both root and mesh (like woman)
 
 def ManCleanup_RemoveExtraMaterials():  # Remove extra materials from DAZ-imported man    
-    #Cleanup_RemoveMaterial("Cornea")
-    #Cleanup_RemoveMaterial("Sclera")
-    Cleanup_RemoveMaterial("EyeSurface")
-    #Cleanup_RemoveMaterial("Iris")
-    #Cleanup_RemoveMaterial("Pupil")
-    Cleanup_RemoveMaterial("Lacrimal")
-    Cleanup_RemoveMaterial("Tear")
-    Cleanup_RemoveMaterial("EyeSocket")
-    Cleanup_RemoveMaterial("Eyebrow")
-    Cleanup_RemoveMaterial("Eyelash")
+    #Material_Remove("Cornea")
+    #Material_Remove("Sclera")
+    Material_Remove("EyeSurface")
+    #Material_Remove("Iris")
+    #Material_Remove("Pupil")
+    Material_Remove("Lacrimal")
+    Material_Remove("Tear")
+    Material_Remove("EyeSocket")
+    Material_Remove("Eyebrow")
+    Material_Remove("Eyelash")
 
     
 #---------------------------------------------------------------------------    
@@ -703,24 +674,24 @@ def Test():
 #---------------------------------------------------------------------------    HEAD PROCESSING
 #---------------------------------------------------------------------------    
 # def IsolateHead():  ###OBS? # DAZ cannot export only the head if we select the 17K level of detail mesh.  We remove materials and faces we don't need here to leave only the head    
-#     Cleanup_RemoveMaterial("Neck")
-#     Cleanup_RemoveMaterial("Torso")
-#     Cleanup_RemoveMaterial("Nipple")
-#     Cleanup_RemoveMaterial("Hip")
-#     Cleanup_RemoveMaterial("Arm")
-#     Cleanup_RemoveMaterial("Foot")
-#     Cleanup_RemoveMaterial("Forearm")
-#     Cleanup_RemoveMaterial("Hand")
-#     Cleanup_RemoveMaterial("Leg")
-#     Cleanup_RemoveMaterial("Fingernail")
-#     Cleanup_RemoveMaterial("Toenail")
-#     Cleanup_RemoveMaterial("Cornea")
-#     Cleanup_RemoveMaterial("Sclera")
-#     Cleanup_RemoveMaterial("EyeSurface")
-#     Cleanup_RemoveMaterial("Iris")
-#     Cleanup_RemoveMaterial("Pupil")
-#     Cleanup_RemoveMaterial("Lacrimal")
-#     Cleanup_RemoveMaterial("Tear")
-#     Cleanup_RemoveMaterial("EyeSocket")
-#     Cleanup_RemoveMaterial("Eyebrow")
+#     Material_Remove("Neck")
+#     Material_Remove("Torso")
+#     Material_Remove("Nipple")
+#     Material_Remove("Hip")
+#     Material_Remove("Arm")
+#     Material_Remove("Foot")
+#     Material_Remove("Forearm")
+#     Material_Remove("Hand")
+#     Material_Remove("Leg")
+#     Material_Remove("Fingernail")
+#     Material_Remove("Toenail")
+#     Material_Remove("Cornea")
+#     Material_Remove("Sclera")
+#     Material_Remove("EyeSurface")
+#     Material_Remove("Iris")
+#     Material_Remove("Pupil")
+#     Material_Remove("Lacrimal")
+#     Material_Remove("Tear")
+#     Material_Remove("EyeSocket")
+#     Material_Remove("Eyebrow")
     

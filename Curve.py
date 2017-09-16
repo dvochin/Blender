@@ -50,7 +50,7 @@ class CCurve:
         self.oSpline = None                             # The first (and only) spline of self.oCurveO
         self.nPointIterator = 0                         # Utility variable for curve constructors / updators to define / update their curve point without using by-reference workarounds
         
-        DeleteObject(self.sName)       ###LEARN: Previous caused bad blender crash wit17h old bp        # The above caused that bad Blender C++ crash with the 'Gives UnicodeDecodeError: 'utf-8' codec can't decode byte 0xdd in position 0' error
+        DeleteObject(self.sName)       ###INFO: Previous caused bad blender crash wit17h old bp        # The above caused that bad Blender C++ crash with the 'Gives UnicodeDecodeError: 'utf-8' codec can't decode byte 0xdd in position 0' error
         bpy.ops.curve.primitive_bezier_curve_add()
         self.oCurveO = bpy.context.object
         self.oCurveO.parent = bpy.data.objects[G.C_NodeName_Curve]
@@ -112,13 +112,13 @@ class CCurve:
             AssertFinished(bpy.ops.object.modifier_apply(modifier=oModMirrorX.name))        
 
         #=== Create a boolean modifier and apply it to remove the extra bit beyond the current cutter ===
-        SelectAndActivate(oMeshCutCloth.name, True)
+        SelectObject(oMeshCutCloth.name, True)
         oModBoolean = oMeshCutCloth.modifiers.new('BOOLEAN', 'BOOLEAN')
-        #oModBoolean.solver = "CARVE"                ###LEARN: Older 'CARVE' Boolean Solver appears to destroy all the custom data layers.  BMESH is default but it has problems...  ###DESIGN17: what to do?
+        #oModBoolean.solver = "CARVE"                ###INFO: Older 'CARVE' Boolean Solver appears to destroy all the custom data layers.  BMESH is default but it has problems...  ###DESIGN17: what to do?
         ###BUG17: BMESH cuts sometime don't work
         oModBoolean.object = self.oCutterO
-        oModBoolean.operation = 'DIFFERENCE'            ###LEARN: Difference is the one we always want when cutting as the others appear useless!  Note that this is totally influenced by side of cutter normals!!
-        AssertFinished(bpy.ops.object.modifier_apply(modifier=oModBoolean.name))  ###LEARN: Have to specify 'modifier' or this won't work!
+        oModBoolean.operation = 'DIFFERENCE'            ###INFO: Difference is the one we always want when cutting as the others appear useless!  Note that this is totally influenced by side of cutter normals!!
+        AssertFinished(bpy.ops.object.modifier_apply(modifier=oModBoolean.name))  ###INFO: Have to specify 'modifier' or this won't work!
         
         #=== Boolean cut leaves quads and ngons on the border and triangles give us more control on what to delete -> Triangulate before border cleanup ===
         bpy.ops.object.mode_set(mode='EDIT')

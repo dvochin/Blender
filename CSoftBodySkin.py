@@ -11,7 +11,7 @@ from gBlender import *
 import G
 from CBody import *
 from CMesh import *
-from CSoftBodyBase import *     ###LEARN: Inheritance requires this method of importing a class from another file!
+from CSoftBodyBase import *     ###INFO: Inheritance requires this method of importing a class from another file!
 
 
 

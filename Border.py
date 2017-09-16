@@ -41,7 +41,7 @@ def Border_Create(oMeshO, oCurveO, nBorderWidth, nBorderHeight, nBorderRound, nT
         Border_Smooth()                                     # This mesh comes straight from cloth simulation.  Perform heavy smoothing of the border so that extrusions are not all over the place...
     
         #=== Extrude the border's edge without moving it and remove these new verts from the border vertex group ===    
-        bpy.ops.mesh.extrude_edges_indiv()                  ###LEARN: This is the function we need to really extrude!
+        bpy.ops.mesh.extrude_edges_indiv()                  ###INFO: This is the function we need to really extrude!
         bpy.ops.object.vertex_group_remove_from()           # Extrude operation above created a new ring of verts and leaves them as the only selection but added them to the border vertex group.  We remove them so the border group retains only the original (base) verts
         
         #=== Create a temporary new vertex group to store the new ring of vertices for the border extrusion ===
@@ -55,9 +55,9 @@ def Border_Create(oMeshO, oCurveO, nBorderWidth, nBorderHeight, nBorderRound, nT
         bpy.ops.mesh.select_all(action='DESELECT')
         oMeshO.vertex_groups.active_index = oVertGroup_Border.index
         bpy.ops.object.vertex_group_select()
-        bpy.ops.transform.shrink_fatten(value=-0.000001)        ###LEARN: We move the base border a tiny amount in order for normals of extruded ring to have some area to work with.  (Note that setting this even smaller doesn't work!)
-        bpy.ops.mesh.normals_make_consistent(inside=False)      ###LEARN: For the shrink_fatten call above to affect the normals of the new ring we must refresh the normals with this call
-        ###LEARN: Extremely weird (but useful) behavior occurs when you extrude a ring of verts but shrink/flatten the preceding (original) ring along its normals -> the normals of the outermost (extruded) ring point alongside the TANGENT of the original verts!
+        bpy.ops.transform.shrink_fatten(value=-0.000001)        ###INFO: We move the base border a tiny amount in order for normals of extruded ring to have some area to work with.  (Note that setting this even smaller doesn't work!)
+        bpy.ops.mesh.normals_make_consistent(inside=False)      ###INFO: For the shrink_fatten call above to affect the normals of the new ring we must refresh the normals with this call
+        ###INFO: Extremely weird (but useful) behavior occurs when you extrude a ring of verts but shrink/flatten the preceding (original) ring along its normals -> the normals of the outermost (extruded) ring point alongside the TANGENT of the original verts!
         ### This is useful / needed as when you extrude a ring of edges as the normals and tangents of the outermost edge ring are zero (Blender shows them pointing toward a weird and unrelated (but consistent) way
     
         #=== Now that the extruded rings has normals (that are actually tangents of base ring!!), shrink/fatten it to push the new extruded ring away from the cloth to generate the first (flat) part of the border)
@@ -68,7 +68,7 @@ def Border_Create(oMeshO, oCurveO, nBorderWidth, nBorderHeight, nBorderRound, nT
     
         #=== Now that the base (flat) part of the border has been created, extrude the polys between the two border rings to give the border 'depth' ===
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=True, type='FACE')        # We go to face mode and expand the verts selected.  This will select all faces that have at least one vert selected...
-        bpy.ops.mesh.extrude_region()                  ###LEARN: This is the function we need to really extrude!
+        bpy.ops.mesh.extrude_region()                  ###INFO: This is the function we need to really extrude!
         oMeshO.vertex_groups.active_index = oVertGroup_Border.index       # Extrude operation above inserted additional verts into the border vertex group.  Remove these to keep border vertgroup intact!!
         bpy.ops.object.vertex_group_remove_from()                
         bpy.ops.transform.shrink_fatten(value=-nBorderHeight)
@@ -97,7 +97,7 @@ def Border_Create(oMeshO, oCurveO, nBorderWidth, nBorderHeight, nBorderRound, nT
         
         #=== Iterate through the border vertices to find the vert with min distance and max distance ===
         nDistMin =  sys.float_info.max
-        nDistMax = -sys.float_info.max          ###LEARN: float_info.min is essentially zero!
+        nDistMax = -sys.float_info.max          ###INFO: float_info.min is essentially zero!
         for oVert in aVertsBorder:
             nDist = oVert[oLayVertGrps][oVertGroup_Border.index]
             if nDistMin > nDist:

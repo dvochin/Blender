@@ -13,16 +13,15 @@
 # import bmesh    bm = bmesh.from_edit_mesh(bpy.context.object.data)
 # import bmesh    bm = bmesh.new(); bm.from_mesh(bpy.context.object.data)                                       
 # oModBoolean = oMeshO.modifiers.new('BOOLEAN', 'BOOLEAN')
-# AssertFinished(bpy.ops.object.modifier_apply(modifier=oModBoolean.name))  ###LEARN: Have to specify 'modifier' or this won't work!
+# AssertFinished(bpy.ops.object.modifier_apply(modifier=oModBoolean.name))  ###INFO: Have to specify 'modifier' or this won't work!
 # aVerts = [oVert for oVert in bmBody.verts if oVert.select]
 # aEdges = [oEdge for oEdge in bm.edges if oEdge.select]
 # bpy.context.scene.cursor_location = Vector((0,0,0))
 # Debug functionality from http://airplanes3d.net/downloads/pydev/pydev-blender-en.pdf
 # bm = bmesh.new()                ###IMPROVE: How to edit a bmesh without EDIT / OBJECT switch?
 # bm.from_mesh(obj.data)
-# # do some stuff to the bmesh
-# bpy.ops.object.mode_set(mode='OBJECT')
-# bm.to_mesh(obj.data) 
+# bm.to_mesh(obj.data)
+# bpy.ops.mesh.select_more() 
 
 #=== Coordinate systems ===
 # Right handed: Blender (+Z Up), DAZ (+Y=Up), OpenGL 
@@ -51,29 +50,39 @@
 
 #from inspect import currentframe, getframeinfo
 #G.Dump("ConvertBackTo3D: " + str(getframeinfo(currentframe()).lineno))
+# vertlist = [elem.index for elem in bm.select_history if isinstance(elem, bmesh.types.BMVert)]
+# import bmesh; bm = bmesh.from_edit_mesh(bpy.context.object.data)
 
 #===============================================================================
 
-###DISCUSSION: 
-#=== TODAY ===
-
-#=== NEXT ===
-
-#=== TODO ===
-
-#=== REMINDERS ===
-
-#=== NEEDS ===
-
-#=== DESIGN ===
-
-#=== IDEAS ===
-
-#=== LEARNED ===
-
-#=== PROBLEMS ===
-
-#=== WISHLIST ===
+###DOCSxx: Date - Description
+# === DEV ===
+ 
+# === NEXT ===
+ 
+# === TODO ===
+ 
+# === LATER ===
+ 
+# === OPTIMIZATIONS ===
+ 
+# === REMINDERS ===
+ 
+# === IMPROVE ===
+ 
+# === NEEDS ===
+ 
+# === DESIGN ===
+ 
+# === QUESTIONS ===
+ 
+# === IDEAS ===
+ 
+# === LEARNED ===
+ 
+# === PROBLEMS ===
+ 
+# === WISHLIST ===
 
 
 import bpy
@@ -151,6 +160,7 @@ C_DataLayer_VertSrcBody         = "DataLayer_VertSrcBody"      # Data layer to s
 C_DataLayer_VertsSrc            = "DataLayer_VertsSrc"          # Original vertex indices in untouched original mesh.  Enables traversal to assembled / morph meshes
 C_DataLayer_VertsAssy           = "DataLayer_VertsAssy"         # Original vertex indices in assembled body.  Enables traversal of morphs to assembled body to reach detached softbody meshes (e.g. breasts)
 C_DataLayer_Particles           = "DataLayer_Particles"         # Data layer storing the mapping between tetra verts close to their rim and original tetra verts
+C_DataLayer_FlexParticleInfo    = "DataLayer_FlexParticleInfo"  # Data layer storing the type of Flex particle in the Flex collider mesh.  (Either 'skinned', simulated-surface-with-bone or simulated-inner)
 C_DataLayer_TwinID              = "DataLayer_RimVerts"          # Temporary data layer to store twin-vert ID as mesh is split into parts (Used to reconnect verts at the same location from different meshes)  ####CHECK: Names can't be too long to be unique???
 C_DataLayer_SharedNormals       = "DataLayer_SharedNormals"     # Temporary data layer used while preparing a mesh for Client to construct what just-separated verts should share the same normal (because of Client's need to have one vert per UV)
 C_DataLayer_SourceBreastVerts   = 'DataLayer_SourceBreastVerts' # Data layer to store the vertIDs of left and right breast verts from cutoff breast
@@ -178,6 +188,10 @@ C_SymmetrySuffixNames = ['L', 'R']               # Suffix given to symmetrical c
 
 C_OffsetVertIDs = 1000000                       # Offset applied to all vert IDs pushed into mesh.  Used to separate 'real IDs' from new verts which would have zero ID
 
+C_Prefix_DynBones = '+DynBone-'                   # Prefix applied to all the 'dynamic bones' this class creates.  These bones are assigned to different bone parents as appropriate for each soft body (e.g. Left breast to 'lPectoral' DAZ bone, Penis to 'Genitals' DAZ bone etc)
+C_RexPattern_StandardBones = r"^[a-zA-Z]"      # RegEx search pattern to find DAZ-defined bones = They all start wih a lower-case or upper-case letter. (ALL our bones have a prefix like '+', '_', etc)
+C_RexPattern_DynamicBones = r"^\+"              # RegEx search pattern to find dynamic bones.  They ALL start with '+'
+C_RexPattern_EVERYTHING = r""                  # RegEx search pattern that matches everything
 
 
 #---------------------------------------------------------------------------    
@@ -279,12 +293,12 @@ class CVisualizerCubes():           # CVisualizeCubes:  Extremely useful little 
         
         if self.nMaxCubes > 0:
             print("--- CVisualizerCubes creating {} cubes ---".format(self.nMaxCubes))
-            oSrcO = SelectAndActivate("VisualizerCube")
+            oSrcO = SelectObject("VisualizerCube")
             for nCube in range(self.nMaxCubes):     # Create LINKED duplicates (far more efficient than copies!)
                 sName = "VisCube{:03d}".format(nCube)
                 oObj = bpy.data.objects[oSrcO.name]
                 oObj.select = True
-                bpy.context.scene.objects.active = oObj ###LEARN: How to quickly link-duplicate objects!
+                bpy.context.scene.objects.active = oObj ###INFO: How to quickly link-duplicate objects!
                 bpy.ops.object.duplicate_move_linked(OBJECT_OT_duplicate={"linked":True, "mode":'TRANSLATION'}, TRANSFORM_OT_translate={"value":(0, 0, 0)})
                 oVisualizerCube= bpy.context.object          # Duplicate above leaves the duplicated object as the context object...
                 oVisualizerCube.name = sName
@@ -294,7 +308,7 @@ class CVisualizerCubes():           # CVisualizeCubes:  Extremely useful little 
         else:
             print("--- CVisualizerCubes deactivated ---")
             
-    def GetCube(self, sName, vecLocation, sColor, nLayer, bIsXray):
+    def GetCube(self, sName, vecLocation, sColor, nLayer, bIsXray, nScale = 1):
         if self.nMaxCubes == 0:     # If globally deactivated return nothing (e.g. not 'debug mode')
             return None
         
@@ -308,10 +322,16 @@ class CVisualizerCubes():           # CVisualizeCubes:  Extremely useful little 
         oVisualizerCube.material_slots[0].material = bpy.data.materials['VisualizerCube-' + sColor]
         oVisualizerCube.hide = False
         oVisualizerCube.show_x_ray = bIsXray
+        oVisualizerCube.scale *= nScale              
         oVisualizerCube.layers[nLayer] = 1
         self.nCubeNext += 1
         return oVisualizerCube
         
+
+#---------------------------------------------------------------------------    
+#---------------------------------------------------------------------------    ###MOVE
+#---------------------------------------------------------------------------    
+
 
 #---------------------------------------------------------------------------    
 #---------------------------------------------------------------------------    BLENDER CONFIGURATION

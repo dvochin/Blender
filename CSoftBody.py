@@ -11,7 +11,8 @@ from gBlender import *
 import G
 from CBody import *
 from CMesh import *
-from CSoftBodyBase import *     ###LEARN: Inheritance requires this method of importing a class from another file!
+from CSoftBodyBase import *     ###INFO: Inheritance requires this method of importing a class from another file!
+
 
 
 
@@ -20,7 +21,7 @@ class CSoftBody(CSoftBodyBase):
     # CSoftBody: Centrally-important class responsible for separating 'soft' body parts (e.g. breasts, penis, vagina, anus, etc) and performing the proper separation, modification and calculations for Flex-based simulation in Unity.
     
     def __init__(self, oBody, sSoftBodyPart, nSoftBodyFlexColliderShrinkRatio):
-        super(self.__class__, self).__init__(oBody, sSoftBodyPart)      ###LEARN: How to call base class ctor.  Recommended over 'CSoftBodyBase.__init__(oBody, sSoftBodyPart)' (for what reason again??)
+        super(self.__class__, self).__init__(oBody, sSoftBodyPart)      ###INFO: How to call base class ctor.  Recommended over 'CSoftBodyBase.__init__(oBody, sSoftBodyPart)' (for what reason again??)
 
         self.nSoftBodyFlexColliderShrinkRatio  = nSoftBodyFlexColliderShrinkRatio # The multiplier applied to the global G.nFlexParticleSpacing.  Used to 'shrink' the 'self.oMeshFlexCollider' mesh from the presentation mesh so that collisions appear to occur on the surface of the visible meshes.
 
@@ -31,9 +32,9 @@ class CSoftBody(CSoftBodyBase):
         #=== Select the edge of the softbody mesh, extrude to create new geometry and collapse these new verts at the center.  This will turn the presentation mesh into the solid mesh needed by Flex ===
         self.oMeshSoftBody.Open()
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')  ###BUG?? ###CHECK: Possible that edge collapse could fail depending on View3D mode...
-        bpy.ops.mesh.select_non_manifold()          # Select the edge of the mesh... ###LEARN: Will select the edge of the detached softbody mesh = what we have to collapse to make a solid for Flex
-        bpy.ops.mesh.extrude_edges_indiv()          #... and extrude them to create new verts... ###LEARN: This is the function we need to really extrude!
-        bpy.ops.mesh.edge_collapse()                #... and collapse them to a single point to 'close' the mesh. ###LEARN: The collapse will combine all selected verts into one vert at the center
+        bpy.ops.mesh.select_non_manifold()          # Select the edge of the mesh... ###INFO: Will select the edge of the detached softbody mesh = what we have to collapse to make a solid for Flex
+        bpy.ops.mesh.extrude_edges_indiv()          #... and extrude them to create new verts... ###INFO: This is the function we need to really extrude!
+        bpy.ops.mesh.edge_collapse()                #... and collapse them to a single point to 'close' the mesh. ###INFO: The collapse will combine all selected verts into one vert at the center
         #bpy.ops.object.vertex_group_remove(all=True)        # Remove all vertex groups from detached softbody to save Blender memory
         ###DEV19
         
@@ -72,7 +73,7 @@ class CSoftBody(CSoftBodyBase):
 
     
     def DoDestroy(self):
-        super(self.__class__, self).DoDestroy()         ###LEARN: How to call base class method
+        super(self.__class__, self).DoDestroy()         ###INFO: How to call base class method
         self.oMeshFlexCollider.DoDestroy()
         self.oMeshUnity2Blender.DoDestroy()   
   
@@ -96,11 +97,11 @@ class CSoftBody(CSoftBodyBase):
         self.oMeshPinnedParticles = CMesh.CreateFromDuplicate(self.oMeshSoftBody.GetName() + "-PinnedParticles", self.oMeshSoftBodyRimBackmesh)
         self.oMeshPinnedParticles.SetParent(self.oMeshSoftBody.GetName())
          
-        SelectAndActivate(oMeshUnity2BlenderTEMPCOPY.GetName())       # First select and activate mesh that will be destroyed (temp mesh)    (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
+        SelectObject(oMeshUnity2BlenderTEMPCOPY.GetName())       # First select and activate mesh that will be destroyed (temp mesh)    (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
         self.oMeshPinnedParticles.GetMesh().hide = False
         self.oMeshPinnedParticles.GetMesh().select = True                         # Now select...
         bpy.context.scene.objects.active = self.oMeshPinnedParticles.GetMesh()    #... and activate mesh that will be kept (merged into)  (Note that to-be-destroyed mesh still selected!)
-        bpy.ops.object.join()                                           #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
+        bpy.ops.object.join()                                           #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###INFO: Existing custom data layer in merged mesh destroyed!!
         oMeshUnity2BlenderTEMPCOPY = None                               # Above join destroyed the copy mesh so set our variable to None
         #=== Select the rim verts in the joined mesh ===
         bmPinnedParticles = self.oMeshPinnedParticles.Open()
@@ -128,7 +129,7 @@ class CSoftBody(CSoftBodyBase):
         bpy.ops.mesh.delete(type='VERT')
  
 
-        #===== CREATE THE MAP OF PINNED FLEX PARTICLES: Responsible to move simulated Flex particles to the position of their coresponding skinned vert  =====
+        #===== CREATE THE MAP OF PINNED FLEX PARTICLES: Responsible to move simulated Flex particles to the position of their corresponding skinned vert  =====
         #=== Iterate through particles to fill in its map traversal ===
         oLayParticles = bmPinnedParticles.verts.layers.int[G.C_DataLayer_Particles]
         self.aMapPinnedParticles = CByteArray()  # Blank out the two arrays that must be created everytime this is called
@@ -166,10 +167,10 @@ class CSoftBody(CSoftBodyBase):
         oMeshD.from_pydata(aVerts,[],[])
         oMeshD.update()
         SetParent(oMeshO.name, G.C_NodeFolder_Game)
-        self.oMeshUnity2Blender = CMesh.CreateFromExistingObject(oMeshO.name)     # Store CMesh reference into the member dedicated for this purpose so Unity can access and upload to us via its normal (efficient) channel
+        self.oMeshUnity2Blender = CMesh.Create(oMeshO.name)     # Store CMesh reference into the member dedicated for this purpose so Unity can access and upload to us via its normal (efficient) channel
         self.oMeshUnity2Blender.SetName(sNameMeshUnity2Blender)     # Ensure we have the name we need. 
         self.oMeshUnity2Blender.SetParent(self.oMeshSoftBody.GetName())
-        self.oMeshUnity2Blender.bDeleteUponDestroy = True
+        self.oMeshUnity2Blender.bDeleteBlenderObjectUponDestroy = True
         self.oMeshUnity2Blender.Hide()
         return "OK"         # Return OK to Unity
     
@@ -240,11 +241,11 @@ class CSoftBody(CSoftBodyBase):
 #         self.oMeshUnity2Blender.Close()
 #         
 #         #===== Combine the particle-mesh with the rim mesh of that softbody.  We need to isolate the particles close to the rim verts to 'pin' them =====
-#         ###LEARN: Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh)
-#         SelectAndActivate(self.oMeshUnity2Blender.GetName())             # First select and activate mesh that will be destroyed (temp mesh)
+#         ###INFO: Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh)
+#         SelectObject(self.oMeshUnity2Blender.GetName())             # First select and activate mesh that will be destroyed (temp mesh)
 #         self.oMeshSoftBodyRim.oMesh.select = True                         # Now select...
 #         bpy.context.scene.objects.active = self.oMeshSoftBodyRim.oMesh    #... and activate mesh that will be kepp (merged into)  (Note that to-be-destroyed mesh still selected!)
-#         bpy.ops.object.join()                                       #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###LEARN: Existing custom data layer in merged mesh destroyed!!
+#         bpy.ops.object.join()                                       #... and join the selected mesh into the selected+active one.  Temp mesh has been merged into softbody rim mesh   ###DEV: How about Unity's hold of it??  ###INFO: Existing custom data layer in merged mesh destroyed!!
 #         self.oMeshUnity2Blender = None                              # Above join destroyed the copy mesh so set our variable to None
 # 
 #         #===== Remove the particles that are too far from the rim =====
@@ -306,7 +307,7 @@ class CSoftBody(CSoftBodyBase):
 #         bmSoftBody = self.oMeshSoftBody.Open()
 #         oLayRimVerts = bmSoftBody.verts.layers.int[G.C_DataLayer_TwinID]
 #         aMapTwinId2VertSoftBody = {}
-#         for oVert in bmSoftBody.verts:  ###LEARN: Interestingly, both the set and retrieve list their verts in the same order... with different topology!
+#         for oVert in bmSoftBody.verts:  ###INFO: Interestingly, both the set and retrieve list their verts in the same order... with different topology!
 #             nTwinID = oVert[oLayRimVerts]
 #             if nTwinID != 0:
 #                 aMapTwinId2VertSoftBody[nTwinID] = oVert.index
@@ -334,7 +335,7 @@ class CSoftBody(CSoftBodyBase):
 #         # Highly-specific functionality to breasts because of their need for special-case breast colliders moving with softbody breasts to repel cloth.
 # 
 #     def __init__(self, oBody, sSoftBodyPart):
-#         super(self.__class__, self).__init__(oBody, sSoftBodyPart)      ###LEARN: How to call base class ctor
+#         super(self.__class__, self).__init__(oBody, sSoftBodyPart)      ###INFO: How to call base class ctor
 # 
 #         self.sNameCollider = sSoftBodyPart + "Col"      # Collider associated with this breast has this simple suffix added
 #         self.oMeshColBreast = None                      # The collider mesh for this breast.  Pushes cloth back in Unity runtime
@@ -345,14 +346,14 @@ class CSoftBody(CSoftBodyBase):
 #         
 #         # This Flex mesh takes a small encoded (containing about 32 verts) mesh to generate sphere & capsule collidersX.  This call process which vert will create a sphere collider in PhysX and which edge will generate a capsule colliders (currently used to repell clothing away from breasts)  (Args ex: "BodyA", "WomanA", "Breasts")        ###CHECK: Can capping during breast separation cause problem with collider overlay??
 #         sNameSlaveMeshSlave = self.oBody.sMeshSource + "-" + self.sNameCollider + "-Slave"      ###IMPROVE: Create function to construct these names!
-#         self.oMeshColBreast = CMesh.CreateFromExistingObject(sNameSlaveMeshSlave)    
+#         self.oMeshColBreast = CMesh.Create(sNameSlaveMeshSlave)    
 #         
 #         #=== Iterate through the verts to assemble the aColBreastVertSphereRadiusRatio array storing the red channel of the vertex color.  (This information stores the relative radius of each vertex sphere with a value of zero meaning no sphere) ===
 #         bmBreastCol = self.oMeshColBreast.Open()
-#         oLayVertColors = bmBreastCol.loops.layers.color.active        # Obtain reference to bmesh vertex color channel store in loops  ###LEARN: 2 defined 'Col' and 'Col.001' with 'Col.001' active and appearing to contain valid data... can this change?? ###CHECK
+#         oLayVertColors = bmBreastCol.loops.layers.color.active        # Obtain reference to bmesh vertex color channel store in loops  ###INFO: 2 defined 'Col' and 'Col.001' with 'Col.001' active and appearing to contain valid data... can this change?? ###CHECK
 #         nNumActiveVerts = 0
 #         for oVert in bmBreastCol.verts:
-#             nVertSphereRadiusRatio = oVert.link_loops[0][oLayVertColors][0]     ###LEARN: How to access vert colors
+#             nVertSphereRadiusRatio = oVert.link_loops[0][oLayVertColors][0]     ###INFO: How to access vert colors
 #             if nVertSphereRadiusRatio > 0.1:                         ###KEEP? Setting zero color can be tricky so some threshold??
 #                 #print("CBodyColBreast: SphereIndex # {:2} = Vert {:2} = Val: {:2}".format(nNumActiveVerts, oVert.index, nVertSphereRadiusRatio))
 #                 nNumActiveVerts += 1
@@ -400,7 +401,7 @@ class CSoftBody(CSoftBodyBase):
 # 
 # 
 #     def Morph_UpdateDependentMeshes(self):
-#         CSoftBody.Morph_UpdateDependentMeshes(self)                 # Call base class for usual SoftBody apply.  ###LEARN: How to call base class
+#         CSoftBody.Morph_UpdateDependentMeshes(self)                 # Call base class for usual SoftBody apply.  ###INFO: How to call base class
 #         self.oBody.SlaveMesh_ResyncWithMasterMesh(self.sNameCollider)              # Re-sync our collider (which is a slave mesh) back to its master mesh
 # 
 # 
@@ -420,11 +421,11 @@ class CSoftBody(CSoftBodyBase):
 #         #=== Vagina has special processing as the complex 3D shape is created in Blender and not on-the-fly from this script ===
 #         if (self.bIsVagina == False):
 #             #=== Before the collapse to cap the softbody we must remove the info in the custom data layer so new collapse vert doesn't corrupt our rim data ===
-#             bpy.ops.mesh.extrude_edges_indiv()          ###LEARN: This is the function we need to really extrude!
+#             bpy.ops.mesh.extrude_edges_indiv()          ###INFO: This is the function we need to really extrude!
 #             for oVert in bmSoftBody.verts:              # Iterate through all selected verts and clear their 'twin id' field.
 #                 if oVert.select == True:
 #                     oVert[oLayRimVerts] = 0           ###IMPROVE? Give cap extra geometry for a smooth that will be a better fit than a single center vert??
-#             bpy.ops.mesh.edge_collapse()                ###LEARN: The collapse will combine all selected verts into one vert at the center
+#             bpy.ops.mesh.edge_collapse()                ###INFO: The collapse will combine all selected verts into one vert at the center
 # 
 #             #=== Create the 'backmesh' mesh from the cap.  This mesh is used to find Flex particles that should be pinned to the body instead of simulated ===
 #             bpy.ops.mesh.select_more()                  # Add the verts immediate to the just-created center vert (the rim verts)
@@ -470,7 +471,7 @@ class CSoftBody(CSoftBodyBase):
 #             aVerts.append(Vector((0,0,0)))
 #         oMesh.from_pydata(aVerts, [], [])
 #         oMesh.update()
-#         self.oMeshUnity2Blender = CMesh.CreateFromExistingObject(sNameMeshUnity2Blender, G.C_NodeFolder_Game)     # Store in our member variable as a CMesh so Unity can handshake with as usual       
+#         self.oMeshUnity2Blender = CMesh.Create(sNameMeshUnity2Blender, G.C_NodeFolder_Game)     # Store in our member variable as a CMesh so Unity can handshake with as usual       
 #         print("CreateUnity2BlenderMesh() created mesh {} with {} verts.".format(sNameMeshUnity2Blender, nVerts))
 #         #return oMeshO
 #         return "OK"

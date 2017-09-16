@@ -33,7 +33,7 @@
 #         self.oMeshFlexSkin          = None              # The flexskin surface mesh itself.  Visible in Unity and moved by Flex flexskin simulation via its internal solid tetramesh.
 #         self.aShapeVerts            = CByteArray()      # Array of which vert / particle is also a shape
 #         self.aShapeParticleIndices  = CByteArray()      # Flattened array of which shape match to which particle (as per Flex softbody requirements)
-#         self.aShapeParticleCutoffs  = CByteArray()      # Cutoff in 'aShapeParticleIndices' between sets defining which particle goes to which shape. 
+#         self.aShapeParticleOffsets  = CByteArray()      # Cutoff in 'aShapeParticleIndices' between sets defining which particle goes to which shape. 
 # 
 #         print("=== CFlexSkin.ctor()  self.oBody = '{}'  self.sFlexSkinPart = '{}'  ===".format(self.oBody.oBodyBase.sMeshPrefix, self.sFlexSkinPart))
 #         
@@ -51,16 +51,16 @@
 # #         #=== Split and separate the flexskin from the composite mesh ===
 # #         bpy.ops.mesh.split()        # 'Split' the selected polygons so both 'sides' have verts at the border and form two submesh
 # #         bpy.ops.mesh.separate()     # 'Separate' the selected polygon (now with their own non-manifold edge from split above) into its own mesh as a 'flexskin'
-# #         bpy.ops.object.mode_set(mode='OBJECT')      ###LEARN: Manually going to object to handle tricky split below...
+# #         bpy.ops.object.mode_set(mode='OBJECT')      ###INFO: Manually going to object to handle tricky split below...
 # # 
 # #         #=== Name the newly created mesh as the requested 'detached flexskin' ===      
-# #         bpy.context.object.select = False           ###LEARN: Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
+# #         bpy.context.object.select = False           ###INFO: Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
 # #         bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')        
 # #         self.oMeshFlexSkin = CMesh.CMesh(sNameFlexSkin, bpy.context.scene.objects.active, None)          # The just-split mesh becomes the flexskin mesh! 
 # 
 # 
 # 
-#         self.oMeshFlexSkin = CMesh.CreateFromExistingObject(self.sFlexSkinPart)      ###HACK!!!! 
+#         self.oMeshFlexSkin = CMesh.Create(self.sFlexSkinPart)      ###HACK!!!! 
 #         bmFlexSkin = self.oMeshFlexSkin.Open()
 # 
 #         #=== Iterate through all verts to populate either aShapeVerts or aShapeParticleIndices collections for Unity ===
@@ -73,7 +73,7 @@
 #                 aDistToVert = []
 #                 for oVertParticle in bmFlexSkin.verts:
 #                     aDistToVert.append((oVertParticle.index, (oVertShape.co - oVertParticle.co).length_squared)) 
-#                 aDistToVertSorted = sorted(aDistToVert, key=lambda JustAName: JustAName[1])     ###LEARN: How to sort by value.  See https://wiki.python.org/moin/HowTo/Sorting
+#                 aDistToVertSorted = sorted(aDistToVert, key=lambda JustAName: JustAName[1])     ###INFO: How to sort by value.  See https://wiki.python.org/moin/HowTo/Sorting
 #                 aDistToVertSortedTrimmed = aDistToVertSorted[:nParticlesPerShape]       # Trim to just the # of (closest) particles/verts we need for this shape 
 #                 
 #                 #=== Push in the list of particles connected to this shape in the flattened array Flex requires ===
@@ -82,11 +82,11 @@
 #                     #print("-- Shape {:3d} to Part {:3d} -  Dist {:6f}".format(oVertShape.index, oVertAndDist[0], oVertAndDist[1]))
 #                     
 #                 #=== Push in our split point in self.aShapeParticleIndices so Flex can unflatten the aShapeParticleIndices flat array and properly match what particle connects to which shape === 
-#                 self.aShapeParticleCutoffs.AddInt(len(self.aShapeParticleIndices))
+#                 self.aShapeParticleOffsets.AddInt(len(self.aShapeParticleIndices))
 #         
 #         self.aShapeVerts.CloseArray()
 #         self.aShapeParticleIndices.CloseArray()
-#         self.aShapeParticleCutoffs.CloseArray() 
+#         self.aShapeParticleOffsets.CloseArray() 
 # 
 #         self.oMeshFlexSkin.Close()
 # 
@@ -101,8 +101,8 @@
 #     def SerializeCollection_aShapeParticleIndices(self):
 #         return Stream_SerializeCollection(self.aShapeParticleIndices)
 #             
-#     def SerializeCollection_aShapeParticleCutoffs(self):
-#         return Stream_SerializeCollection(self.aShapeParticleCutoffs)
+#     def SerializeCollection_aShapeParticleOffsets(self):
+#         return Stream_SerializeCollection(self.aShapeParticleOffsets)
             
             
             
@@ -137,10 +137,10 @@
 #         #=== Split and separate the flexskin from the composite mesh ===
 #         bpy.ops.mesh.split()        # 'Split' the selected polygons so both 'sides' have verts at the border and form two submesh
 #         bpy.ops.mesh.separate()     # 'Separate' the selected polygon (now with their own non-manifold edge from split above) into its own mesh as a 'flexskin'
-#         bpy.ops.object.mode_set(mode='OBJECT')      ###LEARN: Manually going to object to handle tricky split below...
+#         bpy.ops.object.mode_set(mode='OBJECT')      ###INFO: Manually going to object to handle tricky split below...
 # 
 #         #=== Name the newly created mesh as the requested 'detached flexskin' ===      
-#         bpy.context.object.select = False           ###LEARN: Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
+#         bpy.context.object.select = False           ###INFO: Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
 #         bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')        
 #         self.oMeshFlexSkin = CMesh.CMesh(sNameFlexSkin, bpy.context.scene.objects.active, None)          # The just-split mesh becomes the flexskin mesh! 
 # 

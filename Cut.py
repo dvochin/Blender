@@ -116,7 +116,7 @@ def Cut_CleanupBorder(oMeshO, oCurveO, aBorderLocatorVertPos):           # Compl
      
         #=== With the border verts finally in a vertex group our deletion / insertion of verts along the edge behaves a lot more intuitively without us having to manually insert verts in arrays and such (very useful!) ===
         #=== Even with the removal of tiny sliver polys with default UVs gone, there remains several degenerate polys with all verts on the border!  Leaving these would mess up the borders so a simple deletion is appropriate ===
-        aVertsBorder = [oVert for oVert in bm.verts if oVert.select]     ###LEARN: vertex_group_assign invalidates any previous BMVert pointer we have!  Have to rebuild from selected!!
+        aVertsBorder = [oVert for oVert in bm.verts if oVert.select]     ###INFO: vertex_group_assign invalidates any previous BMVert pointer we have!  Have to rebuild from selected!!
         aFacesToDelete = []
         for oVert in aVertsBorder:
             for oFace in oVert.link_faces:        # Iterate through the faces of this border vert to delete those with very high angles
@@ -136,7 +136,7 @@ def Cut_CleanupBorder(oMeshO, oCurveO, aBorderLocatorVertPos):           # Compl
         bpy.ops.mesh.delete(type='FACE')            # As the selected faces are so small and MUST be right on the border, a simple deletion won't punch holes in the cloth ###CHECK!
  
     #     #=== Remove the worse of the vertex doubles on the border to help face operation below... A little bit destructive to UVs so only a small amount! ===
-    #     aVertsBorder = [oVert for oVert in bm.verts if oVert.select]        ###LEARN: Disabled as our vert inserter / remover code below does this well without UV damage!
+    #     aVertsBorder = [oVert for oVert in bm.verts if oVert.select]        ###INFO: Disabled as our vert inserter / remover code below does this well without UV damage!
     #     bmesh.ops.remove_doubles(bm, verts=aVertsBorder, dist=0.003)                
      
         #=== Iterate through the edges connected to border vertices, and for those that have one vert on border and one vert in-cloth, select those that are too short for further merging ===
@@ -144,7 +144,7 @@ def Cut_CleanupBorder(oMeshO, oCurveO, aBorderLocatorVertPos):           # Compl
         bpy.ops.mesh.select_all(action='DESELECT')
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
         bpy.ops.object.vertex_group_select()
-        aVertsBorder = [oVert for oVert in bm.verts if oVert.select]     ###LEARN: vertex_group_assign invalidates any previous BMVert pointer we have!  Have to rebuild from selected!!
+        aVertsBorder = [oVert for oVert in bm.verts if oVert.select]     ###INFO: vertex_group_assign invalidates any previous BMVert pointer we have!  Have to rebuild from selected!!
         aVertsInClothToDissolve = []
         for oVertBorder in aVertsBorder:
             for oEdgeBorder in oVertBorder.link_edges:
@@ -165,7 +165,7 @@ def Cut_CleanupBorder(oMeshO, oCurveO, aBorderLocatorVertPos):           # Compl
                     break
             if bVertOnSeam == False:
                 oVertInClothToDissolve.select_set(True)
-        bpy.ops.mesh.dissolve_verts()                           ###LEARN: Extremely useful method of removing a superflous vert without damaging UV that is far less risky then making faces out of (potentially large amount) of face contiguity
+        bpy.ops.mesh.dissolve_verts()                           ###INFO: Extremely useful method of removing a superflous vert without damaging UV that is far less risky then making faces out of (potentially large amount) of face contiguity
         bpy.ops.mesh.select_all(action='SELECT')                ###WEAK ###OPT Could select only around border area for re-tesselation... is this much slower for whole mesh??
         bpy.ops.mesh.quads_convert_to_tris()     ###REVIVE: use_beauty=true # Re-tesselate with beauty to really clean up the geometry around the border. With the above call this yields a substantial improvement
      
@@ -185,11 +185,11 @@ def Cut_CleanupBorder(oMeshO, oCurveO, aBorderLocatorVertPos):           # Compl
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
         for nEdgeSubDivideIteration in range(3):            ###IMPROVE ###CHECK: This half-baked hack of dividing / merging border edges would not have to be if only loop tool's relax could update UVs!!
             bpy.ops.mesh.select_all(action='DESELECT') 
-            bpy.ops.object.vertex_group_select()                            ###LEARN: Relying on vert group to automatically update the selection as we insert / remove elements is a real lifesaver!!  (No need to manually insert/remove into arrays as we modify topology!)
+            bpy.ops.object.vertex_group_select()                            ###INFO: Relying on vert group to automatically update the selection as we insert / remove elements is a real lifesaver!!  (No need to manually insert/remove into arrays as we modify topology!)
             aEdgesBorder = [oEdge for oEdge in bm.edges if oEdge.select] 
             nLenEdgeAvg = 0.0
             nLenEdgeMin =  sys.float_info.max
-            nLenEdgeMax = -sys.float_info.max          ###LEARN: float_info.min is essentially zero!
+            nLenEdgeMax = -sys.float_info.max          ###INFO: float_info.min is essentially zero!
             for oEdge in aEdgesBorder:
                 nLenEdge = oEdge.calc_length()
                 nLenEdgeAvg = nLenEdgeAvg + nLenEdge
@@ -233,7 +233,7 @@ def Cut_CleanupBorder(oMeshO, oCurveO, aBorderLocatorVertPos):           # Compl
          
         #=== At this point the border's UV has a few disjointed UVs.  Iterate through all border verts to weld the UVs ===
         print("== UV Weld ==")
-        bpy.ops.object.vertex_group_select()                            ###LEARN: Above calls results in border selection with missing vertices (where they were inserted) but curiously these are in the vertex group!  So select the vertex group to easily obtain latest collection of border verts!
+        bpy.ops.object.vertex_group_select()                            ###INFO: Above calls results in border selection with missing vertices (where they were inserted) but curiously these are in the vertex group!  So select the vertex group to easily obtain latest collection of border verts!
         aVertsBorder = [oVert for oVert in bm.verts if oVert.select] 
         for oVert in aVertsBorder:
             bVertHasSeam = False
@@ -242,7 +242,7 @@ def Cut_CleanupBorder(oMeshO, oCurveO, aBorderLocatorVertPos):           # Compl
                     bVertHasSeam = True
                     break
             if bVertHasSeam == False:
-                bmesh.ops.average_vert_facedata(bm, verts=[oVert])          ###LEARN: This is the call to merge UVs at a single vert
+                bmesh.ops.average_vert_facedata(bm, verts=[oVert])          ###INFO: This is the call to merge UVs at a single vert
      
         #=== We're done smoothing and preparing the border.  Now store length information into our vertex group so that no matter how cloth is deformed during simulation we can recreate the border as originally designed ===
         #=== Obtain the collection of selected edges for iteration and clear the tag flag we need to use in next loop ===
@@ -256,7 +256,7 @@ def Cut_CleanupBorder(oMeshO, oCurveO, aBorderLocatorVertPos):           # Compl
         print("== Storing border length information ==")
         oVertNow = aVertsBorder[0]                      ###IMPROVE: Choose vert from spacial positioning instead of this random occurence
         oVertFirst = oVertNow                           # Remember what vert we started so we know when to stop
-        oLayVertGrps = bm.verts.layers.deform.active    ###LEARN: From technique at http://www.blender.org/documentation/blender_python_api_2_67_1/bmesh.html
+        oLayVertGrps = bm.verts.layers.deform.active    ###INFO: From technique at http://www.blender.org/documentation/blender_python_api_2_67_1/bmesh.html
         nLenBorderCumulative = 0.0
         while True:
             oVertNow[oLayVertGrps][oVertGroup_Border.index] = nLenBorderCumulative / G.C_BorderLenIntoVertGrpWeightRatio

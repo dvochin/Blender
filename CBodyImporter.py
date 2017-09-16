@@ -264,10 +264,10 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
         self.oArm.draw_type = "OCTAHEDRAL" #"WIRE"
     
         #=== Rotate the armature bones to nullify node rotation above and rescale to return bones to meter units (and nullify re-scaling above) ===
-        SelectAndActivate(oRootNodeO.name, True)           
-        bpy.ops.object.mode_set(mode='EDIT')                                        ###LEARN: Modifying armature bones is done by simply editing root node containing armature.
+        SelectObject(oRootNodeO.name, True)           
+        bpy.ops.object.mode_set(mode='EDIT')                                        ###INFO: Modifying armature bones is done by simply editing root node containing armature.
         self.oArmBones = self.oArm.edit_bones
-        bpy.ops.armature.select_all(action='SELECT')                                ###LEARN: How to select bones... almost like 'mesh'
+        bpy.ops.armature.select_all(action='SELECT')                                ###INFO: How to select bones... almost like 'mesh'
         self.Import_RotateAndRescale()
         bpy.ops.armature.select_all(action='DESELECT')
     
@@ -285,7 +285,7 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
         #=== Exit edit mode and hide rig ===
         bpy.ops.object.mode_set(mode='OBJECT')
         oRootNodeO.hide = True
-        SelectAndActivate(self.oMeshOriginalO.name, True)
+        SelectObject(self.oMeshOriginalO.name, True)
     
     
     #---------------------------------------------------------------------------    FIRST-IMPORT BONE ADJUSTERS
@@ -325,10 +325,10 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
         #=== Iterate through all left bones to see if their associated right bone is positioned properly ===
         print("\n\n=== FirstImport_VerifyBoneSymmetry() ===")
 #         self.oArm = oMeshBodyO.modifiers["Armature"].object.data
-#         SelectAndActivate(oMeshBodyO.parent.name, True)            ###LEARN: Armature editing is done through the mesh's parent object
+#         SelectObject(oMeshBodyO.parent.name, True)            ###INFO: Armature editing is done through the mesh's parent object
 #         self.oArmBones = self.oArm.edit_bones    
 #         nAdjustments = 0
-#         bpy.ops.object.mode_set(mode='EDIT')                                        ###LEARN: Modifying armature bones is done by simply editing root node containing armature.
+#         bpy.ops.object.mode_set(mode='EDIT')                                        ###INFO: Modifying armature bones is done by simply editing root node containing armature.
 #         for oBoneL in self.oArmBones:
 #             sNameBoneL = oBoneL.name 
 #             if (sNameBoneL[0] == 'l' and sNameBoneL[1] >= 'A' and sNameBoneL[1] <= 'Z'):            # Test left bone / right bone symmetry
@@ -374,14 +374,14 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
         oMeshImportedO.modifiers[0].name = "Armature"       # Ensure first modifier is called what we need throughout codebase (FBX sets only one modifier = Armature) 
     
         #=== Remove the root node's children that are NOT the expected mesh names (Deletes unwanted DAZ nodes) ===
-        oRootNodeO = SelectAndActivate(oMeshImportedO.parent.name, True)     # Select parent node (owns the bone rig)
+        oRootNodeO = SelectObject(oMeshImportedO.parent.name, True)     # Select parent node (owns the bone rig)
         aNodesToDelete = []
         for oChildNodesO in oRootNodeO.children:
             if oChildNodesO.name != sNameMeshNew:
                 DeleteObject(oChildNodesO.name)
     
         #=== Remove (empty) vertex groups we don't need ===            ###IMPROVE: Delete all those with zero verts in them?  (slow?)
-        SelectAndActivate(oMeshImportedO.name, True)
+        SelectObject(oMeshImportedO.name, True)
         VertGrp_Remove(oMeshImportedO, "Genesis3Female")
         VertGrp_Remove(oMeshImportedO, "hip")
         VertGrp_Remove(oMeshImportedO, "lowerFaceRig")
@@ -390,8 +390,8 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
         VertGrp_Remove(oMeshImportedO, "rToe")
     
     #     #=== Remove the un-needed bones (raw import has duplicate bones for genitalia mesh) ===  ###OBS: not needed if we export from DAZ with FBX option 'Merge Clothing into Figure Skeleton'
-    #     SelectAndActivate(oRootNodeO.name, True)           
-    #     bpy.ops.object.mode_set(mode='EDIT')                                        ###LEARN: Modifying armature bones is done by simply editing root node containing armature.
+    #     SelectObject(oRootNodeO.name, True)           
+    #     bpy.ops.object.mode_set(mode='EDIT')                                        ###INFO: Modifying armature bones is done by simply editing root node containing armature.
     #     self.oArm = oMeshImportedO.modifiers["Armature"].object.data
     #     self.oArmBones = self.oArm.edit_bones
     #     for oBoneO in self.oArmBones:
@@ -399,7 +399,7 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
     #             self.oArmBones.remove(oBoneO)
     
         #=== Clean up bone weights and vertex groups ===
-        SelectAndActivate(oMeshImportedO.name)
+        SelectObject(oMeshImportedO.name)
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)                    ###CHECK!!! Does this lose any information? (for example limb rotation??)
@@ -415,20 +415,20 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
     #         oMat.specular_intensity = 0
     
         #=== Clear the pose (FBX import screws that up royally!) ===
-        SelectAndActivate(oRootNodeO.name, True)     # Select parent node (owns the bone rig)
+        SelectObject(oRootNodeO.name, True)     # Select parent node (owns the bone rig)
         bpy.ops.object.mode_set(mode='POSE')
-        bpy.ops.pose.select_all(action='SELECT')                ###LEARN: How to select bones in pose mode
+        bpy.ops.pose.select_all(action='SELECT')                ###INFO: How to select bones in pose mode
         bpy.ops.pose.transforms_clear()                         # Clears all the pose transforms so each bone in the default pose returns to the edit bones
         bpy.ops.pose.select_all(action='DESELECT')
         bpy.ops.object.mode_set(mode='OBJECT')
     
-        SelectAndActivate(oMeshImportedO.name, True)
+        SelectObject(oMeshImportedO.name, True)
         return oMeshImportedO
     
         
     def Import_RenameRotateAndRescaleMesh(self, sNameMeshOld, sNameMeshNew):
         SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', True)
-        oMeshO = SelectAndActivate(sNameMeshOld, True)
+        oMeshO = SelectObject(sNameMeshOld, True)
         oMeshO.name = oMeshO.data.name = sNameMeshNew
         oMeshO.name = oMeshO.data.name = sNameMeshNew
         bpy.ops.object.mode_set(mode='EDIT')
@@ -472,26 +472,26 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
         oModArm = oMeshDazImportO.modifiers["Armature"]
         oModArm.object = None                                   # Unlink existing armature modifier to the importated armature (that we're about to delete)
         sNameParent = oMeshDazImportO.parent.name
-        oMeshDazImportO.parent = None                           ###LEARN: Must clear parent in sub-nodes before deleting parent or mesh will be inacessible!
+        oMeshDazImportO.parent = None                           ###INFO: Must clear parent in sub-nodes before deleting parent or mesh will be inacessible!
         DeleteObject(sNameParent)                               # Remove imported body's parent node (armature)
 
         #=== Obtain reference to original body mesh ===           
         sNameMeshOriginal = self.sNameMeshPrefix + "-Original"
-        oMeshOriginal = SelectAndActivate(sNameMeshOriginal)
+        oMeshOriginal = SelectObject(sNameMeshOriginal)
     
         #===== Increase breast geometry with a selective subdivide of much of the breast area =====
         #=== First open original mesh to obtain the list of vertices ===
         if self.bIsWoman:
             aVertsBreasts = []
             VertGrp_SelectVerts(oMeshOriginal, "_CBodyImporter_IncreaseBreastGeometry")
-            bpy.ops.object.mode_set(mode='OBJECT')          ###LEARN: Non-bmesh access must read selections this way  ###IMPROVE: Switch to bmesh?
+            bpy.ops.object.mode_set(mode='OBJECT')          ###INFO: Non-bmesh access must read selections this way  ###IMPROVE: Switch to bmesh?
             for oVert in oMeshOriginal.data.vertices:
                 if (oVert.select):
                     aVertsBreasts.append(oVert.index)
                     oVert.select = False
             Util_HideMesh(oMeshOriginal)
             #=== Open the imported mesh to select the same verts.  Original and just-imported mesh are guaranteed to be of the same geometry ===
-            oMeshDazImportO = SelectAndActivate(oMeshDazImportO.name, True)
+            oMeshDazImportO = SelectObject(oMeshDazImportO.name, True)
             for nVert in aVertsBreasts:
                 oMeshDazImportO.data.vertices[nVert].select = True    
             bpy.ops.object.mode_set(mode='EDIT')
@@ -500,7 +500,7 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
             bpy.ops.object.mode_set(mode='OBJECT')
     
         #=== Remove verts for useless materials ===
-        Cleanup_RemoveMaterial(oMeshDazImportO, "EyeMoisture")           # Dumb 'wrapper mesh' to entire eye for 'moisture'... wtf?
+        Material_Remove(oMeshDazImportO, "EyeMoisture")           # Dumb 'wrapper mesh' to entire eye for 'moisture'... wtf?
         
         #=== Reparent to the previously-imported bone rig.  Also set as child node to that same parent ===
         oMeshDazImportO.parent = oMeshOriginal.parent       # Set as child of previously-imported parent (with previously cleaned-up bones)               
@@ -513,7 +513,7 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
         if self.sNameMeshPrefix in bpy.data.objects:
             #=== Add a shape key into the gameready mesh of the just-imported mesh ===
             print("\n=== NOTE: ImportShape() finds basis mesh.  Adding imported mesh as a shape key to basis mesh.  Please rename newly-created shapekey.\n")
-            oMeshDazImportO = SelectAndActivate(oMeshDazImportO.name, True)
+            oMeshDazImportO = SelectObject(oMeshDazImportO.name, True)
             oMeshGame = bpy.data.objects[self.sNameMeshPrefix]
             oMeshGame.select = True
             oMeshGame.hide = False
@@ -593,7 +593,7 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
                 oBone.oRigVis_Arrow.show_x_ray = True
                 oBone.oRigVis_Bone.select = True
                 bpy.context.scene.objects.active = oBone.oRigVis_Bone
-                bpy.ops.object.parent_set(keep_transform=True)          ###LEARN: keep_transform=True is critical to prevent reparenting from destroying the previously set transform of object!!
+                bpy.ops.object.parent_set(keep_transform=True)          ###INFO: keep_transform=True is critical to prevent reparenting from destroying the previously set transform of object!!
     
                 #=== Create the rotation gizmo showing Blender axes orientation ===
                 oBone.oRigVis_Axes = DuplicateAsSingleton("Gizmo-Rotate-Blender", "RigVisAxes-" + sNameBone)
@@ -633,8 +633,8 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
         # - Flag lrPectorals Forward/Backward
  
         print("\n=== Bones_DefineFromDazInfo() ===")
-        SelectAndActivate(self.oMeshOriginalO.parent.name)           
-        bpy.ops.object.mode_set(mode='EDIT')                                        ###LEARN: Modifying armature bones is done by simply editing root node containing armature.
+        SelectObject(self.oMeshOriginalO.parent.name)           
+        bpy.ops.object.mode_set(mode='EDIT')                                        ###INFO: Modifying armature bones is done by simply editing root node containing armature.
         self.BoneFix_SetOrientationFlag_RECURSIVE('D', self.oArmBones['hip'])
         self.BoneFix_SetOrientationFlag_RECURSIVE('U', self.oArmBones['abdomenLower'])
         self.BoneFix_SetOrientationFlag_RECURSIVE('F', self.oArmBones['lFoot'])
@@ -1243,11 +1243,11 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
     
                 #--- Parent the master empties by parent-child relationship ---            
                 if oBone.sNameBoneParent is not None:
-                    SelectAndActivate(oBone.oRigVis_Bone.name)
+                    SelectObject(oBone.oRigVis_Bone.name)
                     oBoneParent = self.mapBones[oBone.sNameBoneParent]
                     oBoneParent.oRigVis_Bone.select = True
                     bpy.context.scene.objects.active = oBoneParent.oRigVis_Bone
-                    bpy.ops.object.parent_set(keep_transform=True)  ###LEARN: keep_transform=True is critical to prevent reparenting from destroying the previously set transform of object!!
+                    bpy.ops.object.parent_set(keep_transform=True)  ###INFO: keep_transform=True is critical to prevent reparenting from destroying the previously set transform of object!!
 
 
 
@@ -1266,7 +1266,7 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
  
         #=== Coalesce the raw input vector and rotation into their corresponding vectors / orientations ===
         vecBoneOriginDAZ = Vector((OX/C_DazToBlenderResize, OY/C_DazToBlenderResize, OZ/C_DazToBlenderResize))
-        eulRotationInputFromDaz = Euler((eulX, eulY, eulZ), sRotOrderDAZ)       ###NOTE: Note the IMPORTANT sRotOrder right from DAZ.  DAZ will switch to five of the 6 permutations of Euler rotation orders for its bones!!    ###NOTE: DAZ Quaternions are USELESS right now... because they are parent/child transformations?  Anyways can make things work if we get its eulers AND the axis order!!   ###LEARN: Note that quaternion ctor takes W,X,Y,Z, not X,Y,Z,W!!!
+        eulRotationInputFromDaz = Euler((eulX, eulY, eulZ), sRotOrderDAZ)       ###NOTE: Note the IMPORTANT sRotOrder right from DAZ.  DAZ will switch to five of the 6 permutations of Euler rotation orders for its bones!!    ###NOTE: DAZ Quaternions are USELESS right now... because they are parent/child transformations?  Anyways can make things work if we get its eulers AND the axis order!!   ###INFO: Note that quaternion ctor takes W,X,Y,Z, not X,Y,Z,W!!!
         nLenBone = nLenBone / C_DazToBlenderResize
         
         #=== Right off the top we convert DAZ's coordinate system to Blender to *COMPLETELY* shield Blender code from DAZ's Y-up coordinates.  Fortunately both DAZ and Blender are 'right hand coordinate systems' but DAZ is +Y Up while Blender is +Z Up.  (Unity is +Y Up like DAZ but Left-handed = TOTAL HORSEHIT!!) ===
@@ -1344,7 +1344,7 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
         quatBlender = oBoneO.matrix.to_quaternion()
         oBone.matBoneEdit       = oBoneO.matrix.copy()          # Store copy of edit-time bone matrix so we can convert Blender pose to fully-qualified Blender rotation so we can go to DAZ rotation domain and back to Blender
         oBone.matBlenderToDaz   = quatDaz.rotation_difference(quatBlender).to_matrix().to_4x4()         # Remember DAZ-to-Blender and Blender-to-DAZ matrices that can traverse one domain to another
-        oBone.matDazToBlender   = quatBlender.rotation_difference(quatDaz).to_matrix().to_4x4()         ###LEARN: Note that A.rotation_difference(B) returns a quaternion that can rotate from B to A (not A to B!!) 
+        oBone.matDazToBlender   = quatBlender.rotation_difference(quatDaz).to_matrix().to_4x4()         ###INFO: Note that A.rotation_difference(B) returns a quaternion that can rotate from B to A (not A to B!!) 
  
         #=== Determine the Blender axis & sign from original DAZ axis (as rotated by our oBone re-orientation) ===        (e.g. A DAZ rotation order like "XZY" could become like "YXZ" (dependent on end rotation applied))
         sRotOrderBlender = ""
@@ -1436,7 +1436,7 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
     ########################################################################    DEBUG POSING TESTS
 
     def DEBUG_ShowDazPose(self):
-        oRootNodeO = SelectAndActivate(self.oMeshOriginalO.parent.name) 
+        oRootNodeO = SelectObject(self.oMeshOriginalO.parent.name) 
         bpy.ops.object.mode_set(mode='POSE')
         
         self.Pose_SetBoneRotation("lThighBend", 'X', "Bend", -115);
@@ -1566,7 +1566,7 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
 
      
     def Pose_FinalizeBoneRotation(self, sNameBone):
-        ###LEARN: quat1.rotate(quat2) interprets quat2 as GLOBAL (not local to quat1.  For a local rotation of quat1 use matrices as illustrated below: 
+        ###INFO: quat1.rotate(quat2) interprets quat2 as GLOBAL (not local to quat1.  For a local rotation of quat1 use matrices as illustrated below: 
         #D.objects["S.001"].rotation_quaternion = D.objects["S.000"].rotation_quaternion.rotation_difference(D.objects["S.002"].rotation_quaternion)     # S.001 stores difference quaternion.
         #D.objects["D.002"].matrix_world = D.objects["D.002"].matrix_world * D.objects["S.001"].rotation_quaternion.to_matrix().to_4x4()                 # D.002 gets LOCALLY rotated by difference quaternion 
         oBone = self.mapBones[sNameBone]

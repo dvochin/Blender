@@ -28,14 +28,14 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
     DeleteObject(sNameBreast)
     #DataLayer_RemoveLayers(oMeshBodyO.name)           # Remove previous custom data layers just to make sure we refer to the right one  ####CHECK!  Can delete something we need???
     
-    oMeshBodyO = SelectAndActivate(sNameBodySrc)
+    oMeshBodyO = SelectObject(sNameBodySrc)
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='DESELECT')
     bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
 
     #=== Create a new data layer to store (before we separate) the original vertex ID (in body) as well as the vertex ID of the corresponding vert in the right breasts ===
     bmBody = bmesh.from_edit_mesh(oMeshBodyO.data)
-    oLayBodyVerts = bmBody.verts.layers.int.new(G.C_DataLayer_SourceBreastVerts)      # Each integer in this data layer will store the vertex ID of the left breast in low 16-bits and vert ID of right breast in high 16-bit  ###LEARN: Creating this kills our bmesh references!
+    oLayBodyVerts = bmBody.verts.layers.int.new(G.C_DataLayer_SourceBreastVerts)      # Each integer in this data layer will store the vertex ID of the left breast in low 16-bits and vert ID of right breast in high 16-bit  ###INFO: Creating this kills our bmesh references!
     bmBody.verts.index_update()
 
     #=== Capture the vertex sets of both left and right breasts in arrays ===
@@ -69,7 +69,7 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
     bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')        
     oMeshBreastO = bpy.context.object 
     oMeshBreastO.name = oMeshBreastO.data.name = sNameBreast
-    oMeshBreastO.name = oMeshBreastO.data.name = sNameBreast           ###LEARN: Do twice to make absolutely sure name 'takes'  (e.g. other mesh of same name given other name)
+    oMeshBreastO.name = oMeshBreastO.data.name = sNameBreast           ###INFO: Do twice to make absolutely sure name 'takes'  (e.g. other mesh of same name given other name)
 
     #=== Enter bmesh edit mode on the breast and obtain array of edge verts ===
     bpy.ops.object.mode_set(mode='EDIT')
@@ -129,7 +129,7 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
 #         oVert = oMeshBreastO.data.vertices[nVertCldr]
 #         oVert.co.x += 1.0
 # 
-#     bpy.ops.object.mode_set(mode='EDIT')                    ###LEARN: For some weird reason the vert push we just did doesn't 'take' unless we enter & exit edit mode!!
+#     bpy.ops.object.mode_set(mode='EDIT')                    ###INFO: For some weird reason the vert push we just did doesn't 'take' unless we enter & exit edit mode!!
 #     bpy.ops.object.mode_set(mode='OBJECT')
 # 
 #     #=== Find the matching vert between breast and its collider submesh ===
@@ -151,7 +151,7 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
 #         oVert = oMeshBreastO.data.vertices[nVertCldr]
 #         oVert.co.x -= 1.0
 # 
-#     bpy.ops.object.mode_set(mode='EDIT')                    ###LEARN: For some weird reason the vert push we just did doesn't 'take' unless we enter & exit edit mode!!
+#     bpy.ops.object.mode_set(mode='EDIT')                    ###INFO: For some weird reason the vert push we just did doesn't 'take' unless we enter & exit edit mode!!
 #     bpy.ops.mesh.select_all(action='DESELECT')
 #     bpy.ops.object.mode_set(mode='OBJECT')
 #     oMeshBreastO["aMapBreastVertToColVerts_Cldr"]   = aMapBreastVertToColVerts_Cldr     # Store our map into breast mesh so ApplyOp can copy breast vert positions to each associated collider vert 
@@ -182,7 +182,7 @@ def BodyInit_CreateCutoffBreastFromSourceBody(sNameBodySrc):
     #=== Obtain custom data layer containing the vertIDs of our breast verts into body ===
     bpy.ops.object.mode_set(mode='EDIT')
     bmBreast = bmesh.from_edit_mesh(oMeshBreastO.data)
-    oLayBodyVerts = bmBreast.verts.layers.int[G.C_DataLayer_SourceBreastVerts]      # Each integer in this data layer will store the vertex ID of the left breast in low 16-bits and vert ID of right breast in high 16-bit  ###LEARN: Creating this kills our bmesh references!
+    oLayBodyVerts = bmBreast.verts.layers.int[G.C_DataLayer_SourceBreastVerts]      # Each integer in this data layer will store the vertex ID of the left breast in low 16-bits and vert ID of right breast in high 16-bit  ###INFO: Creating this kills our bmesh references!
     bmBreast.verts.index_update()
 
     #=== Iterate through the breast verts, extract the source verts from body from custom data layer, and set the corresponding verts in body ===    

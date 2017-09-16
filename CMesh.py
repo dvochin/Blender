@@ -1,15 +1,49 @@
-###IDEA: Move all client calls to a CMesh instance...
-    # Would trap allocation / de-allocation
+###DOCS24: CMesh - CMesh rewrite
+# === DEV ===
 
-###NEEDS:
-# Create from copy (duplicate)
-# Automatic 'slave mesh' functionality.
-# Automatic creation of reverse map
-# Subclasses to handle special cases?
+# === NEXT ===
+ 
+# === TODO ===
+#- All fns with rex
+ 
+# === LATER ===
+#> gBlender port:
+#- Object selection, unselection, deletion, duplication, reparenting
+# - Triangle conversion, manifold enforcement
+# - Where to put stuff like AssertFinished() that is truly low-level??  G?
+# - Override context stuff still needed?
+# - Modifier application?
+# - Closest vert finding?
+# - Old vertgrp stuff
+# - Stream and byte arrays
+# 
+# > Client port
+# - All Unity calls map to Client.py -> remap to CBody.py
+# - The old gBL_xxx() calls for mesh sharing / release -> Now a CMesh primitive integrated with its preparation / safety checks
 
-####IDEA: Really have master / slave?  SoftBody too complex for this?  Or merge SB into this mechanism too?
-#self.oMeshMaster = None                 # Our master mesh.  When its vert positions change we have to update ours
-#self.aMeshSlaves = {}                   # Dictionary of meshes that are slaves of this instance.  When our vert positions change these must update themselves
+# === OPTIMIZATIONS ===
+ 
+# === REMINDERS ===
+ 
+# === IMPROVE ===
+#- Need to run ONLY ONCE triangulate (add flag) 
+#- Remember our current mode (verts / edges/ faces) and switch as appropriate?
+ 
+# === NEEDS ===
+ 
+# === DESIGN ===
+#- Have various subclasses like for skinned meshes?
+#- Merge FlexRig into CBody??
+ 
+# === QUESTIONS ===
+ 
+# === IDEAS ===
+ 
+# === LEARNED ===
+ 
+# === PROBLEMS ===
+ 
+# === WISHLIST ===
 
 
 import bpy
@@ -21,7 +55,6 @@ from mathutils import *
 from bpy.props import *
 
 from gBlender import *
-import SourceReloader
 import G
 import Client
 
@@ -29,102 +62,434 @@ import Client
 
 
 class CMesh:
-    def __init__(self, sNameMesh, oMeshO, oMeshParent = None):
-        ###IMPROVE?  Won't work in CreateFromDuplicate! DeleteObject(sNameMesh)                # Make sure this mesh does not exist already (all given names globally uniqye by design)
-        self.oMeshO         = oMeshO
-        self.oMeshParent    = oMeshParent          # Our immediate CMesh parent mesh.  The one we update our verts from after morphing ###NOW### Confusion between morphing parent (still used?) and node parent
-        self.bDeleteUponDestroy = True             # By default we delete our Blender object when we get destroyed
-        self.SetName(sNameMesh)
-        self.bmLastOpen = None                      # The last-opened BMesh.
-        self.bOpenNonEditMode = None                # BMesh was opened in non-edit mode. (Does not require ExitFromEditMode() when closing)
-        self.aMapSharedNormals = None               # Shared normals array (computed by ConvertMeshForUnity() to fix normals accross seams
-        
-#         if (self.oMeshParent != None):         ###DESIGN ###BUG Confusion with node parent and morph parent!!!
-#             self.SetParent(self.oMeshParent.GetName())   ###IMPROVE: By CMesh instead of name??
-    #def __del__(self):        ###DEV
-        ####BROKEN!!!  Game deletes objects even if they are still reference!  e.g. self.oMeshBody sometimes!!!!!!!!
-        #if (self.bDeleteUponDestroy):
-        #    DeleteObject(self.sNameMesh.name)
+    cm_oMeshOpenedInEditMode = None                       # The one (and only!) CMesh instance that is opened in Edit mode.  Used as a safety check to detect attempts to open multiple CMeshes in Edit mode
+    
+    def __init__(self, sNameMesh, oMeshO, bDeleteBlenderObjectUponDestroy = False):
+        self.oMeshO    = oMeshO
+        self.eMeshMode = EMeshMode.Closed  
+        self.bDeleteBlenderObjectUponDestroy = bDeleteBlenderObjectUponDestroy  # By default we delete our Blender object when we get destroyed
+        self.bm = None                              # The opened BMesh.  Exists only when Open() is called
+        self.aMapSharedNormals = None               # Shared normals array (computed by ConvertMeshForUnity() to fix normals across seams ###OBS:???
+        if oMeshO.name != sNameMesh:
+            self.SetName(sNameMesh)
 
+    #-----------------------------------------------------------------------    CLASS METHODS CREATORS
     @classmethod
-    def CreateFromDuplicate(cls, sNameMesh, oMeshSrc):
-        "Create mesh by duplicating oMeshSrc"
-        oMesh = DuplicateAsSingleton(oMeshSrc.GetName(), sNameMesh, oMeshSrc.oMeshO.parent.name, False)
-        if (oMesh == None):
-            raise Exception("###EXCEPTION: CMesh.CreateFromDuplicate() could not duplicate mesh " + oMeshSrc.oMeshO.parent.name)
-        oInstance = cls(sNameMesh, oMesh, oMeshSrc)
-        oInstance.bDeleteUponDestroy = True
-        oMeshSrc.Hide()              ###CHECK
-        return oInstance
-        
-    @classmethod
-    def CreateFromExistingObject(cls, sNameMesh, oMeshParent = None):
-        "Create mesh from existing object"
+    def Create(cls, sNameMesh):
+        "Creates a CMesh instance from an existing object Blender mesh object."
         oMesh = bpy.data.objects[sNameMesh]
         if (oMesh == None):
-            raise Exception("###EXCEPTION: CMesh.CreateFromExistingObject() could not find mesh " + sNameMesh)
-        oInstance = cls(sNameMesh, oMesh, oMeshParent)
-        oInstance.bDeleteUponDestroy = False
+            raise Exception("###EXCEPTION: CMesh.Create() could not find mesh " + sNameMesh)
+        oInstance = cls(sNameMesh, oMesh)
         return oInstance
 
-    def Open(self):
-        if self.bmLastOpen:
-            raise Exception("###EXCEPTION: CMesh.Open('{}') called while it was already open!".format(self.oMeshO.name))
-        SelectAndActivate(self.oMeshO.name)         ###DEV: Best way by name??        ###IMPROVE: Remember hidden flag??
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')  # Make sure we're in vert mode
-        self.bmLastOpen = bmesh.from_edit_mesh(self.oMeshO.data)
-        self.bOpenNonEditMode = False
-        self.UpdateBMeshTables()
-        return self.bmLastOpen
+    @classmethod        ###DESIGN: Have a version from a CMesh?
+    def CreateFromDuplicate(cls, sNameMesh, oMeshSrc):
+        "Creates a CMesh instance from the COPY of an existing object Blender mesh object."
+        oMesh = DuplicateAsSingleton(oMeshSrc.GetName(), sNameMesh)
+        oInstance = cls(sNameMesh, oMesh, bDeleteBlenderObjectUponDestroy = True)   # As we're a duplicate we set the auto-destroy flag to True so Blender object is destroyed we this CMesh instance is destroyed
+        return oInstance
 
-    def OpenInNonEditMode(self):                      # Obtain a BMesh reference while NOT in Edit mode.  Useful in cases when another BMesh needs to be opened in edit mode (more ops allowed in edit mode)
-        ###BUG: OpenInNonEditMode() has been observed to result in CORRUPT BMesh data!  (e.g. edges with null verts on one side!!) -> DON"T USE!!
-        if self.bmLastOpen:                             ###TODO21: Propage this new call throughout codebase
-            raise Exception("###EXCEPTION: CMesh.OpenInNonEditMode('{}') called while it was already open!".format(self.oMeshO.name))
-        self.bmLastOpen = bmesh.new()
-        self.bmLastOpen.from_mesh(self.oMeshO.data)
-        self.bOpenNonEditMode = True
-        self.UpdateBMeshTables()
-        return self.bmLastOpen
+    @classmethod
+    def CreateFromDuplicate_ByName(cls, sNameMesh, sNameMeshSrc):       ###IMPROVE: Naming of function... merge both into one and analyze arg type?
+        "Creates a CMesh instance from the COPY of an existing object Blender mesh object."
+        oMeshO = DuplicateAsSingleton(sNameMeshSrc, sNameMesh)
+        oInstance = cls(sNameMesh, oMeshO, bDeleteBlenderObjectUponDestroy = True)   # As we're a duplicate we set the auto-destroy flag to True so Blender object is destroyed we this CMesh instance is destroyed
+        return oInstance
 
-    def Close(self, bHide = False, bDeselect = True):                         ###TODO19: iterate through code to hide when we need
+    
+    #-----------------------------------------------------------------------    OPEN / CLOSE
+    def Open(self, bOpenInObjectMode = False, bSelect = False, bDeselect = False):
+        if self.eMeshMode != EMeshMode.Closed:
+            self.THROW_EXCEPTION("Open", "Open() called while CMesh was in '{}' mode!".format(self.eMeshMode))
+        
+        if bOpenInObjectMode:
+            self.MeshMode_Object()
+            self.bm = bmesh.new()
+            self.bm.from_mesh(self.oMeshO.data)
+            self.eMeshMode = EMeshMode.Object
+        else:
+            if CMesh.cm_oMeshOpenedInEditMode is not None:        
+                self.THROW_EXCEPTION("Open", "Open() called while CMesh '{}' was already opened in Edit mode!".format(CMesh.cm_oMeshOpenedInEditMode.GetName()))
+            SelectObject(self.oMeshO.name)         ###DEV: Best way by name??        ###IMPROVE: Remember hidden flag??
+            self.MeshMode_Edit(bSelect=bSelect, bDeselect=bDeselect)
+            self.bm = bmesh.from_edit_mesh(self.oMeshO.data)
+            bpy.ops.mesh.reveal()                       ###INFO: How to show all mesh geometry.  (Lots of operations don't operate on hidden geometry!)
+            bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')  # Make sure we're in vert mode
+            self.eMeshMode = EMeshMode.Edit
+            CMesh.cm_oMeshOpenedInEditMode = self               # Capture our one-and-only-possible instance of a CMesh opened in Edit mode.  Helps trap attempts at multiple edit-mode opens 
+        bpy.ops.mesh.customdata_custom_splitnormals_clear()         ###INFO:!! Fixes the annoying 'Invalid clnors in this fan!' warnings... See https://blender.stackexchange.com/questions/77332/invalid-clnors-in-this-fan-warning  ###CHECK:!! Are custom loop normal useful for anything?  Placing in this super-important call appropriate for all contexts?  (Can damage some meshes??)
+        return True                         # Always return 'True' so caller can nest its Open() call in an 'if' statement to clearly visualize in the code the fully life-cycle of the BMesn
+
+    def Close(self, bHide = False, bDeselect = True):                         ###TODO19: iterate through code to hide when we need  ###IMPROVE:!!! Remove these damn arguments that you don't know what they do from calling line.  Replace with strings that accepth tihngs like 'HIDE' and 'DESELECT' 
+        if self.eMeshMode == EMeshMode.Closed:
+            self.THROW_EXCEPTION("Close", "Close() called while it was already in closed mode!")
         if (bpy.ops.mesh.select_mode.poll()):
             bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')  # Try to set vert mode
-        if bDeselect:
-            if (bpy.ops.mesh.select_all.poll()):
-                bpy.ops.mesh.select_all(action='DESELECT')      # Try to deselect all verts
-        if self.bOpenNonEditMode == False:
-            self.ExitFromEditMode()
-        self.bOpenNonEditMode = None
-        self.bmLastOpen = None
+        if self.eMeshMode == EMeshMode.Edit:
+            if CMesh.cm_oMeshOpenedInEditMode != self: 
+                self.THROW_EXCEPTION("Close", "Close() called with another CMesh '{}' opened in Edit mode!".format(CMesh.cm_oMeshOpenedInEditMode.GetName()))
+            bmesh.update_edit_mesh(self.oMeshO.data, tessface=True, destructive=True)        ###DEV24:!!!!!!  destructive (boolean) – Use when geometry has been added or removed. (https://docs.blender.org/api/blender_python_api_current/bmesh.html#bmesh.update_edit_mesh)
+            self.MeshMode_Object(bDeselect)
+            CMesh.cm_oMeshOpenedInEditMode = None       # Release our one-and-only-possible instance of a CMesh opened in Edit mode.  Helps trap attempts at multiple edit-mode opens 
+        if self.eMeshMode == EMeshMode.Object:
+            self.bm.to_mesh(self.oMeshO.data)   ###INFO: Read on BMesh construction / destruction at https://docs.blender.org/api/blender_python_api_current/bmesh.html#bmesh.update_edit_mesh
+        self.eMeshMode = EMeshMode.Closed
+        self.bm.free()
+        self.bm = None
         if bHide:
-            self.Hide()     ###IMPROVE: Update lookup table and verts
-        return None         # Return convenience 'None' so we can set our BMesh variable in one line
+            self.Hide()
 
-    def ExitFromEditMode(self):     # Cleanly exit 'EDIT' mode while updating bmesh.  Dont affect anything else!
-        try:
-            bmesh.update_edit_mesh(self.oMeshO.data)
-        except:
-            print("#WARNING#: CMesh.ExitFromEditMode() could not update_edit_mesh() on mesh " + self.GetName())
-        self.bmLastOpen = None
-        Util_UnselectMesh(self.oMeshO)
+    def DoDestroy(self):
+        self.Close()
+        if self.bDeleteBlenderObjectUponDestroy:
+            DeleteObject(self.GetName())       ###CHECK
+        self.oMeshO = None
+        return None                 # Return convenience None so caller's variable is cleared in one line
+
+    def Finalize(self):             # Finalize: Algorithm that created this CMesh is done modifying it.  Permanently 'finalize' it to prepare it for Unity
+        self.Hide()                 ###TODO24:!!!!!!! 
+
+        
+    #-----------------------------------------------------------------------    MODES
+    def MeshMode_Object(self, bSelect = False, bDeselect = False):
+        if bSelect:
+            bpy.ops.mesh.select_all(action='SELECT')
+        if bDeselect:
+            bpy.ops.mesh.select_all(action='DESELECT')
+        MeshMode_Object(self.GetMesh())
+    
+    def MeshMode_Edit(self, bSelect = False, bDeselect = False):
+        MeshMode_Edit(self.GetMesh())       ###TODO: Merge in primitive?
+        if bSelect:
+            bpy.ops.mesh.select_all(action='SELECT')
+        if bDeselect:
+            bpy.ops.mesh.select_all(action='DESELECT')
+    
+
+    #-----------------------------------------------------------------------    VERTEX GROUPS
+    def VertGrp_Remove(self, rexPattern, bSelectVerts = False):          # Removes vert groups that match the 'rexPattern' regex pattern and optionally select them (for deletion / processing by caller?)
+        if bSelectVerts:
+            self.PrepareForOp()
+            bpy.ops.mesh.select_all(action='DESELECT')
+        else:
+            self.PrepareForOp(bRequiredOpen = False)
+            
+        for oVertGrp in self.oMeshO.vertex_groups:
+            if re.search(rexPattern, oVertGrp.name):
+                self.oMeshO.vertex_groups.active_index = oVertGrp.index
+                if bSelectVerts:
+                    bpy.ops.object.vertex_group_select()
+                self.oMeshO.vertex_groups.remove(oVertGrp)
+    
+    def VertGrp_SelectVerts(self, sNameVertGrp, bDeselect=False, bClearSelection=True, bThrowIfNotFound=True):            # Select all the verts of the specified vertex group 
+        self.PrepareForOp()
+        bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')        ###DESIGN:!!!! Really force this?  Can remove??
+
+        if bClearSelection:
+            if bDeselect:
+                bpy.ops.mesh.select_all(action='SELECT')        # If selection clearing is requested and we're unselecting verts start with a fully-selected mesh 
+            else: 
+                bpy.ops.mesh.select_all(action='DESELECT')      # If selection clearing is requested and we're selecting verts start with a completely unselected mesh
+    
+        nVertGrpIndex = self.oMeshO.vertex_groups.find(sNameVertGrp)
+        if (nVertGrpIndex != -1):
+            self.oMeshO.vertex_groups.active_index = nVertGrpIndex
+            if bDeselect:
+                bpy.ops.object.vertex_group_deselect()
+            else:
+                bpy.ops.object.vertex_group_select()
+            oVertGrp = self.oMeshO.vertex_groups[nVertGrpIndex]
+            return oVertGrp 
+        else:
+            if bThrowIfNotFound:
+                self.THROW_EXCEPTION("VertGrp_SelectVerts", "Could not find vertex group '{}'".format(sNameVertGrp))
+            else:
+                print("#WARNING: VertGrp_SelectVerts() on CMesh '{}' could not find vertex group '{}'.".format(self.GetName(), sNameVertGrp))
+                
+    def VertGrps_SelectVerts(self, rexPattern, bDeselect=False, bClearSelection=True): 
+        self.PrepareForOp()
+        if bClearSelection:
+            bpy.ops.mesh.select_all(action='DESELECT') 
+        bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')        ###DESIGN:!!!! Really force this?  Can remove??
+    
+        for oVertGrp in self.oMeshO.vertex_groups:
+            if re.search(rexPattern, oVertGrp.name):
+                self.oMeshO.vertex_groups.active_index = oVertGrp.index
+                if bDeselect:
+                    bpy.ops.object.vertex_group_deselect()
+                else:
+                    bpy.ops.object.vertex_group_select()
+                
+
+                
+    def VertGrp_LockUnlock(self, bLock, rexPattern = None):
+        self.PrepareForOp(bRequiredOpen = False)
+        
+        if rexPattern is None:
+            for oVertGrp in self.oMeshO.vertex_groups:
+                oVertGrp.lock_weight = bLock
+        else:
+            for oVertGrp in self.oMeshO.vertex_groups:
+                if re.search(rexPattern, oVertGrp.name):
+                    oVertGrp.lock_weight = bLock             ###INFO: Locking vertex groups is *extremely* useful to blend bones!
+
+    def VertGrp_LimitAndNormalize(self, nSmoothLevel = 0):        # Limit than normalize all bones in Flex rig (optional smooth before).  Must be in Edit mode
+        self.VertGrp_LockUnlock(False, G.C_RexPattern_EVERYTHING)    ###DESIGN: Keep here?
+        bpy.ops.mesh.select_all(action='SELECT')
+        if nSmoothLevel > 0:
+            bpy.ops.object.vertex_group_smooth(repeat=1, factor=nSmoothLevel)
+        bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)
+        bpy.ops.object.vertex_group_normalize_all(lock_active=False)
+        bpy.ops.mesh.select_all(action='DESELECT')
+
+
+    #---------------------------------------------------------------------------    MATERIALS
+    def Material_Remove(self, sNameMaterial, bLeaveVerts = False):        # Remove material 'sNameMaterial' from mesh (and optionally the associated verts)
+        #print("- CMesh.Material_Remove('{}') attempting to remove material slot '{}' with bLeaveVerts = '{}'".format(self.GetName(), sNameMaterial, bLeaveVerts))
+        aMaterials = self.GetMeshData().materials
+        nMatSlotOrdinal = aMaterials.find(sNameMaterial)            ###LEARN: Search by name using find() the only way to delete materials? 
+        if nMatSlotOrdinal != -1:
+            self.oMeshO.active_material_index = nMatSlotOrdinal
+            if bLeaveVerts == False:
+                self.MeshMode_Edit()
+                bpy.ops.mesh.select_all(action='DESELECT')
+                bpy.ops.object.material_slot_select()
+                bpy.ops.mesh.delete(type='FACE')
+                self.MeshMode_Object()
+            bpy.ops.object.material_slot_remove()
+        else:
+            print("#WARNING: CMesh.Material_Remove('{}') cannot find material '{}'".format(self.GetName(), sNameMaterial))
+
+    def Materials_Remove(self, rexPattern, bLeaveVerts = False):        # Remove from all material (and their associated verts) that starts with 'sNameMaterialPrefix'
+        aMaterialSlots = self.GetMesh().material_slots
+        aMaterialsToDelete = []
+        for oMatSlot in aMaterialSlots:
+            if re.search(rexPattern, oMatSlot.name):
+                aMaterialsToDelete.append(oMatSlot.name)       # We append to a 'remove collection' because we cannot iterate and remove in the same loop!
+        for sNameMat in aMaterialsToDelete:
+            self.Material_Remove(sNameMat, bLeaveVerts)        # Not optimal to remove this way but can't find a way to pass in an object that can feed into 'active_material_index' 
+        if len(aMaterialSlots) == 0:
+            bpy.ops.object.material_slot_add()      # Add a single default material that will captures all the polygons of our mesh.  This is needed so we can properly send the mesh to Unity
+    
+
+    #---------------------------------------------------------------------------    SHAPE KEYS
+    def ShapeKeys_RemoveAll(self):                        # Remove all the shape keys of the current mesh.
+        self.SelectObject()
+        if bpy.ops.object.shape_key_remove.poll():
+            bpy.ops.object.shape_key_remove(all=True)
+    
+
+    #---------------------------------------------------------------------------    DATA LAYERS
+    def DataLayer_SelectMatchingVerts(self, oLay, nValueSearch, nValueMask = 0xFFFFFFFF, bDeselectFirst=True):    # Select verts by a given data layer test
+        if bDeselectFirst:                
+            bpy.ops.mesh.select_all(action='DESELECT')
+        for oVert in self.bm.verts:
+            if (oVert[oLay] & nValueMask) == nValueSearch:
+                oVert.select_set(True)
+    
+    def DataLayer_SetValueToSelection(self, oLay, nValue):        # Apply the given value to each selected vert's data layer
+        for oVert in self.bm.verts:
+            if oVert.select:
+                oVert[oLay] = nValue
+    
+    def DataLayer_PrintMeshVerts(self, sDebugMsg, sNameMesh, sNameLayer=None):  ###OBS?
+        print("\n=== PrintMeshVert for mesh '{}' and layer '{}' for '{}'".format(sNameMesh, sNameLayer, sDebugMsg))
+        oMeshO = SelectObject(sNameMesh, True)
+        bm = bmesh.new()
+        bm.from_mesh(oMeshO.data)
+        if (sNameLayer != None):
+            oLayer = self.bm.verts.layers.int[sNameLayer]
+        nLayer = -1
+        for oVert in self.bm.verts:
+            vecPos = oVert.co
+            if (sNameLayer != None):
+                nLayer = oVert[oLayer]
+            print("- Vert {:4d} = {:8.5f} {:8.5f} {:8.5f}   Layer = {:3d}   Sel = {}".format(oVert.index, vecPos.x, vecPos.y, vecPos.z, nLayer, oVert.select))
+        print("==========================\n")
+    
+
+    #---------------------------------------------------------------------------    MODIFIERS
+    def Modifier_AddArmature(self, oMeshSrcO):        # Adds an armature modifier with the same parent armature as 'oMeshSrcO'
+        oModArmature = self.oMeshO.modifiers.new(name="Armature", type="ARMATURE")
+        oModArmature.object = oMeshSrcO.modifiers["Armature"].object  
+    
+    def Modifier_Remesh(self, nOctreeDepth, nRemeshScale):            # Applies a remesh modifier with the given arguments
+        self.Modifier_RemoveAll()                   # Remove all the modifiers.  Remesh trashes everything anyways (armature has to be rebuilt)
+        VertGrp_RemoveAll(self.oMeshO)              # Remove all vertex groups.  Remesh trashes them all
+        oModRemesh = self.oMeshO.modifiers.new(name="REMESH", type="REMESH")  
+        oModRemesh.mode = 'SMOOTH'                  # Smooth is the only usable mode.  Sharp generates horrible non-manifold geometry and block is for Minecraft look!
+        oModRemesh.octree_depth = nOctreeDepth        
+        oModRemesh.scale = nRemeshScale             ###IMPROVE:!! Need to convert remesh arguments based on body height to inter-particular distance 
+        oModRemesh.use_remove_disconnected = True
+        AssertFinished(bpy.ops.object.modifier_apply(modifier=oModRemesh.name))     ###INFO: This call destroys skinning info / vertex groups
+    
+    def Modifier_RemoveAll(self):            # Removes all the modifiers
+        while len(self.oMeshO.modifiers) > 0:         
+            self.oMeshO.modifiers.remove(self.oMeshO.modifiers[0])
+    
+    
+    #---------------------------------------------------------------------------    UTILITIES
+    def Util_JoinWithMesh(self, oMeshJoinTargetO):            # Join this mesh with the oMeshJoinTargetO mesh.  This mesh is destroyed by the join (geometry becomes part of 'oMeshJoinTargetO') 
+        bpy.ops.object.select_all(action='DESELECT')
+        self.oMeshO.hide = False
+        self.oMeshO.select = True
+        oMeshJoinTargetO.GetMesh().hide = False
+        oMeshJoinTargetO.GetMesh().select = True
+        bpy.context.scene.objects.active = oMeshJoinTargetO.GetMesh()       ###INFO: How to join two meshes: with both source and target selected, the 'active' one is the target and the non-active one the source (gets destroyed as its geometry becomes part of target)
+        bpy.ops.object.join()
+        return None                 # Return a convenience none so caller can clear its reference while calling us.
+   
+    def Util_TransferWeights(self, oMeshSrcO, bCleanGroups = True, bAddArmature = False):        # Transfer the skinning information from mesh oMeshSrcO to oMeshO
+        print("- Util_TransferWeights() begins transferring weights from '{}' to  '{}'".format(oMeshSrcO.GetName(), self.GetName()))
+        self.SelectObject()
+        oMeshSrcO.Unhide()
+        oModTransfer = self.oMeshO.modifiers.new(name="DATA_TRANSFER", type="DATA_TRANSFER")
+        oModTransfer.object = oMeshSrcO.GetMesh()
+        oModTransfer.use_vert_data = True
+        oModTransfer.data_types_verts = { "VGROUP_WEIGHTS" }
+        bpy.ops.object.datalayout_transfer(modifier=oModTransfer.name)    ###INFO: Operation acts upon the setting of 
+        AssertFinished(bpy.ops.object.modifier_apply(modifier=oModTransfer.name))
+        if bCleanGroups:
+            bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
+            bpy.ops.object.vertex_group_clean(group_select_mode='ALL')    ###INFO: Needs weight mode to work! (???)  ###DESIGN: Keep??
+        self.MeshMode_Object()
+        if bAddArmature:
+            self.Modifier_AddArmature(oMeshSrcO.GetMesh())
+        print("= Util_TransferWeights() completes.")
+
+    def Util_RemoveNonManifoldGeometry(self):
+        #=== Perform a maximum number of attempts at edge collapse-then-dissolve.  This is done to make sure the mesh remains manifold as we shrink ===
+        for nRepeat in range(10):                                      ###OPT:!!
+            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')      # We must deliver to Unity a manifold triangle-only mesh.  Non-manifold verts can hide in n-gons so we must re-triangulate at every change ###OPT:!!
+            bpy.ops.mesh.select_all(action='DESELECT')
+            bpy.ops.mesh.select_non_manifold(extend=True, use_wire=True, use_boundary=True, use_multi_face=True, use_non_contiguous=True, use_verts=True)
+            nNumBadVerts = self.oMeshO.data.total_vert_sel
+            if nNumBadVerts == 0:
+                break
+            print("-- Util_RemoveNonManifoldGeometry() completed run #{} and still has {:3d} non-manifold verts".format(nRepeat, nNumBadVerts))
+            bpy.ops.mesh.edge_collapse()                    ###INFO: Edge collapse selects geometry it could not process completely... dissolving those verts and then re-triangulating is *very* effective to get to manifold geometry after a shrink
+            bpy.ops.mesh.dissolve_verts()                   ###INFO: This statement group greatly helps get a great shrunken mesh!
+        if nNumBadVerts > 0: 
+            raise Exception("\n\n\n###EXCEPTION: in Util_SafeRemoveDouble for mesh '{}'.   {} non-manifold verts still exist after remove_doubles()!\n\n".format(bpy.context.object.name, nNumBadVerts))
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')      # Dissolving verts above causes n-gons... re-triangulate
+        bpy.ops.mesh.select_all(action='DESELECT')
+                
+    def Util_SafeRemoveDouble(self, nDistRemoveDoubles):                # The super-important safe remove doubles function.  This safe version will clean up horrible degenerate geometry that would cause later code to fail  
+        bpy.ops.mesh.remove_doubles(threshold=nDistRemoveDoubles)       #=== First call remove_doubles() on the selection the caller has setup ===
+        self.Util_RemoveNonManifoldGeometry()          #=== Perform a maximum number of attempts at edge collapse-then-dissolve.  This is done to make sure the mesh remains manifold as we shrink ===
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')      # Dissolving verts above causes n-gons... re-triangulate
+        bpy.ops.mesh.select_all(action='DESELECT')
+
+    
+    #---------------------------------------------------------------------------    ###MOVE
+    def SelectObject(self):         
+        SelectObject(self.GetName(), bCheckForPresence = True)      ###DESIGN:? Merge base version in?
+
+    def Decimate_MinArea(self, nRatioDecimate, nFaceAreaMin):        # Decimate the mesh to attempt to reach 'nRatioDecimate' verts
+        self.PrepareForOp()
+        bpy.ops.mesh.select_all(action='DESELECT')
+        bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='FACE')
+        for oFace in self.bm.faces:                         # Select the faces with less area than the specified minimum threshold
+            if oFace.calc_area() < nFaceAreaMin:
+                oFace.select_set(True)
+        bpy.ops.mesh.select_more()              ###CHECK24: Keep??
+        bpy.ops.mesh.decimate(ratio=nRatioDecimate)
+        #bpy.ops.mesh.quads_convert_to_tris()        ###OPT:!!! Needed??
+        bpy.ops.mesh.select_all(action='DESELECT')
+        bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
+
+    def Decimate_All(self, nNumTargetVerts):        # Decimate the mesh to attempt to reach 'nNumTargetVerts' verts
+        self.PrepareForOp()
+        nRatioDecimate = nNumTargetVerts / len(self.GetMeshData().vertices) 
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.decimate(ratio=nRatioDecimate)
+        #bpy.ops.mesh.quads_convert_to_tris()        ###OPT:!!! Needed??
+        bpy.ops.mesh.select_all(action='DESELECT')
+
+
+
+    
+    #---------------------------------------------------------------------------    SAFETY CHECKS
+    def SafetyCheck_CheckForManifoldMesh(self, sMsg):
+        bpy.ops.mesh.select_all(action='DESELECT')
+        bpy.ops.mesh.select_non_manifold(extend=True, use_wire=True, use_boundary=True, use_multi_face=True, use_non_contiguous=True, use_verts=True)
+        self.SafetyCheck_ThrowExceptionIfVertsSelected(sMsg)
+    
+    def SafetyCheck_CheckBoneWeighs(self):
+        aVertsBad = []
+        if self.Open(bOpenInObjectMode = True):
+            nErr_NumVertsOverFourBones = 0
+            nErr_NumVertsUnderFourBones = 0
+            nErr_NumVertsWithBadWeightSum = 0
+            for oVertO in self.oMeshO.data.vertices:
+                aVertGroups = oVertO.groups
+                nVertGroups = len(aVertGroups)
+                if nVertGroups != 4:
+                    if nVertGroups > 4:
+                        nErr_NumVertsOverFourBones += 1
+                        aVertsBad.append(oVertO.index)
+                    else:
+                        nErr_NumVertsUnderFourBones += 1
+                nBoneWeight = 0
+                for oVertGroup in aVertGroups:
+                    nBoneWeight += oVertGroup.weight
+                if nBoneWeight < 0.99 or nBoneWeight > 1.01:
+                    aVertsBad.append(oVertO.index)
+                    nErr_NumVertsWithBadWeightSum += 1
+            self.Close()
+            
+        if nErr_NumVertsOverFourBones > 0 or nErr_NumVertsWithBadWeightSum > 0:
+            if self.Open(bDeselect=True):
+                self.bm.verts.ensure_lookup_table()
+                for nVert in aVertsBad:
+                    self.bm.verts[nVert].select_set(True)
+                self.THROW_EXCEPTION("SafetyCheck_CheckBoneWeighs", "Found {} verts on mesh over 4 bones and {} verts under 4 bones and {} verts with invalid weight sums.".format(nErr_NumVertsOverFourBones, nErr_NumVertsUnderFourBones, nErr_NumVertsWithBadWeightSum))
+        
+    def SafetyCheck_ThrowExceptionIfVertsSelected(self, sMsg):
+        nNumBadVerts = self.oMeshO.data.total_vert_sel       ###LEARN: How to quickly obtain # of selected verts!        #nNumBadVerts = len([oVert for oVert in self.bm.verts if oVert.select])
+        if nNumBadVerts > 0:
+            self.THROW_EXCEPTION("SafetyCheck_ThrowExceptionIfVertsSelected", "Verts={}".format(sMsg, nNumBadVerts))
+        
+    def SafetyCheck_PerformAllTests(self):
+        self.SafetyCheck_CheckBoneWeighs()
+        self.Open()
+        self.SafetyCheck_CheckForManifoldMesh("Non-manifold mesh detected")
+        self.Close()
+    
+
+    #-----------------------------------------------------------------------    UTILITY
+    def PrepareForOp(self, bRequiredOpen = True):
+        if self.oMeshO is None:
+            self.THROW_EXCEPTION("PrepareForOp", "CMesh has a null oMeshOp!")
+        if bRequiredOpen and self.eMeshMode == EMeshMode.Closed:
+            self.THROW_EXCEPTION("PrepareForOp", "CMesh was in closed mode while an op requiring an opened mode!")
+        
+    def UpdateBMeshTables(self):
+        if (self.bm != None):
+            self.bm.verts.index_update()             ###OPT: Can all of this be too expensive every time we open a mesh?
+            self.bm.edges.index_update()
+            self.bm.faces.index_update()
+            self.bm.verts.ensure_lookup_table()
+            self.bm.edges.ensure_lookup_table()
+            self.bm.faces.ensure_lookup_table()
+    
+    def THROW_EXCEPTION(self, sFunction, sMsg):     ###TODO:!! Add a global exception handler and hook into that?
+        raise Exception("###EXCEPTION in CMesh.{}() on mesh '{}'.   {}".format(sFunction, self.GetName(), sMsg))
         
 
-    def UpdateBMeshTables(self):
-        if (self.bmLastOpen != None):
-            self.bmLastOpen.verts.index_update()             ###OPT: Can all of this be too expensive every time we open a mesh?
-            self.bmLastOpen.edges.index_update()
-            self.bmLastOpen.faces.index_update()
-            self.bmLastOpen.verts.ensure_lookup_table()
-            self.bmLastOpen.edges.ensure_lookup_table()
-            self.bmLastOpen.faces.ensure_lookup_table()
-    
+    #-----------------------------------------------------------------------    UTILITY
     def Hide(self):
         Util_HideMesh(self.oMeshO)         ###TODO: Merge all that stuff in gBlender into CMesh!
 
+    def Unhide(self):
+        Util_UnhideMesh(self.oMeshO)
+
     def SetName(self, sNameMesh):
-        self.oMeshO.name = self.oMeshO.data.name = sNameMesh       ###LEARN: We *must* apply name twice to make sure we get this name (Would get something like 'MyName.001' if 'MyName' was already defined
+        self.oMeshO.name = self.oMeshO.data.name = sNameMesh       ###INFO: We *must* apply name twice to make sure we get this name (Would get something like 'MyName.001' if 'MyName' was already defined
         self.oMeshO.name = self.oMeshO.data.name = sNameMesh
 
     def GetName(self):
@@ -139,30 +504,35 @@ class CMesh:
     def SetParent(self, sNameParent):           
         SetParent(self.oMeshO.name, sNameParent)       ###MOVE: Merge in here?
 
-    def DoDestroy(self):
-        DeleteObject(self.GetName())       ###CHECK
-        self.oMeshO = None
+    
         
-#    def GetMeshFromUnity(self):     ###DEV???
-#        return self.oMeshO
         
         
 
+    #-----------------------------------------------------------------------    UNITY LINK
 
     def ConvertMeshForUnity(self, bSplitVertsAtUvSeams):  # Convert a Blender mesh so Client can properly display it. Client requires a tri-based mesh and verts that only have one UV. (e.g. no polys accross different seams/materials sharing the same vert)
         ###IMPROVE: bSplitVertsAtUvSeams obsolete now that we catch?
         # bSplitVertsAtUvSeams will split verts at UV seams so Unity can properly render.  (Cloth currently unable to simulate this way) ####FIXME ####SOON
-        
         if (self.aMapSharedNormals is not None):        # Only do once ###WEAK: poor deicsion... set a flag to make clearer?
             return  
         
         #=== Separate all seam edges to create unique verts for each UV coordinate as Client requires ===
-        SelectAndActivate(self.oMeshO.name)
+        SelectObject(self.oMeshO.name)
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.reveal()                       # First un-hide all geometry
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
         bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.mesh.quads_convert_to_tris()  ###DESIGN: Keep here??  ###REVIVE: use_beauty=True 
+        bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')  ###DESIGN: Keep here? 
+        
+        ###HACK24:!!!!!!!!! Only do this ONCE!  But where?????
+#         if bpy.ops.object.vertex_group_clean.poll():        ###BUG ###DEV24:!!!!!!!!! Run this somewhere fuck!
+#             bpy.ops.object.vertex_group_clean(group_select_mode='ALL')    # Clean up empty vert groups new Blender insists on creating during skin transfer
+        if bpy.ops.object.vertex_group_limit_total.poll():
+            bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)  # Limit mesh to four bones each   ###CHECK: Possible our 'non-bone' vertgrp take info away???
+        if bpy.ops.object.vertex_group_normalize_all.poll():
+            bpy.ops.object.vertex_group_normalize_all(lock_active=False)
+        
         bpy.ops.mesh.select_all(action='DESELECT')
         bm = bmesh.from_edit_mesh(self.oMeshO.data)          
     
@@ -179,7 +549,7 @@ class CMesh:
                 print("###ERROR: Exception running 'uv.seams_from_islands'. Continuing.  Error=", sys.exc_info()[0])
             else:
                 for oEdge in bm.edges:
-                    if oEdge.seam and oEdge.smooth:  ###LEARN: 'smooth' edge = non-sharp edge!
+                    if oEdge.seam and oEdge.smooth:  ###INFO: 'smooth' edge = non-sharp edge!
                         oEdge.select_set(True)
     
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
@@ -241,7 +611,7 @@ class CMesh:
         ###IMPROVE11: Rapidly ported... finish integration into CMesh
         print("=== Unity_GetMesh() sending mesh '{}' ===".format(self.GetName()))
 
-        oMeshO = SelectAndActivate(self.GetName())           ###IMPROVE11: Move all this crap to CMesh and do only once!!
+        oMeshO = SelectObject(self.GetName())           ###IMPROVE11: Move all this crap to CMesh and do only once!!
         ###NOW13: VertGrp_RemoveNonBones(oMeshO, True)     # Remove the extra vertex groups that are not skinning related from the skinned cloth-part
         self.ConvertMeshForUnity(True)  # Client requires a tri-based mesh and verts that only have one UV. (e.g. no polys accross different seams/materials sharing the same vert)
     
@@ -254,7 +624,7 @@ class CMesh:
     
         #=== Send the 'header' containing a magic number, the number of verts, tris, materials ===
         oBA = CByteArray()
-        oBA.AddInt(nVerts)  ###LEARN!!!: Really fucking bad behavior by struct.pack where pack of 'Hi' will give 8 byte result (serialized as both 32-bit) while 'HH' will give 4 bytes (both serialzed as 16-bit)  ###WTF?????
+        oBA.AddInt(nVerts)  ###INFO!!!: Really fucking bad behavior by struct.pack where pack of 'Hi' will give 8 byte result (serialized as both 32-bit) while 'HH' will give 4 bytes (both serialzed as 16-bit)  ###WTF?????
         oBA.AddInt(nTris)
         oBA.AddByte(nMats)
         
@@ -288,14 +658,14 @@ class CMesh:
         print("=== Unity_GetMesh_SkinnedInfo() sending mesh '{}' ===".format(self.GetName()))
     
         #=== Unity can only process 4 bones per vert max.  Ensure cleanup ===
-        oMeshO = SelectAndActivate(self.GetName())
+        oMeshO = SelectObject(self.GetName())
     #     bpy.ops.object.mode_set(mode='EDIT')
     #     bpy.ops.mesh.select_all(action='SELECT')
     #     bpy.ops.object.vertex_group_limit_total(limit=4)
     #     bpy.ops.object.vertex_group_clean(group_select_mode='ALL')    # Clean up empty vert groups new Blender insists on creating during skin transfer
     #     bpy.ops.mesh.select_all(action='DESELECT')
     #     bpy.ops.object.mode_set(mode='OBJECT')
-        VertGrp_RemoveNonBones(oMeshO, True)
+        ###DEV24:????? WTF? VertGrp_RemoveNonBones(oMeshO, True)
         
         #=== Select mesh and obtain reference to needed mesh members ===
         oMesh = oMeshO.data
@@ -304,31 +674,44 @@ class CMesh:
     
         #=== Construct outgoing bytearray Unity can read back ===
         oBA = CByteArray()
-        oBA.AddByte(len(oMeshO.vertex_groups))
+        oBA.AddUShort(len(oMeshO.vertex_groups))
         for oVertGrp in oMeshO.vertex_groups:
-            oBA.AddString(oVertGrp.name)        
+            oBA.AddString(oVertGrp.name)
+            #if oVertGrp.name[0] == '+':
+            #    print("- CMesh serializing dynamic bone {}".format(oVertGrp))        
      
         #=== Iterate through each vert to send skinning data.  These should have been trimmed down to four in prepare but Client will decipher and keep the best 4 nonetheless ===
-        nErrorsBoneGroups = 0     
+        nErrorsBoneGroups = 0                               ###OPT24:!!! Can we find a way to send this in C++?     
         for nVert in range(nVerts):
             aVertGroups = aVerts[nVert].groups
             nVertGroups = len(aVertGroups)
             oBA.AddByte(nVertGroups)
             for oVertGroup in aVertGroups:
                 nGrp = oVertGroup.group
-                if (nGrp < 0 or nGrp > 255):  ###IMPROVE ###CHECK: Why the heck do we see bones with high numbers?  Blender file corruption it seems...
-                    G.DumpStr("\n***ERROR: Bones at vert {} with vertgroup {} and weight {}\n".format(nVert, nGrp, oVertGroup.weight))
-                    oBA.AddByte (0)  ###CHECK: What to do???
-                    oBA.AddFloat(0)
-                    nErrorsBoneGroups = nErrorsBoneGroups + 1
-                else:  
-                    oBA.AddByte (oVertGroup.group)
-                    oBA.AddFloat(oVertGroup.weight)
+                oBA.AddUShort(oVertGroup.group)
+                oBA.AddFloat (oVertGroup.weight)
+#                 G.DumpStr("\n***ERROR: Bones at vert {} with vertgroup {} and weight {}\n".format(nVert, nGrp, oVertGroup.weight))
+#                 oBA.AddUShort(0)  ###CHECK: What to do???
+#                 oBA.AddFloat(0)
+#                 nErrorsBoneGroups = nErrorsBoneGroups + 1
+#                 DELIBERATE_CRASH()
+#                 else:  
         oBA.AddInt(nErrorsBoneGroups)
     
         return oBA.Unity_GetBytes()          # Return the bytearray intended for Unity deserialization. 
 
         
+from enum import Enum #, auto ###IMPROVE: auto() not working??
+class EMeshMode(Enum):          ###INFO: Based on technique at https://docs.python.org/3/library/enum.html
+    Closed      = 0 #auto()        # CMesh is currently closed.  (BMesh not accessible)
+    Edit        = 1 #auto()        # CMesh is open in the (default) edit mode.  (BMesh was created from edit-mode data)
+    Object      = 2 #auto()        # CMesh is open in the (unusual) object mode.  (BMesh was created directly from object data, and underlying mesh is not being edited)
+
+
+
+
+
+
 
 
     
@@ -353,3 +736,43 @@ class CMesh:
 # Need to piggy-back on normal parent / slave functionality of CMesh... CMeshSlave overrides virtual call to use its mechansim instead
 # We'll drop vagina replacement so user can morph.  Cloth collider will work then
     # For Penis replacement we'll need to remove very few verts but penis collider will repel clothing
+
+
+
+
+#         if (self.oMeshParent != None):         ###DESIGN ###BUG Confusion with node parent and morph parent!!!
+#             self.SetParent(self.oMeshParent.GetName())   ###IMPROVE: By CMesh instead of name??
+    #def __del__(self):        ###DEV
+        ####BROKEN!!!  Game deletes objects even if they are still reference!  e.g. self.oMeshBody sometimes!!!!!!!!
+        #if (self.bDeleteBlenderObjectUponDestroy):
+        #    DeleteObject(self.sNameMesh.name)
+
+
+#     def OpenInObjectMode(self):                      # Obtain a BMesh reference while NOT in Edit mode.  Useful in cases when another BMesh needs to be opened in edit mode (more ops allowed in edit mode)
+#         ###BUG:?? OpenInObjectMode() has been observed to result in CORRUPT BMesh data!  (e.g. edges with null verts on one side!!) -> DON"T USE!!
+#         if self.bm:                             ###TODO21: Propage this new call throughout codebase
+#             raise Exception("###EXCEPTION: CMesh.OpenInObjectMode('{}') called while it was already open!".format(self.oMeshO.name))
+#         self.bm = bmesh.new()
+#         self.bm.from_mesh(self.oMeshO.data)
+#         self.bOpenedInObjectMode = True
+#         self.UpdateBMeshTables()
+#         return self.bm
+
+#     def ExitFromEditMode(self):     # Cleanly exit 'EDIT' mode while updating bmesh.  Doesn't affect anything else!
+#         if self.bOpenedInObjectMode:
+#             raise Exception("###EXCEPTION: CMesh.ExitFromEditMode('{}') called from a mesh opened in Object mode!".format(self.oMeshO.name))
+# 
+#         if self.oMeshO.mode != 'EDIT':      ###INFO: How to detect our mesh mode (OBJECT, EDIT, WEIGHT_PAINT, etc)
+#             raise Exception("###EXCEPTION: CMesh.ExitFromEditMode('{}') called while mesh was in mode '{}'!".format(self.oMeshO.name, self.oMeshO.mode))
+# 
+#         bpy.types.Mesh.calc_tessface()          ###CHECK:!!!!
+#         bmesh.update_edit_mesh(self.oMeshO.data)        ###DEV24:!!!!!!  destructive (boolean) – Use when geometry has been added or removed. (https://docs.blender.org/api/blender_python_api_current/bmesh.html#bmesh.update_edit_mesh)
+#         self.bm.free()
+#         self.bm = None
+#         MeshMode_Object(self.oMeshO)
+
+
+#import SourceReloader
+        ###DESIGN:??? self.UpdateBMeshTables()
+            #bpy.types.Mesh.calc_tessface()         ###DESIGN:???
+

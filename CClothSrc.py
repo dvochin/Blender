@@ -36,14 +36,14 @@ class CClothSrc:        # CClothSrc: A 'cloth source' is a full-body cloth mesh 
         self.oMeshO_3DS = bpy.data.objects[self.sNameClothSrc]       # The untouched source 3D cloth mesh ###TODO17:?          ###IMPROVE18: Go all the way toward CMesh?
     
         #=== Open bmesh of reference mesh ===
-        bm3DS = bmesh.new()                                 ###LEARN: Can't access UV data if we open in edit mode! (Have to open bmesh using from_mesh())
+        bm3DS = bmesh.new()                                 ###INFO: Can't access UV data if we open in edit mode! (Have to open bmesh using from_mesh())
         bm3DS.from_mesh(self.oMeshO_3DS.data)
-        aLayer3DSUV = self.oMeshO_3DS.data.uv_layers.active.data        ###LEARN: How to access UV data
+        aLayer3DSUV = self.oMeshO_3DS.data.uv_layers.active.data        ###INFO: How to access UV data
         
         #=== Construct a KDTree from source 3D mesh (so we can spacially find verts quickly during UV -> 3D conversion)         
-        self.oTreeKD = kdtree.KDTree(len(self.oMeshO_3DS.data.polygons))                       ###LEARN: How to quickly locate spacial data!
+        self.oTreeKD = kdtree.KDTree(len(self.oMeshO_3DS.data.polygons))                       ###INFO: How to quickly locate spacial data!
         for oPoly in self.oMeshO_3DS.data.polygons:
-            aUV = [aLayer3DSUV[nLoopIndex].uv for nLoopIndex in oPoly.loop_indices]     ###LEARN: How to easily traverse array indirection
+            aUV = [aLayer3DSUV[nLoopIndex].uv for nLoopIndex in oPoly.loop_indices]     ###INFO: How to easily traverse array indirection
             vecFaceCenterUV = Vector((0,0,0))
             for oUV in aUV:
                 vecFaceCenterUV.x += oUV.x
@@ -76,7 +76,7 @@ class CClothSrc:        # CClothSrc: A 'cloth source' is a full-body cloth mesh 
         for oFace in bm3DS.faces:
             for oLoop in oFace.loops:
                 oUV = aLayer3DSUV[oLoop.index]
-                vecUV = oUV.uv.freeze()                 ###LEARN: We must 'freeze' a vector before it can be inserted into a collection (its hash function needs non-mutable value)
+                vecUV = oUV.uv.freeze()                 ###INFO: We must 'freeze' a vector before it can be inserted into a collection (its hash function needs non-mutable value)
                 if vecUV not in aMapUV2VertNewF:
                     if vecUV.x < 1:
                         vecUV3D = Vector((vecUV.x, vecUV.y, 0))
@@ -89,7 +89,7 @@ class CClothSrc:        # CClothSrc: A 'cloth source' is a full-body cloth mesh 
                         oVertNewB = bmUVB.verts.new(vecUV3D)
                         oVertNewB[oLayVertUVB] = oLoop.vert.index + G.C_OffsetVertIDs      # Store back-reference to the reference vert so we can reconstruct the 3D mesh from the flat UV one. (add offset so default 0 means new vert)                     
                     
-        bmUVF.verts.ensure_lookup_table()              ###LEARN: Added verts, need to run ensure_lookup_table() before we can access bmesh.verts collection
+        bmUVF.verts.ensure_lookup_table()              ###INFO: Added verts, need to run ensure_lookup_table() before we can access bmesh.verts collection
         bmUVB.verts.ensure_lookup_table()
         
         #=== Re-iterate through faces again to create faces in UV-domain mesh ===
@@ -97,7 +97,7 @@ class CClothSrc:        # CClothSrc: A 'cloth source' is a full-body cloth mesh 
             aVertsNewFaceUV = []
             for oLoop in oFace.loops:
                 oUV = aLayer3DSUV[oLoop.index]
-                vecUV = oUV.uv.freeze()                 ###LEARN: We must 'freeze' a vector before it can be inserted into a collection (its hash function needs non-mutable value)
+                vecUV = oUV.uv.freeze()                 ###INFO: We must 'freeze' a vector before it can be inserted into a collection (its hash function needs non-mutable value)
                 if (vecUV.x < 1):
                     nVertUVF = aMapUV2VertNewF[vecUV]
                     aVertsNewFaceUV.append(bmUVF.verts[nVertUVF])
@@ -149,7 +149,7 @@ class CBodySuitSeamCurve:       # CBodySuitSeamCurve: a seam chain in source bod
         #print("\nCBodySuitSeamCurve.ctor('{}', '{}') finds chain starting vert {} at dist of {} from starting search position".format(self.sNameCurve, self.sSide, self.nVertChainStart, nDist))
 
         #=== Initialize for chain lookup loop below ===
-        aLayer3DSUV = oMeshO.data.uv_layers.active.data        ###LEARN: How to access UV data
+        aLayer3DSUV = oMeshO.data.uv_layers.active.data        ###INFO: How to access UV data
         bmCloth3DS.verts.ensure_lookup_table()
         oVertNow = bmCloth3DS.verts[self.nVertChainStart]
         nVertChainOrdinal = 0
@@ -241,7 +241,7 @@ class CBodySuitSeamCurvePt:     # CBodySuitSeamCurvePt: A seam point in our pare
             
         #print(self)
 
-    def __expr__(self):          ###LEARN: How to override instance printing  See also __repr__()
+    def __expr__(self):          ###INFO: How to override instance printing  See also __repr__()
         return str(self)
-    def __str__(self):          ###LEARN: How to override instance printing  See also __repr__()
+    def __str__(self):          ###INFO: How to override instance printing  See also __repr__()
         return("- SeamCurvePt# {:3d} = {:4d} at {:3f} = {} - {}".format(self.nPointOrdinal, self.nVertID, self.nDistInChainUV, self.vecUVL, self.vecUVH))

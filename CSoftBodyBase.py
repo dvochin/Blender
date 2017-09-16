@@ -40,7 +40,7 @@ class CSoftBodyBase():          ###DESIGN19: Re-merge CSoftBody in here now that
      
         #=== Open the body's mesh (the one meant to be a source of softbody mesh removals) and create a temporary data layer for mapping of rim verts ===
         bmBody = self.oBody.oMeshBody.Open()
-        oLayTwinID = bmBody.verts.layers.int.new(G.C_DataLayer_TwinID)  # Create a temp custom data layer to store IDs of rim verts so we remap easily when softbody is detached from main body.    ###LEARN???: This call causes BMesh references to be lost, so do right after getting bmesh reference
+        oLayTwinID = bmBody.verts.layers.int.new(G.C_DataLayer_TwinID)  # Create a temp custom data layer to store IDs of rim verts so we remap easily when softbody is detached from main body.    ###INFO???: This call causes BMesh references to be lost, so do right after getting bmesh reference
         
         #=== Obtain the vertex group of name 'self.sSoftBodyPart' from the source body mesh so we can detach into our softbody mesh ===
         VertGrp_SelectVerts(self.oBody.oMeshBody.GetMesh(), G.C_VertGrp_CSoftBody + self.sSoftBodyPart)
@@ -70,17 +70,17 @@ class CSoftBodyBase():          ###DESIGN19: Re-merge CSoftBody in here now that
         self.oBody.oMeshBody.Close()            # We're done modifying main skinned body.             
 
         #=== Process and rename the just-separated rim + softbody mesh ===
-        bpy.context.object.select = False                                       ###LEARN: Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
+        bpy.context.object.select = False                                       ###INFO: Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
         bpy.context.scene.objects.active = bpy.context.selected_objects[0]      # Set the '2nd object' as the active one (the 'separated one')        
         self.oMeshSoftBodyRim = CMesh(sNameSoftBodyRim, bpy.context.scene.objects.active, None)     # Obtain CMesh reference to our softbody mesh. 
-        self.oMeshSoftBodyRim.GetMesh().modifiers.clear()                       # Remove the modifiers to save memory (e.g. armature) ###LEARN: How to remove all modifiers
+        self.oMeshSoftBodyRim.GetMesh().modifiers.clear()                       # Remove the modifiers to save memory (e.g. armature) ###INFO: How to remove all modifiers
         self.oMeshSoftBodyRim.SetParent(self.oBody.oMeshBody.GetName())
         self.oBody.oMeshBody.Close()
 
         #=== Separate the softbody out of the rim + softbody (leaving only the rim) ===  
         self.oMeshSoftBodyRim.Open()                # Open the rim + softbody mesh so we can further process it.
         VertGrp_SelectVerts(self.oMeshSoftBodyRim.GetMesh(), G.C_VertGrp_CSoftBody + self.sSoftBodyPart)
-#         if type(self) is CSoftBodySkin:             # If we're a soft body skin we need to keep the rim with the full geometry for further processing as a collider in subclass...       ###LEARN: How to determine type of an object
+#         if type(self) is CSoftBodySkin:             # If we're a soft body skin we need to keep the rim with the full geometry for further processing as a collider in subclass...       ###INFO: How to determine type of an object
 #             bpy.ops.mesh.duplicate()                # ... so duplicate the vert group instead of splitting it so we have the rim + soft body geometry for subclass processing. (CSoftBodySkin need these vertices skinned as well so the 'soft skinned' can move closely with the actual skinned body part)
 #         else:
         bpy.ops.mesh.split()                    # ... for regular softobdy 'split' the softbody faces to leave in the rim mesh only the rim.  Both 'sides' will now have 'rim verts' where the two submeshes meet
@@ -95,8 +95,8 @@ class CSoftBodyBase():          ###DESIGN19: Re-merge CSoftBody in here now that
         self.oMeshSoftBody.SetParent(self.oBody.oMeshBody.GetName())
 
         #=== Cleanup the rim mesh by removing all materials and non-bones vertex groups ===
-        SelectAndActivate(self.oMeshSoftBodyRim.GetName())
-        Cleanup_RemoveMaterials(self.oMeshSoftBodyRim.GetMesh())
+        SelectObject(self.oMeshSoftBodyRim.GetName())
+        Materials_RemoveAll(self.oMeshSoftBodyRim.GetMesh())
         #self.oMeshSoftBodyRim.Hide()
 
 
@@ -219,7 +219,7 @@ class CSoftBodyBase():          ###DESIGN19: Re-merge CSoftBody in here now that
 #     # 5. The Unity runtime updates the verts in the presentation mesh and renders it to the player
 #     
 #     def __init__(self, oBody, sSoftBodyPart, nSoftBodyFlexColliderShrinkRatio, nHoleRadius):
-#         super(self.__class__, self).__init__(oBody, sSoftBodyPart)      ###LEARN: How to call base class ctor.  Recommended over 'CSoftBodyBase.__init__(oBody, sSoftBodyPart)' (for what reason again??)
+#         super(self.__class__, self).__init__(oBody, sSoftBodyPart)      ###INFO: How to call base class ctor.  Recommended over 'CSoftBodyBase.__init__(oBody, sSoftBodyPart)' (for what reason again??)
 #         G.CGlobals.DEBUG = self             # import G;G.CGlobals.DEBUG.DEBUG_SelectVertsByFlag(1)
 #         
 #         self.aVertRimInfos = {}             # Our collection of information structures for each vert in the rim collsion mesh.  Shared with Unity (which has a similar class and associated functionality)

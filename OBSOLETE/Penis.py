@@ -21,7 +21,7 @@ def gBL_Penis_CalcColliders(sNameMeshPenis):            # Calculates the dimensi
     ###NOTE: Naming convention: 'width' of penis is left-to-right = X, 'thickness' is up to down = Y, 'lenght' is forward to back = Z (xyz on unrotated body verts (e.g. body 'lying down on back' in Blender)
     
     ###bpy.ops.mesh.select_non_manifold()
-    oMeshPenisO = SelectAndActivate(sNameMeshPenis)
+    oMeshPenisO = SelectObject(sNameMeshPenis)
     bpy.ops.object.mode_set(mode='EDIT')
     bmPenis = bmesh.from_edit_mesh(oMeshPenisO.data)
     ##aVertsPenis = [oVert for oVert in bmPenis.verts if oVert.select]
