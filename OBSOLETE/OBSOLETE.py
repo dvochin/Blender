@@ -90,7 +90,7 @@
 #     nDegreesPerBone = 360 / nBones 
 # 
 #     #=== Create the vertex groups to store the new bone weights for vagina radial expansion bones ===
-#     oMesh = CMesh.Create("WomanA-Original")
+#     oMesh = CMesh.Create("Woman-Original")
 # 
 #     #=== Obtain reference to vertex group we remove weight from ===
 #     nVertGrpIndex = oMesh.GetMesh().vertex_groups.find("_TEST_VAGINA")
@@ -208,7 +208,7 @@
 #         nDegreesPerBone = 360 / nBones 
 # 
 #         #=== Create the vertex groups to store the new bone weights for vagina radial expansion bones ===
-#         oMesh = CMesh.Create("WomanA-Original")
+#         oMesh = CMesh.Create("Woman-Original")
 # 
 #         #=== Obtain reference to vertex group we remove weight from ===
 #         nVertGrpIndex = oMesh.GetMesh().vertex_groups.find("_TEST_VAGINA")
@@ -303,7 +303,7 @@
 #         nRadialGrps = 12
 #         nDegreesPerRadialGrp = 360 / nRadialGrps 
 # 
-#         oMeshO = SelectObject("[WomanA]") 
+#         oMeshO = SelectObject("[Woman]") 
 #         bpy.ops.object.mode_set(mode='POSE')
 # 
 #         oBoneParent = oMeshO.pose.bones["pelvis"]
@@ -340,7 +340,7 @@
         
         
 #         #=== Obsolete Code to delete edge rings ===
-#         oMeshHoleRig = CMesh.Create("WomanA.002")     ###HACK!!!!!!
+#         oMeshHoleRig = CMesh.Create("Woman.002")     ###HACK!!!!!!
 #         bmHoleRig = oMeshHoleRig.Open()
 #  
 #         VertGrp_SelectVerts(oMeshHoleRig.GetMesh(), "Opening")
@@ -403,7 +403,7 @@
 # 
 #     def call(self, oOp, nVal):
 #         nVal = nVal / 100
-#         Breasts.Breasts_ApplyMorph('BodyA_Morph', 'WomanA', oOp.sOp, oOp.sVertGrp, oOp.sFrom, oOp.sInfluence, (nVal*oOp.nRatioX, nVal*oOp.nRatioY, nVal*oOp.nRatioZ, 0), None)
+#         Breasts.Breasts_ApplyMorph('BodyA_Morph', 'Woman', oOp.sOp, oOp.sVertGrp, oOp.sFrom, oOp.sInfluence, (nVal*oOp.nRatioX, nVal*oOp.nRatioY, nVal*oOp.nRatioZ, 0), None)
 #     
 #     def invoke(self, context, event):
 #         self.report({"INFO"}, "GBOP: " + self.bl_label)
@@ -510,12 +510,12 @@
         #Penis.gBL_Penis_CalcColliders("PenisM-EroticVR-A-Big")
         #Client.CBMeshMorph_GetMorphVerts('Face', 'Face-MouthOpen')
         #oMeshBodyO = SelectObject("BodyA_Detach_Breasts")
-        #oMeshBodyO = SelectObject("WomanA")
-        #oBody = CBody(0, 'WomanA', 'Shemale', 'PenisW-EroticVR-A-Big')
-        #oBody = CBody(0, 'WomanA', 'Woman', 'Vagina-EroticVR-A', 5000)
+        #oMeshBodyO = SelectObject("Woman")
+        #oBody = CBody(0, 'Woman', 'Shemale', 'PenisW-EroticVR-A-Big')
+        #oBody = CBody(0, 'Woman', 'Woman', 'Vagina-EroticVR-A', 5000)
 
         #Client.IsolateHead()
-        #print(Client.gBL_GetBones('WomanA'))
+        #print(Client.gBL_GetBones('Woman'))
         #Client.Client_ConvertMeshForUnity(bpy.data.objects["BodyA_BodyCol"], True)
         #CBBodyCol.SlaveMesh_SetupMasterSlatve("BodyA-BreastCol-ToBody", "BodyA_Morph", 0.000001)
         #CBodyColBreast_GetColliderInfo("")
@@ -527,15 +527,15 @@
         #CBBodyCol.CBBodyColSpheres_GetEncodedMesh("CBBodyColSpheres_Breasts")
         #CBBodyCol.CBBodyColBreasts_PrepareBreastMeshColliderTemplate()
         #CBBodyCol.CBSoftBreasts_GetColliderSourceMeshInfo("BodyA")
-        #CBBodyCol.CBBodyCol_Generate("ManA", 1000)
-        ##Client.gBL_Cloth_SplitIntoSkinnedAndSimulated("BodySuit-Top_ClothSimulated", "BodySuit-Top", "WomanA", "_ClothSkinnedArea_Top")
-        ##Client.Client_ConvertMeshForUnity(SelectObject("WomanA_Morph"), True)
+        #CBBodyCol.CBBodyCol_Generate("Man", 1000)
+        ##Client.gBL_Cloth_SplitIntoSkinnedAndSimulated("BodySuit-Top_ClothSimulated", "BodySuit-Top", "Woman", "_ClothSkinnedArea_Top")
+        ##Client.Client_ConvertMeshForUnity(SelectObject("Woman_Morph"), True)
         #CBBodyCol.SlaveMesh_SetupMasterSlave("BodyA-BreastCol-ToBreasts", "BodyA_Detach_Breasts", 0.000001)
-        #Breasts.Breasts_ApplyMorph('WomanA', 'WomanA', 'RESIZE', 'Nipple', 'Center', 'Wide', (1.6,1.6,1.6,0), None)
+        #Breasts.Breasts_ApplyMorph('Woman', 'Woman', 'RESIZE', 'Nipple', 'Center', 'Wide', (1.6,1.6,1.6,0), None)
 
         #CBBodyCol.SlaveMesh_ResyncWithMasterMesh("BodyA-BreastCol-ToBody", "BodyA_Morph")
-        #Client.gBL_Body_Create("BodyA", "WomanA", "Woman", "Vagina-EroticVR-A", [])
-        #Client.gBL_Body_CreateForMorph("WomanA", "BodyA", "BodyA_Morph")
+        #Client.gBL_Body_Create("BodyA", "Woman", "Woman", "Vagina-EroticVR-A", [])
+        #Client.gBL_Body_CreateForMorph("Woman", "BodyA", "BodyA_Morph")
 
 
 
@@ -546,7 +546,7 @@
 # 
 #     def invoke(self, context, event):
 #         self.report({"INFO"}, "GBOP: " + self.bl_label)
-#         Client.gBL_Body_CreateMorphBody("A", "ManA", "PenisM-EroticVR-A-Big")
+#         Client.gBL_Body_CreateMorphBody("A", "Man", "PenisM-EroticVR-A-Big")
 #         Client.gBL_Body_Create("BodyA", "Man", "PenisM-EroticVR-A-Big", [], 1, 0)
 #         return {"FINISHED"}
 # 
@@ -557,7 +557,7 @@
 # 
 #     def invoke(self, context, event):
 #         self.report({"INFO"}, "GBOP: " + self.bl_label)
-#         Client.gBL_Body_CreateMorphBody("B", "WomanA", "Vagina-EroticVR-A")
+#         Client.gBL_Body_CreateMorphBody("B", "Woman", "Vagina-EroticVR-A")
 #         Client.gBL_Body_Create("BodyB", "Woman", "Vagina-EroticVR-A", ["TiedTop"], 1.3, 0.3)
 #         return {"FINISHED"}
 # 
@@ -568,7 +568,7 @@
 # 
 #     def invoke(self, context, event):
 #         self.report({"INFO"}, "GBOP: " + self.bl_label)
-#         Client.gBL_Body_CreateMorphBody("A", "WomanA", "PenisW-EroticVR-A-Big")
+#         Client.gBL_Body_CreateMorphBody("A", "Woman", "PenisW-EroticVR-A-Big")
 #         ###REV Client.gBL_Body_Create("BodyA", "Shemale", "PenisW-EroticVR-A-Big", ["TiedTop"], 1.3, 0.3)
 #         Client.gBL_Body_Create("BodyA", "Shemale", "PenisW-EroticVR-A-Big", [], 1.0, 0.0)
 #         return {"FINISHED"}
@@ -1937,7 +1937,7 @@
 ###DEVO???
 # def SlaveMesh_DefineMasterSlaveRelationship(sNameBodySrc, sTypeOfSlaveMesh, nVertTolerance, bMirror=True, bSkin=False):  ####DEV: An init call
 #     "Create a master / slave relationship so the slave mesh can follow the vert position of master mesh at runtime.  Only invoked at design time.  Stores its information in mesh custom layer"
-#     # sNameBodySrc is like 'WomanA', 'ManA'.  sTypeOfSlaveMesh is like 'BreastCol', 'BodyCol', 'ClothColTop', etc
+#     # sNameBodySrc is like 'Woman', 'Man'.  sTypeOfSlaveMesh is like 'BreastCol', 'BodyCol', 'ClothColTop', etc
 #     # bMirror is set for most colliders but NOT for breast (as each collider is handled separately)
 #     # (Used by breast colliders, cloth colliders, etc so they can update themselves when the source body has been morphed at runtime by the user)
 # 
@@ -2198,3 +2198,1069 @@
 #import CSoftBody
 #import CCloth
 #import CClothSrc
+
+
+
+
+
+
+
+
+
+
+
+
+
+###OBS24: Much better vagina hole collider now integrated into CBodyBase
+#     def SerializeHoleRig(self):        # Construct our flattened vert-to-vert array serialized to Unity so it can easily construct its structures without figuring what vert connects to what ===
+#         oBA = CByteArray()             # Flattened array of which vert connects to what vert.  
+#         bmHoleRig = self.oMeshHoleRig.Open()
+#         for oVert1 in bmHoleRig.verts:
+#             oBA.AddUShort(oVert1.index)                     # Send the vertex ID...
+#             oBA.AddUShort(len(oVert1.link_edges))           #... followed by the number of verts connected to oVert1
+#             for oEdge in oVert1.link_edges:                 #... followed by the neighboring verts
+#                 oVert2 = oEdge.other_vert(oVert1)
+#                 oBA.AddUShort(oVert2.index)
+#         bmHoleRig = self.oMeshHoleRig.Close()
+#         return oBA.Unity_GetBytes()
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+#         VertGrp_SelectVerts(oMesh.GetMesh(), "_CVagina_Ring0")
+#         bpy.ops.object.mode_set(mode='OBJECT')          ###INFO: We must return to object mode to be able to read-back the vert select flag! (Annoying!)
+#         self.vecCenter = Vector((0,0,0))
+#         nVertsInOpening = 0
+#         for oVert in oMesh.GetMeshData().vertices:
+#             if oVert.select == True:
+#                 oORV = CHoleRigVert(oVert.index, oVert.co.copy())
+#                 self.aHoleRigVert.append(oORV)
+#                 self.vecCenter = self.vecCenter + oVert.co.copy()
+#                 nVertsInOpening = nVertsInOpening + 1
+#         self.vecCenter = self.vecCenter / nVertsInOpening
+#         bpy.data.objects["Debug-Vagina-Opening-Center"].location = self.vecCenter
+#         print("- Center of vagina opening is " + str(self.vecCenter))
+#    
+#         for oORV in self.aHoleRigVert:
+#             oORV.CalcAngleAndDistance(self.vecCenter)
+
+
+#         #=== Obtain reference to the vertex groups where we must scale weights down.  These are: Genitals, Anus, pelvis, xThighBend, xThighTwist ===
+#         aVertGrpsScaleDownWeights = []
+#         aVertGrpsScaleDownWeights.append(VertGrp_FindByName(oMesh.GetMesh(), sNameBoneRoot))
+#         aVertGrpsScaleDownWeights.append(VertGrp_FindByName(oMesh.GetMesh(), "Anus"))
+#         aVertGrpsScaleDownWeights.append(VertGrp_FindByName(oMesh.GetMesh(), "pelvis"))
+#         aVertGrpsScaleDownWeights.append(VertGrp_FindByName(oMesh.GetMesh(), "lThighBend"))
+#         aVertGrpsScaleDownWeights.append(VertGrp_FindByName(oMesh.GetMesh(), "rThighBend"))
+#         aVertGrpsScaleDownWeights.append(VertGrp_FindByName(oMesh.GetMesh(), "lThighTwist"))
+#         aVertGrpsScaleDownWeights.append(VertGrp_FindByName(oMesh.GetMesh(), "rThighTwist"))
+    
+
+#oBoneEdit.head = oORV.vecLocation - self.C_FlexParticleRadius * oORV.vecNormal       # Pull back bone from mesh surface the Flex particle distance along surface normal
+
+
+#         #=== Optionally create a Blender-only mesh to visualize the Flex collider in Unity.  (It is a heavily-simplified version of presentation mesh in the hole area) ===
+#         if bDebugVisualize:
+#             sNameMeshUnity2Blender = "CHoleRig_FlexCollider"
+#             oMeshD = bpy.data.meshes.new(sNameMeshUnity2Blender)
+#             oMeshO = bpy.data.objects.new(oMeshD.name, oMeshD)
+#             bpy.context.scene.objects.link(oMeshO)
+#             aVerts = []
+#             aFaces = []
+#             for aHoleRigVert in self.aHoleRigVerts:
+#                 for oORV in aHoleRigVert:
+#                     oORV.nVertInFlexCollider = len(aVerts) 
+#                     aVerts.append(oORV.vecLocation)
+#             
+#             for nRing in range(CHoleRig.s_nRings-1):
+#                 for nAngle in range(self.nVertsPerRing):
+#                     nAnglePlus0 = nAngle + 0
+#                     nAnglePlus1 = nAngle + 1
+#                     if nAnglePlus1 >= self.nVertsPerRing:
+#                         nAnglePlus1 = 0
+#                     oORV00 = self.aHoleRigVerts[nRing+0][nAnglePlus0]
+#                     oORV01 = self.aHoleRigVerts[nRing+0][nAnglePlus1]
+#                     oORV10 = self.aHoleRigVerts[nRing+1][nAnglePlus0]
+#                     oORV11 = self.aHoleRigVerts[nRing+1][nAnglePlus1]
+#                     aFace = [oORV00.nVertInFlexCollider, oORV01.nVertInFlexCollider, oORV11.nVertInFlexCollider, oORV10.nVertInFlexCollider]
+#                     aFaces.append(aFace)
+#                     
+#             oMeshD.from_pydata(aVerts, [], aFaces)
+#             oMeshD.update()
+#             oMeshO.draw_type = "WIRE"        
+#             oMeshO.show_wire = oMeshO.show_all_edges = oMeshO.show_x_ray = True
+#             SetParent(oMeshO.name, G.C_NodeFolder_Temp)
+#         
+
+
+#         #=== Iterate through each ring to pick which vert we want to keep to form the simplified Flex collider mesh from the presentation geometry ===   
+#         for nRing in range(CHoleRig.s_nRings):
+#             sVertGroupName = sVertGroupNamePrefix + str(nRing)
+#             VertGrp_SelectVerts(self.oMeshHoleRig.GetMesh(), sVertGroupName)
+#             bpy.ops.object.mode_set(mode='OBJECT')          ###INFO: We must return to object mode to be able to read-back the vert select flag! (Annoying!)
+#     
+#             self.aHoleRigVertThisRing = []
+#             for oVert in self.oMeshHoleRig.GetMeshData().vertices:
+#                 if oVert.select == True:
+#                     vecPos = oVert.co.copy() - self.C_FlexParticleRadius * oVert.normal.copy()
+#                     oORV = CHoleRigVert(oVert.index, vecPos, oVert.normal.copy())
+#                     self.aHoleRigVertThisRing.append(oORV)
+#         
+#             for oORV in self.aHoleRigVertThisRing:
+#                 oORV.CalcAngleAndDistance(self.vecCenter)
+#         
+#             self.aHoleRigVert = []
+#             for nSlice in range(self.nVertsPerRing):
+#                 nAngleWanted = nSlice * nDegreesPerSlice
+#                 vecWanted = Vector((0,0))                   # For a vector to express the angle we want so we can use dot-product search
+#                 vecWanted.x = cos(radians(nAngleWanted))    # cos(nAngle) = adj / hyp = x / nRadius so x = nRadius * cos(nAngle)
+#                 vecWanted.y = sin(radians(nAngleWanted))    # sin(nAngle) = opp / hyp = y / nRadius so y = nRadius * sin(nAngle)
+#                 
+#                 oORVClosest = None          
+#                 nAngleDiffClosestThusFar = 180
+#                 for oORV in self.aHoleRigVertThisRing:
+#                     vecFromCenter2D = Vector((oORV.vecFromCenter.x, oORV.vecFromCenter.y))        ###WEAK Flatten to 2D.  Find for vagina but anus at an angle would cause distortion!  Better would be for ring to allow for rotation!
+#                     nAngleDiff = degrees(vecFromCenter2D.angle(vecWanted))
+#                     if nAngleDiffClosestThusFar > nAngleDiff:
+#                         nAngleDiffClosestThusFar = nAngleDiff
+#                         oORVClosest = oORV                        ###BUG?: Algorithm can pick he same vert for multiple slots!
+#                 
+#                 print("- Ring{:1d} HoleRigVert at angle {:5.1f} chosen to represent angle {:5.1f} with a diff of {:5.2f}".format(nRing, oORVClosest.nAngle, nAngleWanted, nAngleDiffClosestThusFar))            
+#                 self.aHoleRigVert.append(oORVClosest)          # Chose this HoleRigVert to participate in our Flex collider
+#                 
+#             self.aHoleRigVerts.append(self.aHoleRigVert)                # Append the fully-formed ring to our matrix of rings
+
+
+#        mapHoleRigVert = {}         ###OBS:???  Unused!
+#         aHoleRigVertRing0 = sorted(self.aHoleRigVerts[0], key=lambda oORV: oORV.nAngle)     ###INFO: How to sort class instances by a given key
+#         nSortedOrdinal = 0
+#         for oORV in aHoleRigVertRing0:
+#             mapHoleRigVert[oORV.nVert] = oORV
+#             oORV.nSortedOrdinal = nSortedOrdinal                        # Remember what sorted ordinal we are
+#             nSortedOrdinal = nSortedOrdinal + 1
+#             print(oORV)
+#         self.nNumHoleRigVert = nSortedOrdinal
+    
+
+
+
+    
+    #         vecVertDiff = oVert.co.copy() - self.vecCenter
+    #         oHoleRigVert = None
+    #         for oORV in aHoleRigVertRing0:
+    #             if nAngle < oORV.nAngle:
+    #                 oHoleRigVert = oORV
+    #                 break
+               
+    #         nHoleRigVert2 = oHoleRigVert.nSortedOrdinal + 1
+    #         if nHoleRigVert2 >= len(aHoleRigVertRing0):             # Wrap around o zero if oHoleRigVert was the last in our sorted array
+    #             nHoleRigVert2 = 0
+    #         oORV2 = mapHoleRigVert[nHoleRigVert2] 
+    
+
+    #         nAngle1 = oHoleRigVert.nAngle                      ###OPT: Really need dual bone weight if we have many bones??
+    #         nAngle2 = oORV2.nAngle
+    #         if nAngle1 > nAngle2:
+    #             nAngle2 = nAngle2 + 360
+    #         nAngleDiff = nAngle2 - nAngle1
+    # 
+    #         nDiffWithAngle1 = nAngle  - nAngle1
+    #         nDiffWithAngle2 = nAngle2 - nAngle
+
+
+            #nBone2_Remainder = nBone - nBone1
+            #nBone1_Remainder = 1 - nBone2_Remainder
+            #aVertGroups[nBone2].add([nVert], nWeight * nBone2_Remainder, 'ADD')
+
+#             for oVertGrpScaleDown in aVertGrpsScaleDownWeights:
+#                 if nVert in oVertGrpScaleDown:
+#                     try:
+#                         nWeightPrevious = oVertGrpScaleDown.weight(nVert)
+#                         nWeightReduced = nWeightPrevious * nWeightForOtherVertGrps 
+#                         oVertGrpScaleDown.add([nVert], nWeightReduced, 'REPLACE')
+#                     except RuntimeError:                            # weight() returns a RuntimeError if vertex not found in groups ###IMPROVE: Find better way to find vert inclusion!
+#                         nWeightPrevious = 0
+                
+            #print("- Vert#{:5d}   A={:5.1f}   D={:5.3f}   DR={:5.3f}   W={:5.3f}   1={:2d}/{:4.2f}   2={:2d}/{:4.2f}".format(oVert.index, nAngle, nDist, nDistRatio, nWeight, 0, 0, 0, 0))
+
+
+#         oBA = CByteArray()
+#         oBA.AddFloat(CHoleRig.s_nRings)              
+#         oBA.AddFloat(self.nVertsPerRing)              
+#         for self.aHoleRigVert in self.aHoleRigVerts:
+#             for oORV in self.aHoleRigVert:
+#                 oORV.Serialize(oBA)
+#         return oBA.Unity_GetBytes()
+
+
+
+
+
+
+#         ###OBS24: Much better vagina hole collider now integrated into CBodyBase
+#         #===== A. CREATE REDUCED-GEOMETRY RIG MESH =====
+#         #=== Create the hole rig mesh as a copy of the source body ===
+#         print("\n===== CHoleRig() running with nDistMax = {} =====".format(self.nDistMax))        
+#         self.oMeshHoleRig = CMesh.CreateFromDuplicate(self.oBody.oBodyBase.sMeshPrefix + "-HoleRig", self.oBody.oBodyBase.oMeshSource)      ###IMPROVE24: Mesh name
+#         SelectObject(self.oMeshHoleRig.GetName())
+#         bmHoleRig = self.oMeshHoleRig.Open()
+#         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
+#         
+#         #=== Select all the pre-defined rings ===
+#         for nRing in range(CHoleRig.s_nRings):
+#             sVertGroupName = CHoleRig.C_NameVertGroup_Vagina + str(nRing)
+#             VertGrp_AddToSelection(self.oMeshHoleRig.GetMesh(), sVertGroupName)
+#             
+#         #=== Invert selection and delete all the non-rings edges.  After this only the rings are left ===
+#         bpy.ops.mesh.select_all(action='INVERT')
+#         bpy.ops.mesh.delete(type='EDGE')
+# 
+#         #=== Duplicate ring zero and push it upward up the vagina so we have a simplified version of the vagina inside ===
+#         oVertGrp_Ring0 = VertGrp_SelectVerts(self.oMeshHoleRig.GetMesh(), CHoleRig.C_NameVertGroup_Vagina + "0")
+#         bpy.ops.mesh.looptools_relax(input='selected', interpolation='linear', iterations='5', regular=True)
+#         bpy.ops.mesh.looptools_flatten(influence=100, lock_x=False, lock_y=False, lock_z=False, plane='best_fit', restriction='none')
+#         bpy.ops.mesh.remove_doubles(threshold=0.0016)               ###TUNE: Important settings that affects how many bones will drive hole expansion
+#         bpy.ops.mesh.duplicate_move(MESH_OT_duplicate={"mode":1}, TRANSFORM_OT_translate={"value":(0, 0.001, .015)})
+#         bpy.ops.object.vertex_group_remove_from()                       # Remove new duplicate verts from ring 0 vert group
+#         
+#         #=== The upper part of the outer ring need a heck a lot of smoothing to remove lab folds ===
+#         VertGrp_SelectVerts(self.oMeshHoleRig.GetMesh(), "_CVagina_RingSmooth")
+#         for nLoop in range(4):
+#             bpy.ops.mesh.looptools_relax(input='selected', interpolation='linear', iterations='25', regular=True)
+#         bpy.ops.mesh.looptools_flatten(influence=100, lock_x=False, lock_y=False, lock_z=False, plane='best_fit', restriction='none')
+# 
+#         #=== Subdivide then reduce the geometry of outer right to even out the geometry
+#         oVertGrp_Ring1 = VertGrp_SelectVerts(self.oMeshHoleRig.GetMesh(), CHoleRig.C_NameVertGroup_Vagina + "1")
+#         bpy.ops.mesh.subdivide(number_cuts=4)
+#         bpy.ops.mesh.remove_doubles(threshold=0.0040)               ###TUNE
+#         bpy.ops.object.vertex_group_assign()                        # Add the new geometry to ring 1
+# 
+#         #=== Select all our rings and bridge them.  This will create a coherent and greatly simplified version of the original mesh ===
+#         bpy.ops.mesh.select_all(action='SELECT')
+#         bpy.ops.mesh.bridge_edge_loops()                        ###INFO: A powerful and *amazing* ability to quickly create meshes from rings of edges!
+# 
+# 
+#         #=== Remove bones that start with the specified bone name prefix ===
+#         oArmObject = self.oMeshHoleRig.GetMesh().modifiers["Armature"].object
+#         oArm = oArmObject.data
+#         Bones_RemoveBonesWithNamePrefix(oArm, CBodyBase.C_Prefix_DynBone_Vagina)
+# 
+# 
+#         #=== Remember the position of the ring 0 verts before we pull back.  These will be our bones ===
+#         VertGrp_SelectVerts(self.oMeshHoleRig.GetMesh(), oVertGrp_Ring0.name)
+#         for oVert in bmHoleRig.verts:
+#             if oVert.select:
+#                 self.aHoleRigVerts.append(CHoleRigVert(oVert.index, oVert.co.copy()))
+# 
+#         #=== Pull back the verts by the Flex particle radius so gametime collisions appear to be at skin level ===
+#         bpy.ops.mesh.select_all(action='SELECT')
+#         bpy.ops.transform.shrink_fatten(value = -self.C_FlexParticleRadius)
+#         bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')
+# 
+# 
+#         #=== Perform extra smoothing on ring 0 ===
+#         VertGrp_SelectVerts(self.oMeshHoleRig.GetMesh(), oVertGrp_Ring0.name)
+#         bpy.ops.mesh.looptools_relax(input='selected', interpolation='cubic', iterations='25', regular=True)            ###INFO: Loop tool's *awesome* relax function has 'cubic' mode to respect more the curvature.  Linear destroys more but gives smoother results
+# 
+#         #=== Perform extra smoothing on the capped ring 0 (inside vagina)        
+#         VertGrp_SelectVerts(self.oMeshHoleRig.GetMesh(), oVertGrp_Ring0.name)       # We get to new cap verts by selecting both ring 0 and 1 and inverting (cap is the only thing that is left)
+#         VertGrp_AddToSelection(self.oMeshHoleRig.GetMesh(), oVertGrp_Ring1.name)
+#         bpy.ops.mesh.select_all(action='INVERT')                            # We now have cap selected
+#         bpy.ops.mesh.looptools_relax(input='selected', interpolation='cubic', iterations='25', regular=True)           ###CHECK24: Caps with a gentle slope inwards... valuable to guide or slow down the penis?
+#         bpy.ops.mesh.looptools_relax(input='selected', interpolation='linear', iterations='10', regular=True)           ###CHECK24: Caps with a gentle slope inwards... valuable to guide or slow down the penis?
+#         bpy.ops.mesh.select_all(action='SELECT')
+#     
+#         #=== First determine the IMPORTANT center of opening from Ring0.  Central to everything! ===
+#         self.vecCenter = Vector((0,0,0))
+#         for oHoleRigVert in self.aHoleRigVerts:
+#             self.vecCenter = self.vecCenter + oHoleRigVert.vecLocation
+#         self.vecCenter = self.vecCenter / len(self.aHoleRigVerts)
+#         self.vecCenter.x = 0                            # Make sure we're centered ###KEEP!?
+#         print("- CHoleRig: Center of opening is at " + str(self.vecCenter))
+# 
+#         #=== Record the *moved* position in our hole rig verts and perform angle-to-center calculation ===
+#         bmHoleRig.verts.ensure_lookup_table()
+#         for oHoleRigVert in self.aHoleRigVerts:
+#             oHoleRigVert.vecLocationMoved = bmHoleRig.verts[oHoleRigVert.nVert].co.copy()
+#             oHoleRigVert.CalcAngleAndDistance(self.vecCenter)
+#         bmHoleRig = self.oMeshHoleRig.Close()
+
+
+ 
+#     def Serialize(self, oBA):                       # Serialize all our fields into floats in the supplied CByteArray() for Unity to de-serialize
+#         oBA.AddVector(self.vecLocation)
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+#         bAllVertsInCollider = True          ###NOTE: Bit of a hack to avoid having to define this damn group at every mesh rebuild... should be defined for final game tho!
+#         if VertGrp_FindByName(self.oMeshMorphResult.GetMesh(), "_CFlexCollider", False):
+#             VertGrp_SelectVerts(self.oMeshMorphResult.GetMesh(), "_CFlexCollider")
+#             bAllVertsInCollider = False
+#         else:
+#             print("\n###WARNING: _CFlexCollider vertex group not found = Inneficient collisions!")
+#         bmMorphResult = self.oMeshMorphResult.Open()
+#         for oVert in bmMorphResult.verts:
+#             if (oVert.select or bAllVertsInCollider):
+#                 self.aVertsFlexCollider.AddUShort(oVert.index)
+#         self.oMeshMorphResult.Close()
+
+
+
+
+
+
+
+
+
+#         print("\n\n=== Removing extra materials ===")
+#         for oMat in bpy.data.materials:
+#             if oMat.name[0] != "_":
+#                 print("-Deleting material '{}'".format(oMat.name))
+#                 bpy.data.materials.remove(oMat)
+
+#         oMesh = bpy.context.object
+#         print("\n\n=== Renaming materials on mesh " + oMesh.name)
+#         for oMat in oMesh.data.materials:
+#             oMat.name = "_Woman_" + oMat.name
+#             print(oMat.name)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#=================== excess code from CBodyImporter
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# #=== Redirect the copied materials from this mesh and reroute to the authoritative materials setup during 'Original' import ===
+# for oMatSlot in self.oMesh.GetMesh().material_slots:
+#     sNameMaterial = oMatSlot.material.name
+#     nPosDot = sNameMaterial.find(".")
+#     if nPosDot != -1:
+#         sNameMaterial = sNameMaterial[:nPosDot]
+#         print("#NOTE: Rerouting material '{}' to '{}'.".format(oMatSlot.material.name, sNameMaterial))
+#         #oMatSlot.material = bpy.data.materials[sNameMaterial]
+
+
+        #=== Make imported mesh and its bone rig visible on the layers we need ===
+        #self.oMesh.GetMesh().layers[1] = self.oMesh.GetMesh().layers[2] = self.oMesh.GetMesh().layers[3] = self.oMesh.GetMesh().layers[4] = True
+        #oRootNodeO.layers[1] = oRootNodeO.layers[2] = oRootNodeO.layers[3] = oRootNodeO.layers[4] = True
+
+
+
+#     @classmethod
+#     def ImportStep2_RenameToMatchImageFilenames(cls, sNameMeshBody):
+#         ###NOTE: User has just manually renamed and relinked the image files.  Iterate through our Original body's materials to synchronize the material name, the texture name, the image name all to the image filename ===
+#         oMesh = CMesh.Create(sNameMeshBody)
+#         print("\n=== ImportStep2_RenameToMatchImageFilenames() ===")
+#         for oMat in oMesh.GetMeshData().materials:
+#             for oTexSlot in oMat.texture_slots:                     # Also iterate through all the textures of this material (and all their related images) to prepend our prefix as well.  (So they don't get deleted by Cleanup call below!)
+#                 if oTexSlot is not None:
+#                     oTex = oTexSlot.texture
+#                     oImg = oTex.image
+#                     sImageFilename = CBodyImporter_Original.Util_ExtractFilenameFromFilepath(oImg.filepath)
+#                     print("- Setting material '{}' , texture '{}' and image '{}' to image filename '{}'".format(oMat.name, oTex.name, oImg.name, sImageFilename))  
+#                     oMat.name = oTex.name = oImg.name = sImageFilename      # Sync up the material name, the texture name, the image name all to be equal to the image filename -> Four level of indirections all synced up = greatly saves confusion!!
+
+#     def SynchronizeNamesFromImageFilenames(self):
+#         print("\n=== SynchronizeNamesFromImageFilenames() ===")
+#         for oMat in self.oMesh.GetMeshData().materials:
+#             for oTexSlot in oMat.texture_slots:                     # Also iterate through all the textures of this material (and all their related images) to prepend our prefix as well.  (So they don't get deleted by Cleanup call below!)
+#                 if oTexSlot is not None:
+#                     oTex = oTexSlot.texture
+#                     if oTex.name[0] != "_":                         # Don't change the name if name already processed (e.g. names prefixed with '_' to indicate we manage them)
+#                         sNameImageFile = oTex.image.filepath
+#                         nPosDot = sNameImageFile.rfind(".")
+#                         sNameImageFile = sNameImageFile[:nPosDot] 
+#                         oTex.name = oTex.image.name = sNameImageFile
+#                         print("- Setting texture and image Blender objects to image filename of '{}'".format(sNameImageFile))  
+
+
+
+
+
+
+
+            #=== Remove vertex groups with no vertices ===
+#             self.oMesh.VertGrp_Remove(re.compile(self.sNamePrefix_Daz))     # Vertex group named like the mesh is always empty
+#             self.oMesh.VertGrp_Remove(r"^hip")                              # Note the usage of '^' so we match strings from the beginning
+#             self.oMesh.VertGrp_Remove(r"^lowerFaceRig")
+#             self.oMesh.VertGrp_Remove(r"^upperFaceRig")
+#             self.oMesh.VertGrp_Remove(r"^lToe")
+#             self.oMesh.VertGrp_Remove(r"^rToe")
+    
+#             #=== Clean up bone weights and vertex groups ===        ### Can't limit because of the many custom vert groups!  But how about normalize / sort, etc? 
+#             bpy.ops.mesh.select_all(action='SELECT')
+#             bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)                    ###CHECK!!! Does this lose any information? (for example limb rotation??)
+#             bpy.ops.object.vertex_group_clean(group_select_mode='ALL', limit=0, keep_single=False)
+#             bpy.ops.object.vertex_group_normalize_all(group_select_mode='ALL', lock_active=False)
+
+    
+#         #=== Perform the first stage of importation by renaming, rotating and rescaling mesh as we need it.
+#         oMeshDazImportO = self.Import_FirstCleanupOfDazImport("TEMP_ImportedMesh")       # Mesh will get manually renamed (if first) or merged as shape key (if not first) of main game mesh
+#         oRootNodeImportedToDelete = oMeshDazImportO.parent 
+#     
+#         #=== Clean up the armature and the newly imported mesh's parent node (containing armature) === 
+#         oModArm = oMeshDazImportO.modifiers["Armature"]
+#         oModArm.object = None                                   # Unlink existing armature modifier to the importated armature (that we're about to delete)
+#         sNameParent = oMeshDazImportO.parent.name
+#         oMeshDazImportO.parent = None                           ###INFO: Must clear parent in sub-nodes before deleting parent or mesh will be inacessible!
+#         DeleteObject(sNameParent)                               # Remove imported body's parent node (armature)
+# 
+#         #=== Obtain reference to original body mesh ===           
+#         sNameMeshOriginal = self.sNamePrefix + "-Original"
+#         oMesh = SelectObject(sNameMeshOriginal)
+#     
+#         #===== Increase breast geometry with a selective subdivide of much of the breast area =====
+#         #=== First open original mesh to obtain the list of vertices ===
+#         if self.bIsWoman:
+#             aVertsBreasts = []
+#             VertGrp_SelectVerts(oMesh, "_CBodyImporter_IncreaseBreastGeometry")
+#             bpy.ops.object.mode_set(mode='OBJECT')          ###INFO: Non-bmesh access must read selections this way  ###IMPROVE: Switch to bmesh?
+#             for oVert in oMesh.data.vertices:
+#                 if (oVert.select):
+#                     aVertsBreasts.append(oVert.index)
+#                     oVert.select = False
+#             Util_HideMesh(oMesh)
+#             #=== Open the imported mesh to select the same verts.  Original and just-imported mesh are guaranteed to be of the same geometry ===
+#             oMeshDazImportO = SelectObject(oMeshDazImportO.name, True)
+#             for nVert in aVertsBreasts:
+#                 oMeshDazImportO.data.vertices[nVert].select = True    
+#             bpy.ops.object.mode_set(mode='EDIT')
+#             bpy.ops.mesh.subdivide(quadtri=True, quadcorner='INNERVERT', smoothness=1)      # Adds geometry with 'fanout' to border of previous low-geometry.  Also smooths the mesh to take into account new geometry
+#             bpy.ops.mesh.select_all(action='DESELECT')          ###WEAK: Above will show "Invalid clnors in this fan!" hundreds of time in error output.  As this happens even when invoking subdivide through Blender I think it can be ignored.
+#             bpy.ops.object.mode_set(mode='OBJECT')
+#     
+#         #=== Remove verts for useless materials ===
+#         Material_Remove(oMeshDazImportO, "EyeMoisture")           # Dumb 'wrapper mesh' to entire eye for 'moisture'... wtf?
+#         
+#         #=== Reparent to the previously-imported bone rig.  Also set as child node to that same parent ===
+#         oMeshDazImportO.parent = oMesh.parent       # Set as child of previously-imported parent (with previously cleaned-up bones)               
+#         oModArm.object = oMesh.parent               #bpy.ops.outliner.parent_drop(child=oMeshDazImportO.name, parent=oMesh.parent.name, type='ARMATURE')  ###NOTE: This is the Blender call when parenting to a rig in the Blender UI... fails with incorect context!
+#     
+#         #=== Delete the imported rig (imported mesh now properly connected to the good rig) ===
+#         DeleteObject(oRootNodeImportedToDelete.name)
+#     
+#         #===== Rest of shape import depends if there already is a first shape or not... =====
+#         if self.sNamePrefix in bpy.data.objects:
+#             #=== Add a shape key into the gameready mesh of the just-imported mesh ===
+#             print("\n=== NOTE: ImportShape() finds basis mesh.  Adding imported mesh as a shape key to basis mesh.  Please rename newly-created shapekey.\n")
+#             oMeshDazImportO = SelectObject(oMeshDazImportO.name, True)
+#             oMeshGame = bpy.data.objects[self.sNamePrefix]
+#             oMeshGame.select = True
+#             oMeshGame.hide = False
+#             bpy.context.scene.objects.active = oMeshGame
+#             bpy.ops.object.join_shapes()
+#             DeleteObject(oMeshDazImportO.name)        # Imported mesh merged into game mesh as a shape key.  It can now be deleted
+#             
+#         else:
+#             print("\n=== NOTE: ImportShape() did not find basis mesh.  Imported mesh becomes basis mesh.\n")
+#             #=== Create the basis shape key in the gameready mesh ===
+#             ###IMPROVE: Automate process of first main mesh creation?  (Have to 1: Create vert group '_ImportGeometryAdjustment-Breasts', 2: Duplicate orig mesh and rename, 
+#             oMeshDazImportO.name = oMeshDazImportO.data.name = self.sNamePrefix
+#             oMeshDazImportO.name = oMeshDazImportO.data.name = self.sNamePrefix
+#             bpy.ops.object.shape_key_add(from_mix=False)
+#         ###TODO: key_blocks["Breasts-Implants"].slider_max
+
+
+    #---------------------------------------------------------------------------    LEFT / RIGHT SYMMETRY
+    
+#    def FirstImport_VerifyBoneSymmetry(self, oMeshBodyO):           ###OBS??    
+#        #=== Iterate through all left bones to see if their associated right bone is positioned properly ===
+#        print("\n\n=== FirstImport_VerifyBoneSymmetry() ===")
+#         self.oArm = oMeshBodyO.modifiers["Armature"].object.data
+#         SelectObject(oMeshBodyO.parent.name, True)            ###INFO: Armature editing is done through the mesh's parent object
+#         self.oArmBones = self.oArm.edit_bones    
+#         nAdjustments = 0
+#         bpy.ops.object.mode_set(mode='EDIT')                                        ###INFO: Modifying armature bones is done by simply editing root node containing armature.
+#         for oBoneL in self.oArmBones:
+#             sNameBoneL = oBoneL.name 
+#             if (sNameBoneL[0] == 'l' and sNameBoneL[1] >= 'A' and sNameBoneL[1] <= 'Z'):            # Test left bone / right bone symmetry
+#                 sNameBoneR = 'r' + sNameBoneL[1:]
+#                 print("--- Testing bone '{}' - '{}' ---".format(sNameBoneL, sNameBoneR))
+#                 oBoneR = self.oArmBones[sNameBoneR]
+#                 vecBoneL = oBoneL.head.copy()
+#                 vecBoneR = oBoneR.head.copy()
+#                 vecBoneR.x = -vecBoneR.x
+#                 if (vecBoneL != vecBoneR):
+#                     vecDiff = vecBoneR - vecBoneL 
+#                     print("- Bone head mismatch on '{}'  {}   {}   {}  Dist={:6f}".format(sNameBoneL, vecBoneL, vecBoneR, vecDiff, vecDiff.magnitude))
+#                     if (vecDiff.magnitude > 0.0001):
+#                         print("     ###WARNING: Bone symmetry difference is large!\n")
+#                     vecBoneCenter = (vecBoneL + vecBoneR) / 2 
+#                     oBoneL.head = vecBoneCenter.copy()
+#                     vecBoneCenter.x = -vecBoneCenter.x
+#                     oBoneR.head = vecBoneCenter.copy()
+#                     nAdjustments += 1
+#             elif (sNameBoneL[0] != 'r' or sNameBoneL[1] < 'A' or sNameBoneL[1] > 'Z'):                # Test that center bones are indeed centered at x = 0
+#                 print("--- Testing center bone '{}' ---".format(sNameBoneL))
+#                 oBoneC = self.oArmBones[sNameBoneL]
+#                 if (oBoneC.head.x != 0 or oBoneC.tail.x != 0):
+#                     print("- Center bone '{}' has head {} and tail {}".format(sNameBoneL, oBoneC.head, oBoneC.tail))
+#                     oBoneC.head.x = oBoneC.tail.x = 0
+#                     nAdjustments += 1
+#         bpy.ops.object.mode_set(mode='OBJECT')
+#         return nAdjustments
+    
+    
+
+
+
+#     #---------------------------------------------------------------------------    FIRST-IMPORT BONE ADJUSTERS
+#     
+#     def ConnectParentTailToHeadOfMostImportantChild1(self, sNameBoneParent, sNameBoneChild):      # Ensures a perfectly linked chain of bones by setting a parent's tail to the head of its 'most important' child (e.g. upperChest tail to head of lowerChest)
+#         oBoneParent = self.oArmBones[sNameBoneParent]
+#         oBoneChild  = self.oArmBones[sNameBoneChild]
+#         oBoneParent.tail = oBoneChild.head              # Parent will now flow right into its most important child (thereby providing intuitive deformation when rotated)
+#     
+#     def ConnectParentTailToHeadOfMostImportantChild2(self, sNameBoneParent, sNameBoneChild):      # Split the 'ConnectParentTailToHeadOfMostImportantChild1' to both left and right body sides.
+#         self.ConnectParentTailToHeadOfMostImportantChild1("l"+sNameBoneParent, "l"+sNameBoneChild)
+#         self.ConnectParentTailToHeadOfMostImportantChild1("r"+sNameBoneParent, "r"+sNameBoneChild)
+#     
+#     def OrientSmallBoneFromParents1(self, sNameSmallBone, sNameParent1, sNameParent2):
+#         oBoneParent1    = self.oArmBones[sNameParent1]
+#         oBoneParent2    = self.oArmBones[sNameParent2]
+#         oBoneSmall      = self.oArmBones[sNameSmallBone]
+#         vecParent = oBoneParent2.head - oBoneParent1.head
+#         oBoneSmall.tail = oBoneSmall.head + (vecParent * 0.25)      # Set the tail to be starting from the head plus some distance of parent vector 
+#     
+#     def OrientSmallBoneFromParents2(self, sNameSmallBone, sNameParent1, sNameParent2):  # Split the 'OrientSmallBoneFromParents1' to both left and right body sides.
+#         self.OrientSmallBoneFromParents1("l"+sNameSmallBone, "l"+sNameParent1, "l"+sNameParent2)
+#         self.OrientSmallBoneFromParents1("r"+sNameSmallBone, "r"+sNameParent1, "r"+sNameParent2)
+#         
+#     def ManuallyAdjustRoll1(self, sNameBone, nRoll):
+#         self.oArmBones[sNameBone].roll = radians(nRoll)
+#     
+#     def ManuallyAdjustRoll2(self, sNameBone, nRoll):
+#         self.ManuallyAdjustRoll1("l"+sNameBone,  nRoll)
+#         self.ManuallyAdjustRoll1("r"+sNameBone, -nRoll)
+
+
+
+
+
+        #=== Manually add additional bones we need ===
+#         if self.bIsWoman:        ###BROKEN20
+#             bpy.ops.object.mode_set(mode='EDIT') 
+#             oBoneVagina = self.Import_AddBone("Vagina", "Genitals")
+#             self.Import_AddBone("VaginaPin0", oBoneVagina.name, Vector((0.00, -0.08,  0.96)))           ###WEAK: Hardcoded vectors... derive from geometry would be better but lenghty to code for not much benefits!
+#             self.Import_AddBone("VaginaPin1", oBoneVagina.name, Vector((0.00,  0.10,  1.05)))           # Add 'triangulation bones' so every vagina Flex softbody particle doesn't stray too far from where it started in relation to the body.
+#             self.Import_AddBone("VaginaPin2", oBoneVagina.name, Vector((0.15,  0.00,  0.96)))           # First bone is right above vagina, second right above butt crack. third one at center of left butt check
+  
+        #=== Exit edit mode and hide rig ===
+#         bpy.ops.object.mode_set(mode='OBJECT')
+#         oRootNodeO.hide = True
+#         SelectObject(self.oMesh.name, True)
+
+
+
+
+
+
+    #     #=== Remove the un-needed bones (raw import has duplicate bones for genitalia mesh) ===  ###OBS: not needed if we export from DAZ with FBX option 'Merge Clothing into Figure Skeleton'
+    #     SelectObject(oRootNodeO.name, True)           
+    #     bpy.ops.object.mode_set(mode='EDIT')                                        ###INFO: Modifying armature bones is done by simply editing root node containing armature.
+    #     self.oArm = self.oMesh.modifiers["Armature"].object.data
+    #     self.oArmBones = self.oArm.edit_bones
+    #     for oBoneO in self.oArmBones:
+    #         if oBoneO.name.find(".00") != -1:                # Duplicate bones have names like 'pelvis.001'.  Anything with a .00 in its name can be safely deleted
+    #             self.oArmBones.remove(oBoneO)
+    
+        #=== Set the materials to better defaults ===
+    #     for oMat in self.oMesh.data.materials:
+    #         oMat.diffuse_intensity = 1
+    #         oMat.specular_intensity = 0
+    
+        #=== Clear the pose (FBX import screws that up royally!) ===
+#         SelectObject(oRootNodeO.name, True)     # Select parent node (owns the bone rig)
+#         bpy.ops.object.mode_set(mode='POSE')
+#         bpy.ops.pose.select_all(action='SELECT')                ###INFO: How to select bones in pose mode
+#         bpy.ops.pose.transforms_clear()                         # Clears all the pose transforms so each bone in the default pose returns to the edit bones
+#         bpy.ops.pose.select_all(action='DESELECT')
+#         bpy.ops.object.mode_set(mode='OBJECT')
+#     
+#         SelectObject(self.oMesh.name, True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#---------------- EXCESS FROM CPenis 
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#- We have a solution on efficiently blending penis textures but:
+    #- UV distortion not ok!
+        #- Why the heck are the rim UVs so much further that first read??
+        #- Definitively a 'clockwise rotation' of rim verts... why??  (Is 2-way many-to-many resolution not working right? (e.g. always picking first or last??)
+    #- Need to code the latest manual UV step?  (Or does it make things worse? 
+    #- To perform 'second step' of texture edit:
+        #- In 'Texture Paint', invoke tool tray -> Tools tab -> Clone brush (NOT from image).  Then in main view Control+LMB on 'good part' of texture and draw on 'bad' part.  Adjust radius with F and strenght to blend! :)
+    #- UV re-projection has larger gaps around rim verts... what causes this??
+    #- UV re-projection shows around rim verts an odd 'clockwise' rotation of rim verts... what causes this distortion??
+
+        #=== Determine the UV re-interpolation parameters that can convert between penis X,Z 3D coordinates and a UV X,Y ===  (PLACE BEFORE 'CREATE CHAIN OF RIM VERTS IN OUR STRUCTURES')
+        #oLayUV_Body  = self.oMeshBody.bm.loops.layers.uv.active                    # Obtain access to the body's UV layer (so we can extract rim vert UVs and set them into penis rim verts)
+        ###OBS? Turns out the creation of new UV layer is not really needed given texture Blend can be so easily done with Blender's tools...
+        #vec2D_Point0 = Vector((oVertRimBottom.co.   x, oVertRimBottom.co.   z))     # Point 0 = bottom center of rim.  (We use the x and z 3D coordinates to 'flatten' them into a 'lookalike UV' projected about Y = 0 plane
+        #vec2D_Point1 = Vector((oVertRimRightmost.co.x, oVertRimRightmost.co.z))     # Point 1 = top right of rim.
+        #vecUV_Point0 = oVertRimBottom.   link_loops[0][oLayUV_Body].uv.copy()       # UV coordinates of point 0 and point above.
+        #vecUV_Point1 = oVertRimRightmost.link_loops[0][oLayUV_Body].uv.copy()
+        #vec2D_Span  = vec2D_Point1 - vec2D_Point0 
+        #vecUV_Span  = vecUV_Point1 - vecUV_Point0
+        #print("=== 3D: {} - {}     UV: {} - {} ===\n".format(vec2D_Point0, vec2D_Point1, vecUV_Point0, vecUV_Point1))
+        
+
+
+#         ###OBS? Turns out the creation of new UV layer is not really needed given texture Blend can be so easily done with Blender's tools...  (PLACE RIGHT BEFORE SKINNING)
+#         print("\n===== CREATE NEW UV LAYER FOR RE-TEXTURING =====")
+#         #=== Create a new 're-texturing helper' UV map that *greatly* facilitate the process of blending the body's texture onto the penis one ===
+#         bpy.ops.mesh.uv_texture_add()                                       # Create a new UV layer to facilitate the blending of the penis textures to the body
+#         #self.oMeshPenis.bm.loops.layers.uv.active.name = "PenisRetexturing"            ###INFO: How to create and additional UV layer (will copy first one)  ###IMPROVE: How to name layer??
+#         oLayUV_Penis = self.oMeshPenis.bm.loops.layers.uv.active                       ###INFO: How to access the UV copy we just created
+#         self.oMeshPenis.GetMeshData().uv_textures.active_index = 0    # Go back to the default UV map.  Leaving active on would cause join with body to have the new layer selected on the whole body! 
+# 
+#         #=== Iterate through mounting-area penis verts to re-interpolate their UVs to be similar to the UVs of the body rim ===
+#         for oVert in self.oMeshPenis.bm.verts:
+#             vec2D = Vector((oVert.co.x, oVert.co.z))                # Re-interpolate the 'projected' 3D (Flattened about Y=0) toward UV coordinates 
+#             vec2D   -= vec2D_Point0                                 # First we remove the 'zero point' from the 'flattened 3D' domain...
+#             vec2D.x /= vec2D_Span.x                                 #... then convert 0 - 1 scaling by dividing by the 'flattened 3D' domain span...
+#             vec2D.y /= vec2D_Span.y
+#             vec2D.x *= vecUV_Span.x                                 #... then convert the 0 - 1 to the UV domain's span...
+#             vec2D.y *= vecUV_Span.y 
+#             vec2D   += vecUV_Point0                                 #... and finally add the UV-domain starting point. 
+#             for oLoop in oVert.link_loops:
+#                 oLoop[oLayUV_Penis].uv = vec2D.copy()
+#                         
+#         #=== Set the UV coordinates of the penis rim verts to the exact UV position of the body rim.  (This greatly facilitates creating a 'texture transfer UV' to blend in textures at the seam) ===
+#         for nRimVertPenis in dictRimVertPenis:
+#             oRimVertPenis = dictRimVertPenis[nRimVertPenis]
+#             vecUV_Body = oRimVertPenis.oRimVertBody.vecUV_Body              # Fetch the previously-obtained UV coordinates for the body-side rim vert (obtained in earlier loop while self.oMeshBody.bm was open)
+#             for oLoop in oRimVertPenis.oVertPenis.link_loops:               # Store body's rim vert UV into penis rim-vert UV.
+#                 oLoop[oLayUV_Penis].uv = vecUV_Body
+
+
+
+
+
+
+
+###OBS: Old end of CPenisFit to glue to body.  We now have much better with bridge_edge_loops()!!
+#         if 0:       ###DEV24:!!! Need to break this up and have game glue an already-fitted penis!
+#             print("\n===== L. ATTACH FITTED PENIS TO BODY =====")
+#             #=== Weld the fitted penis to the prepared body ===
+#             SelectObject(self.oMeshBody.GetName())
+#             self.oMeshPenisTempForJoin = CMesh.CreateFromDuplicate(self.oMeshPenis.GetName() + "-TempForJoin", self.oMeshPenis)
+#             self.oMeshPenisTempForJoin.GetMesh().select = True
+#             self.oMeshBody.GetMesh().select = True
+#             bpy.context.scene.objects.active = self.oMeshBody.GetMesh() 
+#     
+#             #=== Join the two meshes and weld the rim verts ===
+#             bpy.ops.object.join()                       ###INFO: This will MESS UP all the vertex ID in the body (penis vert IDs will be fine and appear in the order they were in penis)  After this we have to re-obtain our BMVerts by 3D coordinates as even our stored vertex IDs become meaningless
+#             
+#             #=== Open body and re-obtain access to the body-side rim verts (previous indices & BMVerts rendered invalid after join above) ===        
+#             self.oMeshBody.bm = self.oMeshBody.Open()        ###INFO: We do it this way instead of 'remove_doubles()' as that call will replace about half the body's rim verts with penis rim verts (thereby destroying precious UV & skinning info)
+#             self.oMeshBody.GetMesh().vertex_groups.active_index = oVertGrp_PenisMountingHole.index
+#             bpy.ops.object.vertex_group_select()
+#             aVertsBodyRim = [oVert for oVert in self.oMeshBody.bm.verts if oVert.select]
+#             bpy.ops.mesh.select_all(action='DESELECT')
+#     
+#             #=== Re-link the penis-side rim verts with their associated body-side rim verts.  (We need to merge them in a controlled manner) ===
+#             oRimVertBodyNow = oRimVertBodyRoot
+#             while True:
+#                 oRimVertBodyNow.oRimVertPenis.oVertPenis = self.oMeshBody.bm.verts[oRimVertBodyNow.oRimVertPenis.nVertPenis]       # Update BMVert reference (old one destroyed by join above)
+#                 oRimVertBodyNow.oRimVertPenis.vecVertPenis = oRimVertBodyNow.oRimVertPenis.oVertPenis.co                # Update Penis rim vert location (moved to body rim vert above)
+#                 oRimVertBodyNow.oVertBody = None 
+#                 for oVertBodyRim in aVertsBodyRim:                          # Perform a brute-force search through all body-side rim verts to find the one at the 3D location of the known-good penis-side rim vert
+#                     if oVertBodyRim.co == oRimVertBodyNow.vecVertBody:
+#                         oRimVertBodyNow.oVertBody = oVertBodyRim
+#                         break 
+#                 if oRimVertBodyNow.oVertBody is None:
+#                     raise Exception("###EXCEPTION: Could not find body rim vert at location {} after join.".format(oRimVertBodyNow.vecVertBody))
+#                 print("- After-join re-link of {} to {}".format(oRimVertBodyNow.oVertBody, oRimVertBodyNow.oRimVertPenis.oVertPenis)) 
+#                 if oRimVertBodyNow.bLastInLoop:
+#                     break
+#                 oRimVertBodyNow = oRimVertBodyNow.oRimVertBodyNext
+#     
+#             #=== Create new faces between the two rims.  This will protect both side's information (bones and UVs) ===
+#             oRimVertBodyNow = oRimVertBodyRoot          ###DESIGN21:!!! Some uncertainty as how to leave the merged meshes...  Keep the faces in gametime body?  Modify softobdy (which version? now or future??)
+#             while True:
+#                 oFaceBridgeAcrossRims = self.oMeshBody.bm.faces.new([oRimVertBodyNow.oVertBody, oRimVertBodyNow.oRimVertPenis.oVertPenis, oRimVertBodyNow.oRimVertBodyPrev.oRimVertPenis.oVertPenis, oRimVertBodyNow.oRimVertBodyPrev.oVertBody])
+#                 if oRimVertBodyNow.bLastInLoop:
+#                     break
+#                 oRimVertBodyNow = oRimVertBodyNow.oRimVertBodyNext
+#             self.oMeshBody.bm  = self.oMeshBody.Close()
+
+
+
+
+###MOVE: Smoothing and decimate code.  Belongs at gametime!
+#         if 0:           ###DESIGN:21!!!: Belongs in this call?  Blender file saved without moving body rim and decimation?  How about penis morphs?
+#             print("\n===== M. SMOOTH PENIS-TO-BODY RIM AREA =====")
+#             #=== Smooth the verts in the area of the joined rim vertices ===            ###TUNE: End-result penis smoothing.
+#             bpy.ops.mesh.vertices_smooth(10)                                            ###DESIGN: Remove this when re-texturing penis??            
+#             bpy.ops.mesh.select_more()
+#             bpy.ops.mesh.vertices_smooth(10)            
+#            
+#             print("\n===== N. DECIMATE PENIS GEOMETRY =====")
+#             #=== Decimate the just-attached penis to reduce its vert count to more reasonable levels ===
+#             VertGrp_SelectVerts(self.oMeshBody.GetMesh(), oVertGrp_Penis.name)
+#             bpy.ops.mesh.decimate(ratio=0.17)                               ###TUNE: Decimation ratio!
+
+
+
+
+
+
+
+
+
+
+
+#         #===== B. CREATE SLICES AND SLICE VERTS =====
+#         #=== Generate penis KD Tree to speed up upcoming spacial vert searches ===
+#         oVertGrp_MountingHole = self.oMeshPenis.VertGrp_SelectVerts("_CSoftBody_Penis")                   ####DEV24: Problem? Slightly messed up vert group!
+#         aVertsPenis = [oVert for oVert in self.oMeshPenis.bm.verts if oVert.select]      # Obtain list of all the penis verts
+#         oKDTreePenis = kdtree.KDTree(len(aVertsPenis))                     
+#         for oVertPenis in aVertsPenis:
+#             oKDTreePenis.insert(oVertPenis.co, oVertPenis.index)
+#         oKDTreePenis.balance()
+# 
+#         #=== Generate verts for each slice ===
+#         nLenPenisShaft = vecVertBaseCenter.y - vecVertPenisTip.y
+#         self.nSlices = (int)(nLenPenisShaft / (2 * CPenisRig.C_FlexParticleRadius) + 0.5)  
+#         nLenPerSlice = nLenPenisShaft / (self.nSlices)
+#         nAnglePerSliceVert = 2 * pi / CPenisRig.C_NumVertsPerSlice
+#         print("CPenisRig() - Penis shaft length={:3f}   #Slices={}   LenPerSlice={:3f}".format(nLenPenisShaft, self.nSlices, nLenPerSlice))
+# 
+#         #=== Iterate through each slice and each vert for each slice to create our helper classes ===
+#         aRigPenisSlices = []
+#         for nSlice in range(self.nSlices):
+#             nSlicePosY = vecVertBaseCenter.y - nSlice * nLenPerSlice
+#             vecVertSlice = Vector((vecVertPenisCenter.x, nSlicePosY, vecVertPenisCenter.z))
+#             oRigSlice = CPenisRigSlice(nSlice, vecVertSlice)
+#             aRigPenisSlices.append(oRigSlice)
+#             nSlicePosY_Adjustment = 0
+#             if nSlice == self.nSlices-1:
+#                 nSlicePosY_Adjustment = -0.3 * nLenPerSlice           ###DEV24: Keep??  ###HACK24: Manually move search vert a bit further so closest verts are closer to penis tip (because of penis tip angle)
+#             for nSliceVert in range(CPenisRig.C_NumVertsPerSlice):
+#                 nAngle = nSliceVert * nAnglePerSliceVert
+#                 x = vecVertPenisCenter.x + CPenisRig.C_RadiusRoughPolygon * sin(nAngle)
+#                 z = vecVertPenisCenter.z + CPenisRig.C_RadiusRoughPolygon * cos(nAngle)
+#                 if nSlice == 0:
+#                     nSlicePosY_Adjustment = 0.019 - 0.75 * CPenisRig.C_RadiusRoughPolygon * cos(nAngle)       ###HACK24: Manually move search vert under scrotum for base bones.  We need to pass scrotum and must form slice 0 at an angle
+#                 vecVertSliceVert = Vector((x, nSlicePosY + nSlicePosY_Adjustment, z))
+#                 vecVertPenisClosest, nVertPenisClosest, nDist = oKDTreePenis.find(vecVertSliceVert)     #- Find closest penis vert around each edge vert
+#                 vecVertPenisClosestPulledBack = Vector()
+#                 vecVertPenisClosestPulledBack.x = vecVertPenisClosest.x - CPenisRig.C_FlexParticleRadius * sin(nAngle)            # 'Pull back' the flex particle radius from the bone position (so collisions occur at skin leve during gameplay)
+#                 vecVertPenisClosestPulledBack.y = vecVertPenisClosest.y
+#                 vecVertPenisClosestPulledBack.z = vecVertPenisClosest.z - CPenisRig.C_FlexParticleRadius * cos(nAngle)
+#                 oSliceVert = oRigSlice.AddSliceVert(nSliceVert, vecVertPenisClosestPulledBack)     ###DEV24: Not fully integrated... keep helper classes?
+#                 oVisCube = oVisualizerCubes.GetCube("P" + oSliceVert.sNameBone, vecVertSliceVert, 'Red', 1, False, 3) 
+#                 oVisCube = oVisualizerCubes.GetCube("C" + oSliceVert.sNameBone, vecVertPenisClosestPulledBack, 'Green', 1, False, 3)
+#                 
+#         #=== Add additional 'penis tip' slice verts to the last slice to keep expanding penetration past tip-most particle created in next group below ===
+#         oRigSlice = CPenisRigSlice(self.nSlices, vecVertPenisTip)       ###DEV24:!!!!!!!!!!  What pos?
+#         aRigPenisSlices.append(oRigSlice)
+#         nSliceVerts_LastSlice = 0   #CPenisRig.C_NumVertsPerSlice                     # Already this many verts in this last slice... we add more to it.
+# #         self.oMeshPenis.VertGrp_SelectVerts(oVertGrp_PenisTip.name)
+# #         for oVert in aVertsPenisTip:
+# #             vecVert = oVert.co - (oVert.normal * CPenisRig.C_FlexParticleRadius * 0.5)       # Pull back the last slice verts partly off their position but inward part of the particle distance (so they protrude out of penis tip a bit a bit to facilitate penetration along with tip-most particle below)
+# #             oRigSlice.AddSliceVert(nSliceVerts_LastSlice, vecVert)
+# #             nSliceVerts_LastSlice += 1
+#             
+#         #=== Create the 'tip-most' particle at the very tip of the penis.  This one sticks out more out of penis to enable penetration with a single particle ===
+#         oRigSlice.AddSliceVert(nSliceVerts_LastSlice, vecVertPenisTip - Vector((0, CPenisRig.C_FlexParticleRadius, 0)))     ###DEV24:!!!!!! pos ok??
+#         self.oMeshPenis.bm = self.oMeshPenis.Close()                 # Close the mesh so we can now create new penis bones
+#         
+# 
+# 
+#         #===== C. CREATE BONES =====
+#         #=== Obtain access to armature ===
+#         oParentArmature = SelectObject(self.oMeshPenis.GetMesh().parent.name)            # Must select armature object...  ###IMPROVE: Use new method with 'self.oMeshPenis.GetMesh().modifiers["Armature"].object'? 
+#         bpy.ops.object.mode_set(mode='EDIT')                            #... and then place it in edit mode for us to be able to view / edit bones
+#         oArm = self.oMeshPenis.GetMesh().modifiers["Armature"].object.data
+#         oBoneRigSliceNow = oArm.edit_bones["Genitals"]                  ###IMPROVE: Would be nice to delete bone hierarchy so this code never creates duplicate
+#         
+#         #=== Remove bones that start with the specified bone name prefix ===
+#         Bones_RemoveBonesWithNamePrefix(oArm, CPenisRig.C_BonePrefix)
+#             
+#         #=== Create new penis bones for the shaft ===
+#         for oRigSlice in aRigPenisSlices:                     ###CHECK24: Uretra gets no surrounding bones ###DESIGN24: But what about collider??
+#             oBoneRigSlice = oArm.edit_bones.new("{}{}".format(CPenisRig.C_BonePrefix, chr(65+oRigSlice.nSliceIndex)))
+#             oBoneRigSlice.parent = oBoneRigSliceNow
+#             oBoneRigSlice.head = oRigSlice.vecVertSlice
+#             oBoneRigSlice.tail = oBoneRigSlice.head - Vector((0,0.001,0))                ###INFO: A bone *must* have different head and tail otherwise it gets deleted without warning = DUMB!
+#             oBoneRigSlice.use_connect = False
+#             oBoneRigSlice.envelope_distance = oBoneRigSlice.envelope_weight = oBoneRigSlice.head_radius = oBoneRigSlice.tail_radius = 0
+# 
+#             for nSliceVert in range(len(oRigSlice.aSliceVerts)):
+#                 oRigSliceVert = oRigSlice.aSliceVerts[nSliceVert]
+#                 nDistBone = nLenPerSlice                                                ###TUNE:!!!
+#                 oBoneRigSliceVert = oArm.edit_bones.new(oRigSliceVert.sNameBone)
+#                 oBoneRigSliceVert.parent = oBoneRigSlice
+#                 oBoneRigSliceVert.head = oRigSliceVert.vecVertSliceVert
+#                 oBoneRigSliceVert.tail = oBoneRigSliceVert.head - Vector((0,0.001,0))       ###IMPROVE: Tail along same vector?
+#                 oBoneRigSliceVert.use_connect = False
+#                 oBoneRigSliceVert.envelope_weight = 1
+#                 oBoneRigSliceVert.envelope_distance = nDistBone * CPenisRig.C_RatioEnvelopeToBone     ###NOTE: 'envelope distance does not appear to work as we want (e.g. setting head_radius and tail_radius ot zero and our radius in envelope_distance -> head and tail get set to that value!)
+#                 oBoneRigSliceVert.head_radius = oBoneRigSliceVert.tail_radius = nDistBone * (1 - CPenisRig.C_RatioEnvelopeToBone)
+#             oBoneRigSliceNow = oBoneRigSlice
+#         
+#         #=== Create bone for scrotum ===                                ###IMPROVE: Scrotum very preliminary.  improve with one for each ball?  More than one bone down?
+#         nDistBone = 0.063
+#         oBoneRigScrotum = oArm.edit_bones.new(CPenisRig.C_BonePrefix + "Scrotum")
+#         oBoneRigScrotum.parent = oArm.edit_bones[CPenisRig.C_BonePrefix + "A"]                     # Would be better to access by variable...
+#         oBoneRigScrotum.head = vecVertBaseCenter + Vector((0,0.0181,-0.150))    ###HACK: Scrotum center position approximated from a large penis.  Would not fit a small penis well... ###IMPROVE: Scan penis verts to determine scrotum center 
+#         oBoneRigScrotum.tail = oBoneRigScrotum.head - Vector((0,0,-0.001))
+#         oBoneRigScrotum.use_connect = False
+#         oBoneRigScrotum.envelope_weight = 1
+#         oBoneRigScrotum.envelope_distance = nDistBone * CPenisRig.C_RatioEnvelopeToBone
+#         oBoneRigScrotum.head_radius = oBoneRigScrotum.tail_radius = nDistBone * (1 - CPenisRig.C_RatioEnvelopeToBone)       ###INFO: How to setup an effective bone bleed.  Blender doesn't seem to like it when we set head_radius / tail_radius too small
+#     
+#         #=== Un-parent and re-parent with envelope weights to automatically assign bone weights via the bone envelope we just defined ===
+#         bpy.ops.object.mode_set(mode='OBJECT')
+#         SelectObject(self.oMeshPenis.GetName())
+#         self.oMeshPenis.VertGrp_RemoveAll()                                              # Remove all vextex groups before envelope re-weight
+#         bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')                ###INFO: How to un-parent.
+#         oParentArmature.select = True
+#         bpy.context.scene.objects.active = oParentArmature
+#         bpy.ops.object.parent_set(type='ARMATURE_ENVELOPE')                     ###INFO: How to re-parent  ###INFO: How to re-weight an entire mesh by envelope
+#         SelectObject(self.oMeshPenis.GetName())
+#         oParentArmature.hide = True
+#         bbb remove inv
+#         self.oMeshPenis.VertGrp_Remove(re.compile(CPenisRig.C_BonePrefix))                 # Keep only the bones vertex groups we just created
+#         
+#         #=== Perform initial bone limiting and normalization ===
+#         bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
+#         bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)   # Limit to the four bones Unity can do at runtime.
+#         bpy.ops.object.vertex_group_normalize_all(lock_active=False)                ###DESIGN24:! Keep here?  Do at very end?
+#         bpy.ops.object.mode_set(mode='OBJECT')
+
+
+
+
+
+
+
+
+
+    #C_BonePrefix = "+Penis-"            # Prefix to all the bones we're creating.  The prefixing '+' means it's a 'dynamic bone' that our skinning info pipe transfers with more information (than design-time defined 'static bones')
+    #C_FlexParticleRadius = 0.01         ###WEAK24:!!! Copy of Unity's super-important CGame.INSTANCE.particleDistance / 2.  Need to 'pull back' the bones by the particle radius so collisions appear to be made at skin level instead of past it.  Since this value rarely changes this 'copy' is tolerated here but in reality the rig must be redone everytime this value chaanges.
+    #C_NumVertsPerSlice = 8              # Number of verts per slice = multi-sided polygon each slice.  Must cover the entire penis in Flex particles for good collisions
+    #C_RadiusRoughPolygon = 0.04         # Radius of rough polygon formed around penis.  Each vert will snap to closest penis vert
+    #C_RatioEnvelopeToBone = 0.90        # Ratio of bone envelop to bone head/tail (e.g. leave 90% most of the 'size we want' to envelope is ratio of 0.90
+#         self.oMeshPenis.bm = self.oMeshPenis.Open()
+#         oVertGrp_Uretra = self.oMeshPenis.VertGrp_SelectVerts("_CPenis_Uretra")
+#         for oVert in self.oMeshPenis.bm.verts:             ###OPT:! Sucks we have to iterate through all verts to find one!
+#             if oVert.select:
+#                 oVertUretra = oVert
+#         vecVertPenisCenter = oVertUretra.co.copy()
+#         vecVertPenisCenter.x = 0                     # Make sure we're centered
+# 
+#         #=== Get tip-most vertex.  We need an accurate length to properly space out slices.  This is where the 'tip particle' will go to make penetration possible at game-time === 
+#         oVertGrp_PenisTip = self.oMeshPenis.VertGrp_SelectVerts("_CPenis_Tip")
+#         aVertsPenisTip = []
+#         for oVert in self.oMeshPenis.bm.verts:             ###IMPROVE: Write helper function for this?
+#             if oVert.select:                    ###WEAK: Group contains 4-6 verts for the last slice.  We take the first one as 'good enough'
+#                 oVertTip = oVert
+#                 aVertsPenisTip.append(oVert)
+#         vecVertPenisTip = oVertTip.co.copy()
+#         vecVertPenisTip.z = vecVertPenisCenter.z    # Farthest vert on penis is too high.  Set the tip to be at uretra-height.
+#         vecVertPenisTip.x = 0                       # Make sure we're centered
+# 
+#         #=== Get the most forward vert at penis base.  This will be the beginning of the first 'slice' ===          ###DESIGN24: Really at this super-far connection point?  Go closer to shaft?? 
+#         oVertGrp_MountingHole = self.oMeshPenis.VertGrp_SelectVerts("_CSoftBody_Penis")                   ####DEV24: Problem? Slightly messed up vert group!
+#         bpy.ops.mesh.region_to_loop()
+#         nVertBaseTopCenterY_Min = sys.float_info.max
+#         for oVert in self.oMeshPenis.bm.verts:
+#             if oVert.select:
+#                 nVertBaseTopCenterY = oVert.co.y
+#                 if nVertBaseTopCenterY_Min > nVertBaseTopCenterY:
+#                     nVertBaseTopCenterY_Min = nVertBaseTopCenterY
+#                     oVertBaseCenter = oVert
+#         vecVertBaseCenter = oVertBaseCenter.co.copy()                   ###INFO:!!!! Damn this fucking problem of forgetting copy() causes problems!!  REMEMBER to ALWAYS copy() information out of object refernces because they will quickly point to garbage when ref changes!
+#         vecVertBaseCenter.x = 0                 # Make sure we're centered
+
+
+
+
+
+
+
+
+
+
+# class CPenisRigSlice():              # CPenisRigSlice: These slices form '8-sided polygons that slice penis to form coherent collider... This helper class to store CPenisRigSliceVerts representing penis surface bones, flex particles, flex shapes and flex fluid collider verts.
+#     
+#     def __init__(self, nSliceIndex, vecVertSlice):
+#         self.nSliceIndex    = nSliceIndex           # Our index / ordinal along penis.  0 = base, last = tip
+#         self.vecVertSlice   = vecVertSlice          # The position at the center of this slice (close to penis center)
+#         self.aSliceVerts    = {}                    # Dictionary of our slice verts
+# 
+#     def AddSliceVert(self, nSliceVertIndex, vecVertSliceVert):
+#         oRigSliceVert = CPenisRigSliceVert(self, nSliceVertIndex, vecVertSliceVert)
+#         self.aSliceVerts[nSliceVertIndex] = oRigSliceVert
+#         return oRigSliceVert
+# 
+#     def __str__(self):
+#         return "[RigSlice #{:2d}  Y={:5d}]".format(self.nSliceIndex, self.nY)
+# 
+# 
+# class CPenisRigSliceVert():              # CPenisRigSliceVert: Helper class that representing penis surface bones, flex particles, flex shapes and flex fluid collider verts
+#     
+#     def __init__(self, oRigSlice, nSliceVertIndex, vecVertSliceVert):
+#         self.oRigSlice          = oRigSlice         # Our owning penis slice
+#         self.nSliceVertIndex    = nSliceVertIndex   # Index / ordinal of this instance inside self.oRigSlice.aSliceVerts[]
+#         self.sNameBone          = "{}{}{}".format(CPenisRig.C_BonePrefix, chr(65+self.oRigSlice.nSliceIndex), chr(65+self.nSliceVertIndex))
+#         self.vecVertSliceVert   = vecVertSliceVert  # Our vert position
+# 
+#     def __str__(self):
+#         return "[RigSliceVert #{:2d}  X={:5d}  Z={:5d}]".format(self.nSliceVertIndex, self.nX, self.nZ)
+
+
+
+
+
+
+
+
+
+
+
+
+
+#------------ CBody extra
+
+
+
+
+
+        # Convert to tris and remove the super-close geometry
+        ###DEV24:2????? Cleanup_RemoveDoublesAndConvertToTris(0.001)     ###TUNE:!!! Useful to remove stuff user can't really see?                                                              
+
+        #=== Create a data layer that will store source body verts for possible vert domain traversal (e.g. soft body skin) ===
+        #self.oMeshBody.DataLayer_Create_SimpleVertID(G.C_DataLayer_VertSrcBody)
+        
+        
+        
+        
+        #=== Fix our copy of the morphing body.  It went to Unity and multi-material verts had to be split ===
+#         if self.oMeshBody.Open(bSelect = True):
+#             self.oMeshBody.Util_SafeRemoveDouble(0)
+#             self.oMeshBody.Close(bDeselect = True)
+        
+        
+        
+        
+#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Eyelashes")       # Remove materials AND their associated verts to remove unneeded geometry like teeth, eyes, ears, etc.
+#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Fingernails")
+#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Toenails")
+#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Cornea")
+#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Pupils")
+#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Teeth")
+#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Sclera")
+#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Ears")
+#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Irises")
+#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "EyeSocket")
+#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "EyeMoisture")
+#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Mouth")
+#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Vagina&Rectum")
+
+
+#             self.oMeshBodySimplified.VertGrps_SelectVerts(r"Index[2-3]")    ###IMPROVE: ###OPT:!! Remove vertex group too?
+#             self.oMeshBodySimplified.VertGrps_SelectVerts(r"Mid[2-3]",   bClearSelection = False)      ###TODO24: weld toes / fingers together instead of clipping them!
+#             self.oMeshBodySimplified.VertGrps_SelectVerts(r"Ring[2-3]",  bClearSelection = False)      ###OPT:!! Could do most of this in CBodyImporter?
+#             self.oMeshBodySimplified.VertGrps_SelectVerts(r"Pinky[2-3]", bClearSelection = False)
+#             for nRepeat in range(3):
+#                 bpy.ops.mesh.select_more()
+#             bpy.ops.mesh.delete(type='FACE')
+#             self.oMeshBodySimplified.VertGrps_SelectVerts(r"Toe[1-4]_2")
+#             self.oMeshBodySimplified.VertGrps_SelectVerts(r"BigToe_2", bClearSelection = False)
+#             for nRepeat in range(3):
+#                 bpy.ops.mesh.select_more()
+#             bpy.ops.mesh.delete(type='FACE')
+#             self.oMeshBodySimplified.VertGrps_SelectVerts(r"Thumb[2-3]")
+        

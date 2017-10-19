@@ -54,6 +54,7 @@ class CFlexSoftBody():
         self.sNameVertGrp_BoneParent        = sNameVertGrp_BoneParent
         self.aListBonesToTakeOver           = aListBonesToTakeOver
         self.bPreventInnerParticleCreation  = bPreventInnerParticleCreation
+        self.oMeshSoftBody                  = None      # The CMesh created for this softbody shape.  It is sent to Unity and we manage its lifecycle.
 
         self.aParticleInfo          = CByteArray()      # Serialiazable array of super important particle information.  Tells Unity if a particle is skinned or simulated, what softbody ID it has, what bone it has, etc   
         self.aShapeVerts            = CByteArray()      # Serialiazable array of which vert / particle is also a shape
@@ -65,6 +66,16 @@ class CFlexSoftBody():
     
     def OnModifyParticles(self):
         print("- CFlexSoftBody.OnModifyParticles() called.  Nothing to do in base class")
+        
+    def DoDestroy(self):
+        #=== Destroy the dynamic bones we added to our armature ===
+        SelectObject(self.oBody.oArmNode.name) 
+        bpy.ops.object.mode_set(mode='EDIT')
+        Bones_RemoveBones(self.oBody.oArm, re.compile("\\" + G.C_Prefix_DynBones + self.sNameSoftBody))     ###WEAK: Adding '\' so the '+' is taken literally by regex 
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        #=== Destroy our CMesh ===        
+        self.oMeshSoftBody.DoDestroy()
 
 
 class CFlexSoftBodyPenis(CFlexSoftBody):

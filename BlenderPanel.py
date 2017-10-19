@@ -137,8 +137,8 @@ class gBL_show_real(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        o = bpy.data.objects["WomanA"];         o.name = o.data.name = "WomanA-Fake"
-        o = bpy.data.objects["WomanA-Real"];    o.name = o.data.name = "WomanA"
+        o = bpy.data.objects["Woman"];         o.name = o.data.name = "Woman-Fake"
+        o = bpy.data.objects["Woman-Real"];    o.name = o.data.name = "Woman"
         o = bpy.data.objects["BodySuit"];       o.name = o.data.name = "BodySuit-Fake"
         o = bpy.data.objects["BodySuit-Real"];  o.name = o.data.name = "BodySuit"
         return {"FINISHED"}
@@ -149,8 +149,8 @@ class gBL_show_fake(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        o = bpy.data.objects["WomanA"];         o.name = o.data.name = "WomanA-Real"
-        o = bpy.data.objects["WomanA-Fake"];    o.name = o.data.name = "WomanA"
+        o = bpy.data.objects["Woman"];         o.name = o.data.name = "Woman-Real"
+        o = bpy.data.objects["Woman-Fake"];    o.name = o.data.name = "Woman"
         o = bpy.data.objects["BodySuit"];       o.name = o.data.name = "BodySuit-Real"
         o = bpy.data.objects["BodySuit-Fake"];  o.name = o.data.name = "BodySuit"
         return {"FINISHED"}
@@ -170,9 +170,9 @@ class gBL_temp1(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        #CBodyBase_Create(0, 'Woman', 'WomanA', None)
+        #CBodyBase_Create(0, 'Woman', 'Woman')
         G.CGlobals.Initialize(0.02)
-        CBodyBase_Create(0, 'Shemale', 'WomanA-Base.001', None)
+        CBodyBase_Create(0, 'Shemale')
         CBodyBase_GetBodyBase(0).CreateCBody()
 #         CBodyBase_GetBodyBase(0).OnChangeBodyMode('Play')
 #         CBodyBase_GetBodyBase(0).oBody.oMeshBody.GetMesh().hide = True    ###HACK17:
@@ -194,11 +194,17 @@ class gBL_temp2(bpy.types.Operator):
 
 class gBL_temp3(bpy.types.Operator):
     bl_idname = "gbl.temp3"
-    bl_label = "3: XXX"
+    bl_label = "3: VG_Copy"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        #oClothSrc = CClothSrc.CClothSrc(CBodyBase_GetBodyBase(0), "BodySuit") 
+        #oClothSrc = CClothSrc.CClothSrc(CBodyBase_GetBodyBase(0), "BodySuit")
+        #CBodyImporter.CBodyImporter_Original.Materials_MergeSlavesToMasters()
+#         oMeshSrc = CMesh.Create("Woman-Original")
+#         oMeshDst = CMesh.Create("Woman-Source")
+        oMeshSrc = CMesh.Attach("PenisA-VertGroupReference")
+        oMeshDst = CMesh.Attach("TAB_Gen3M_27097.Shape")
+        CBodyImporter.Util_CopyVertGroups(oMeshSrc, oMeshDst)        
         return {"FINISHED"}
 
 class gBL_temp4(bpy.types.Operator):
@@ -225,42 +231,44 @@ class gBL_temp5(bpy.types.Operator):
 
 class gBL_temp6(bpy.types.Operator):
     bl_idname = "gbl.temp6"
-    bl_label = "6: Cloth3D"
+    bl_label = "6: Import-Penis"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBodyBase_GetBodyBase(0).aCloths['MyShirt'].ConverBackTo3D()
+        #CBodyBase_GetBodyBase(0).aCloths['MyShirt'].ConverBackTo3D()
+        CBodyImporter.CBodyImporter_Penis()
+        #CBodyImporter.CBodyImporter_Original() 
         return {"FINISHED"}
 
 class gBL_temp7(bpy.types.Operator):
     bl_idname = "gbl.temp7"
-    bl_label = "7: Import"
+    bl_label = "7: Import-Source"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        oBodyImporter = CBodyImporter.CBodyImporter() 
+        CBodyImporter.CBodyImporter_Source() 
         return {"FINISHED"}
 
 class gBL_temp8(bpy.types.Operator):
     bl_idname = "gbl.temp8"
+    #bl_label = "8: ?"
     bl_label = "8: PenisFit"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        oMeshSrc = CMesh.Create("WomanA-Source")          
-        oMeshBody = CMesh.CreateFromDuplicate("ShemaleA-Source", oMeshSrc)        ###DEV24:!!
-        ShapeKeys_RemoveAll()
-        CPenis.CPenisFit(oMeshBody)
-        #CBodyImporter.CBodyImporter.INSTANCE.DEBUG_ShowDazPose()
+        #oMeshBody.ShapeKeys_RemoveAll()
+        CPenis.CPenisFit.INSTANCE = CPenis.CPenisFit("Woman", "Shemale")
+        CPenis.CPenisFit.INSTANCE.JoinPenisToBody()
         return {"FINISHED"}
 
 class gBL_temp9(bpy.types.Operator):
     bl_idname = "gbl.temp9"
-    bl_label = "9: PenisRig"
+    bl_label = "9: ShakeKeyPr"
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CPenis.CPenisRig("ShemaleA-Source-Penis-Fitted", "ShemaleA-Source")        ###DEV24:!!!! Referemce!!
+        oMesh = CMesh.Attach(bpy.context.scene.String1)
+        oMesh.ShapeKey_Print("__")
         #CBodyImporter.CBodyImporter.INSTANCE.CreateVisibleBoneRig()
         return {"FINISHED"}
 
@@ -270,7 +278,7 @@ class gBL_temp10(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CHoleRig.CHoleRig("WomanA", 0.15)
+        CHoleRig.CHoleRig("Woman", 0.15)
         return {"FINISHED"}
 
 class gBL_temp11(bpy.types.Operator):
@@ -289,7 +297,7 @@ class gBL_temp12(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         #self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBodyBase_Create(0, 'Woman', 'WomanA', None)
+        CBodyBase_Create(0, 'Woman', 'Woman')
         CBodyBase_GetBodyBase(0).CreateCBody()
         return {"FINISHED"}
 
@@ -299,7 +307,7 @@ class gBL_temp13(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         #self.report({"INFO"}, "GBOP: " + self.bl_label)
-        CBodyBase_Create(0, 'Shemale', 'ShemaleA', None)
+        CBodyBase_Create(0, 'Shemale', 'ShemaleA')
         CBodyBase_GetBodyBase(0).CreateCBody()
         return {"FINISHED"}
         
@@ -310,7 +318,61 @@ bpy.utils.register_module(__name__)
 
 
         #CBody._aBodyBases[0].SlaveMesh_ResyncWithMasterMesh("BreastCol")
-        #CBody(0, 'WomanA', 'Shemale', 'PenisW-EroticVR-A-Big', 5000)
+        #CBody(0, 'Woman', 'Shemale', 'PenisW-EroticVR-A-Big', 5000)
         #G.CGlobals._oTempHACK = CMesh.CMeshUV("BodySuit", bpy.data.objects["BodySuit"])
         #G.CGlobals._oTempHACK.ConvertBackTo3D()
         #CBody._aBodyBases[0].aCloths["MyShirt"].PrepareClothForGame()
+
+
+
+
+# class CBodyImporter_Source(CBodyImporter_Base):
+#     
+#     def __init__(self):
+#         
+#         print("\n=== CBodyImporter_Source() ===")
+# 
+#         #=== First-order intialization of the raw DAZ mesh ===
+#         self.oMesh = CMesh.Attach(self.sNamePrefix_Daz + ".Shape")              # The DAZ exporter appends '.Shape' to the actual body mesh.
+#         self.oMesh.SetName(self.sNamePrefix + self.sNameSuffix)
+#         self.oMesh.GetMesh().show_all_edges = True
+#         SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', True)
+#     
+#         #=== Remove the root node's children that are NOT the expected mesh names (Deletes unwanted DAZ nodes like separated genitals) ===
+#         oRootNodeO = SelectObject(self.oMesh.GetMesh().parent.name, True)     # Select parent node (owns the bone rig)
+#         for oChildNodesO in oRootNodeO.children:
+#             if oChildNodesO.name != self.oMesh.GetName():
+#                 DeleteObject(oChildNodesO.name)
+# 
+#         if self.oMesh.Open():
+#             bpy.ops.mesh.customdata_custom_splitnormals_clear()         ###INFO:!! Fixes the annoying 'Invalid clnors in this fan!' warnings... See https://blender.stackexchange.com/questions/77332/invalid-clnors-in-this-fan-warning  ###CHECK:!! Are custom loop normal useful for anything?  Placing in this super-important call appropriate for all contexts?  (Can damage some meshes??)
+#             bpy.ops.mesh.select_all(action='DESELECT')          ###CHECK: No longer required?  What happened to export / import?
+#             bpy.ops.object.vertex_group_sort(sort_type='NAME')
+#             self.oMesh.Close()
+#         
+#         #=== Lock up all the DAZ vertex groups for protection ===
+#         self.oMesh.VertGrp_LockUnlock(True, G.C_RexPattern_EVERYTHING)
+# 
+#         self.oMeshOriginal = CMesh.Attach(self.sNamePrefix + "-Original")       # Obtain access to the original mesh (Original import must have ran before!)
+# 
+#         DeleteObject(self.sNamePrefix_Daz)                          # Delete the just-imported armature object.  We use the armature created in original import step
+#         self.oMesh.SetParent(self.sNameArmatureNode)                # Reparent the just-imported source mesh to the previously-processed armature node created in 'CBodyImporter_Original' class
+# 
+#         #=== Rotate and rescale all the morphs / shape keys so source mesh is properly oriented in Blender without any node rotation.  We also change their names to human-friendly names ===
+#         Util_ConvertShapeKeys(self.oMesh, self.sNamePrefix_Daz)
+# 
+#         #=== Connect our mesh to the armature of the '-Original' mesh previously imported ===
+#         self.oMesh.GetMesh().modifiers[0].name = "Armature"         # Ensure first modifier is called what we need throughout codebase (FBX sets only one modifier = Armature)
+#         self.oMesh.GetMesh().modifiers["Armature"].object = bpy.data.objects[self.sNameArmatureNode]  
+# 
+#         #=== Copy the vertex groups from the original mesh to the just-imported 'source' one ===  ###NOTE: Note that this procedure CANNOT transfer vertex groups that have verts at exactly 0 weight!!  (Set them to a tiny value like 1e-30 or something)
+#         Util_CopyVertGroups(self.oMeshOriginal, self.oMesh)        
+# 
+#         #=== Merge the slave materials into the master ones (as we did for the original mesh) ===
+#         self.Materials_MergeSlavesToMasters(bDefineResources = False)
+# 
+#         #=== Modify the source woman mesh to give it new bones around vagina opening ===         ###DESIGN: Merge CHoleRig here??
+#         if self.bIsWoman:
+#             CHoleRig.CHoleRig(self.oMesh, 0.15)
+# 
+#         print("--- CBodyImporter_Source() finishes ---\n")

@@ -542,23 +542,6 @@ def Unity_GetMesh_Array_OBSOLETE(sNameMesh, sNameArray):        #=== Send Unity 
 
 
 
-def gBL_GetBones(sNameMesh):  # Called by the CBodeEd (Unity's run-in-edit-mode code for CBody) to update the position of the bones for the selected Unity template.  Non destructive call that assumes existing bones are already there with much extra information such as ragdoll colliders, components on bones, etc.)
-    # This call only updates bones position and creates bones if they are missing.  Rotation isn't touched and extraneous bones have to be deleted in Unity if needed.
-    print("\n=== gBL_GetBones('{}') ===".format(sNameMesh))
-    oMeshO = SelectObject(sNameMesh)
-    if "Armature" not in oMeshO.modifiers:
-        return G.DumpStr("ERROR: gBL_GetBones() cannot find armature modifier for '" + sNameMesh + "'")
-    oArmObject = oMeshO.modifiers["Armature"].object        ###INFO: How to get Blender node that holds bones
-    oArm = oArmObject.data
-    
-    #=== Send bone tree (without bone positions) Unity needs our order to map to its existing bone which remain the authority ===
-    oBA = CByteArray()
-    SelectObject(oArmObject.name)          # Select armature node
-    bpy.ops.object.mode_set(mode='EDIT')
-    oBA.AddBone(oArm.edit_bones[0])             # Recursively send the bone tree starting at root bone (0) 
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-    return oBA.CloseArray() 
 
 def gBL_ReleaseMesh(sNameMesh):  # Release the python-side and blender-c-side structures for this shared mesh
     if sNameMesh in bpy.data.objects: 

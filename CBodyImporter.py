@@ -1,101 +1,53 @@
 ###DISCUSSION: 
-#=== REV20: MATERIALS ===
-#TODAY: Rethink material and texture import to coalesce with strong Unity dependance.
-    # Fix Unity transparency issues with eyes and eyelashes (same with Blender)
-    # Unity coalescing around texture wrong!  Loses info we need for eye transparency?
-    # Then... re-import woman, fix her issues and try to fit in same file for dual import in Unity!
-    # Then... posing!! :)
-###BROKEN: Extra geometry on breasts: rewrite to use _CSoftBody_XXX?
-###IDEA: Layers for showing debug stuff... import body on needed layers!!
+
+###DOCS25: Sept 2017 - Body importer re-design
+
+#- Remove vert groups after? (replace?) 
+#- Need to re-assign needed vert groups!!
+
+
+#----- Morphing definition -----
+#- How to encapsulate different levels for each purchased level?
+#- How to enforce only one morph at a time in basic modes?
 
 
 
-#- Have to redo that step between original to work mesh... don't require a fbx but just a button when ready to transition!
-#- Redo material / textures:
-    #- Assume user imported into Unity and renamed textures and materials there...
-    #- Blender first import preprocesses the mat names and textures linking them to their permanent Unity folder on  
-#- Man import of -Original mesh creates 'Basis' key... why??
-#- Original and work mesh duplicate their materials... fix this!!
-    #- Also usage of the same bitmap can have different material name (e.g. Torso and Torso.001)
-    #- Would be nice to rename texture files to same as material name!
-#- Rename 'Dicktator_Genitalia'? 
-#- Why the unweighted verts in Man import??
+#----- Penis importer -----
+#- Have auto-port of vertex groups when an existing 'Penis' mesh exists.
+#- Fix body importer to import bones too
+    #- Will need to move bones like the mesh itself
+        #- But... movement is different for some morphs!  Forced to disregard?
+#- Material processing
+#- Missing under vein morphs
 
-# Material simplification: a good idea?  (Or do we want different material attributes like shininess for nails, etc?)
-# Arms: Arms, Fingernails
-# Legs: Legs, Toenails
-# Eyes: Eyes, Cornea, Pupils, Sclera, Irises
-# Face: Face, Lips, Ears, EyeSocket
-# Mouth: Teeth,
-# Torso: d40!!, PenisRim???
-# Dicktator_Genitalia: d45
-#X EyeMoisture, EyeSocket? (Close to nose visible?)  Cornea has to be transparent! (Or delete some inner verts??)
-    # Current export into Unity by coalescing by texture name wrong!  (e.g. cornea needing to be transparent)  MUST coalesce in Blender import!!
-    # For transparency in Unity select standard shader with an Albedo alpha of zero
-    # For eyelash need standard shader in 'Fade' rendering mode with hair color in Albedo and 0 smoothness
+
+#- Fix Unity transparency issues with eyes and eyelashes (same with Blender)
+#IDEA: Use starting materials to create a 'decimate list' for the simplified body (to save manual time later)
 
 
 
-#=== IMPORT PROCEDURE ===
-#- Create a new folder such as 'ManA', 'WomanA' for the model in Unity's Resources/Models/ folder
-#- Copy all useful textures from DAZ folders to that folder.
-    #- Save the *.TIF normal maps as JPEGs
+
+#=== NEXT ===
 #- Manually adjust Unity import parameters for each imported file: 4096 bitmap size, Normal for Normal files, etc
-#- Rename each texture file such as 'ManA-TorsoN' or 'WomanA-Legs', etc
-#- In Blender import the raw DAZ file into Unity.
-#- Select 'File' / 'External Data' / 'Unpack all into files' / 'Use files in original locations (create when necessary)' (bpy.ops.file.unpack_all(method='USE_ORIGINAL'))
-#- Run the CBodyImporter import script.  It will automatically update the path of each texture to the Unity folder and update its filename
+###BROKEN: Extra geometry on breasts: rewrite to use _CSoftBody_XXX?
 
+#=== TODO ===
+#- Write a function to pass vertex groups from one mesh to another -> Will be needed I'm sure!
+#?- BUG: Needs pivot mode to be set to 3D cursor!!!!
+#- Add more penis shape keys created from bone modifications
+    #- Idea: Smooth to remove some problems before baking?
 
-#=== IMPORT SETTINGS ===
-#- Disable 'Use pre/post rotation'
-#- Disable 'Import Animation' (optional)
-
-#=== IMPORTER TESTS ===
-#- To view DAZ raw bone properties, load and activate a model, go to 'Parameters' tab, select a bone (like 'Left Shin', activate 'Edit mode' (tiny context menu above tab), view properties unde 'Rigging' such as x,y,z Origin, end and Orientation
-#- 
-#- 
-#- 
-#- 
-
-
-#=== PROBLEMS ===
-    #- Need to properly switch between first run (creating game mesh) and additional runs (adding shape keys)
-        #- Need to create basis in first game mesh
-    #- Add print()
-    #- How to name shape key??  Dev does it after command??
-        #- Way to extract imported filename?
-    #- Test the whole thing from first import, first game mesh import, additional shape imports...
-        #- Refactor with FirstImport, ImportGameMesh ImportShapeKey?
-
-#- Need to create new game mode to morph body and re-simulate bodysuit.
+#?- Need to create new game mode to morph body and re-simulate bodysuit.
     #- Expand CObject and CProp into Blender
     #- CObject has specialized subclasses such as CObjectDynamic and CObjectDynamicShapeKeys
     #- CBody owns a CObjectDynamicShapeKeys and exports to Unity.
     #- Bad naming of root node?
-# Remember 90 degree roll applied to both elbows!
-
-#- Finger and toes have slightly different orientations...
-#- Feet axis is poor 
-#- Neck upper and lower and head should have same orientation?
-
-#=== NEXT ===
-
-#=== TODO ===
-#- BUG: Needs pivot mode to be set to 3D cursor!!!!
-#- Remove 'EyeMoisture' verts?
-#- Have to set eyelashes and cornea transparent: Remove 'use' from textures and have calculate with 
-    #- Can export alpha better with different daz export??
-#- Do we remove geometry for things we don't use ('eyecover'?)  What to do with eyelashes?
-#- Remove geometry on some parts
-#- Add geometry for breasts!
-#- Retest FBX morph export! 
-#- Move to a new file!C
-#- All lines when wireframe
 
 #=== REMINDERS ===
+#- Consider adding a penis smoothing command at the tail end of processing to take care of some problems like shortened shaft length
 
-#=== NEEDS ===
+#=== DESIGN ===
+#--- NEEDS ---
 # Need to retain unrestrained flow with raw DAZ imports while having a programmatic modification procedure to make meshes game-ready.
 #    - We need to provide more geometry at certain body areas (breasts)
 #    - We need to identify groups of vertices from raw DAZ imports. (e.g. to modify mesh)
@@ -105,35 +57,48 @@
 # Need to have a bodysuit that morphs according to ANY source body shape changes.  (shape keys, breast adjustments, penis position, etc)
 #    - The 'static flex collider' is what makes this possible: a non-remeshed body (pulled back particle distance) that is a partially refined body mesh.  (e.g. not the optimized Flex collider that is remeshed for efficiency) 
 
-#=== DESIGN ===
+#--- NEEDS2 ---
+#- Need to have vertex group traversal from one 'master' body to all the derived ones.
+    #- Stamp each imported verts with their original ID
+    #- Will need utility to sync up all the custom vertex groups as code develops
+    #Q: Do we ditch unused verts right at import of 'gold' body or adopt gold body = DAZ import?
+#- Need to find common denominators between man and woman bone rig
+    #-Q: DAZ Man can adopt the same bone restraints as woman?
+#- Need to provide a default shape that is exactly Victoria 7 so DAZ dynamic clothing can adapt to
+#- Need to modify some part of geometry upon import (e.g. extra geometry on breasts)
+    #- So... we need an untouched DAZ body to determine which vert or do we count on removal of extra verts to always return same topology?
+#- Need to perform expensive processing at this stage to remove it from gametime processing:  Some examples:
+    #- Pre-processing for breast morphs
 
-#=== CONCEPTS ===
-# "Original Mesh": Raw import of body mesh from DAZ without mesh modifications.
-    # Runs complex FirstImport() calls to perform complex bone adjustments, material tweaks, etc
-    # Manually gets a few vertex groups that detail which verts are used to transform toward the 'gameready' source mesh
-# "First import": The importation of the very first raw DAZ body.  We have to mark vertices on this mesh as it has none of our useful vertice groups.  Rarely done!!
-# "Body Shape imports": Importing a raw DAZ body and adding a 'shape key' for this body's shape
-    # Flow that adds geometry for breasts, removes verts for a few materials and adds shape key to 'gameready' source mesh
-# "Gameready source mesh": Version of 'Original Mesh' with extra geometry for breasts and a few removed materials.
-    #- Contains several shape keys for different morphs exposed to player at gametime (e.g. body weight, breast morphs, etc)
-    #- Contains many custom vertex groups that enable the codebase to work (e.g. markings for vagina, breasts, penis area, etc)
-# "Runtime Body Conversion": Converts an 'Original Mesh' by modifying and optimizing its geometry for game time
+#--- PLANNING ---
+#- Remove all that crap about first import / next imports for shape keys -> will now import ALL morphs in one go!
+    #- Same with the crappy fixes because of bad pose & orientation -> now into import step
+###IDEA: Have penis for shemale pulled from male mesh at default pose
+    #- Morphs for penis itself applied at male mesh with body-part all at default
+#- Need to convert shemale creation stuff to pull penis directly out of man mesh (after user morphs) instead of separated penis
 
 #=== IDEAS ===
 
+#=== PROBLEMS ===
+#- Anus texture problem.  Area is too small for its own texture -> Map into another texture when we improve vagina.
+    #- Same with labia texture? (Merge with vagina)
+    #- Currently merged the whole crapload into one texture (Anus) -> But do UV remap soon!
+        #- Then what do we do about DAZ imports??  Would new UV map break??  (Can we fix problem in DAZ??)
+#- What do we do with materials that use twice the same texture?  (One for diffuse and one for transparency??)
+#+ Currently the two +VaginaHole-Upper/Lower bones must be defined manually!
+
 #=== QUESTIONS ===
-#- Previous implementation maintained vertex ID custom data layers as mesh was modified... keep this?
-    #- Rethink the concept of the 'morphing body' and the 'source body'??
 #- Previous breast morphing needs heavy pre-computation... Can this be redone by quickly 'walking the quads' to blend to base as we morph?
 
 #=== LEARNED ===
+#- To view DAZ raw bone properties, load and activate a model, go to 'Parameters' tab, select a bone (like 'Left Shin', activate 'Edit mode' (tiny context menu above tab), view properties unde 'Rigging' such as x,y,z Origin, end and Orientation
 
 #=== TEST CODE ===
-# oMeshOriginalO = bpy.data.objects["WomanA-Original"]
-# oArm = oMeshOriginalO.modifiers["Armature"].object.data
+# oMesh = bpy.data.objects["Woman-Original"]
+# oArm = oMesh.modifiers["Armature"].object.data
 # oArmBones = oArm.edit_bones
-# oMeshOriginalO = bpy.data.objects["WomanA-Original"]; oArm = oMeshOriginalO.modifiers["Armature"].object.data; oArmBones = oArm.edit_bones
-# oMeshOriginalO = bpy.data.objects["Genesis3Female.Shape"]; oArm = oMeshOriginalO.modifiers["Genesis3Female"].object.data; oArmBones = oArm.edit_bones
+# oMesh = bpy.data.objects["Woman-Original"]; oArm = oMesh.modifiers["Armature"].object.data; oArmBones = oArm.edit_bones
+# oMesh = bpy.data.objects["Genesis3Female.Shape"]; oArm = oMesh.modifiers["Genesis3Female"].object.data; oArmBones = oArm.edit_bones
 
 #=== WISHLIST ===
 
@@ -161,289 +126,194 @@
 #                         print("###ERROR: FBXImport.link_hierarchy() Could not find " + str(self))
 #                         continue
     
-###INSTRUCTIONS: DAZ export options must set 'Embed Texture', 'Merge Diffuse and Opacity Textures', 'Merge Clothing into Figure Skeleton', 'Allow Degraded Skinning' and 'Allow Degraded Scaling'.  Everything must be 'baked'.  Choose FBX 2014 - Binary as format
+
+#=== IMPORT PROCEDURE ===
+#=== Instructions for a full import ===
+#- DAZ export options must set 'Embed Texture', 'Merge Diffuse and Opacity Textures', 'Merge Clothing into Figure Skeleton', 'Allow Degraded Skinning' and 'Allow Degraded Scaling'.  Everything must be 'baked' except morphs we want imported as shape keys.  Choose FBX 2014 - Binary as format
+#- Import the original body by importing FBX body with all options turned off, scale set to '100' (to counter DAZ saving at 0.01)
+#- Running the 'Import Original Body'.  It will unpack the textures in the Blend file's 'texture' subdirectory and automatically change its internal filenames, material names, texture names, image names to match
+#- Externally rename the texture files in File Explorer as appropriate and relink Blend file to their new names by updating Blender's filename as well.
+#- Move the textures to Unity's subfolder and select 'Find missing files' to relink to their final position.
+#- Run the 'Synchronize Image Names' so Blender renames textures and images to the image filename.
+#- Enter all the needed vertex groups into Original body for _CSoftBody_XXX definitions, _CFlexCollider, _CVagina_xxx, etc
+#- Import the 'Source' body via FBX (again with all FBX import options off) and run the'Import Source Body' function
 
 
 import bpy
 import sys
-import array
 import bmesh
+import array
 import struct
 from math import *
 from mathutils import *
- 
+from bpy.props import *
+
 import G
 from gBlender import *
+from CMesh import *
+import CHoleRig
 
 
-C_CreateBoneRigVisualizer = True    # When true creates a 'bone visualizer rig' that creates a large quantity of visualizer gizmos for each node to precisely visualize the bone rig and its angles (instrumental during development)
+C_CreateBoneRigVisualizer = False       # When true creates a 'bone visualizer rig' that creates a large quantity of visualizer gizmos for each node to precisely visualize the bone rig and its angles (instrumental during development)
 
 
 
-class CBone():                      # CBone: Information-storage object used to store everything related to an individual bone as needed during body importer phase
-    def __init__(self, sNameBone):
-        self.sNameBone = sNameBone
-        self.sNameBoneParent = None                     # Name of bone parent.  Used for bone rig visualizer re-parenting
-        self.sRotOrder = None                           # DAZ-provided Euler 'rotation order'.  Hugely important to interpret its Eulers (and pose as intended).  A string that looks like "XYZ", "ZXY", "YXZ", etc
-        self.matBoneEdit = None                         # Backup of the matrix we stuff for this 'edit bone'.  Used so we can traverse back to Daz-domain and back for pose update
-        self.matDazToBlender = None                     # Stores the conversion matrix that can traverse bones from DAZ-domain to Blender-domain (e.g. to traverse the complex bone re-orientation we do during import)  (e.g. This quaternion can rotate oRigVis_AxesDAZ to oRigVis_Axes)
-        self.matBlenderToDaz = None                     # Reverse of matDazToBlender
-        self.vecRotationBuild = Vector()                # Temporary storage for the X, Y, Z rotations before a fully-qualified Euler can be constructed once all X,Y,Z rotations on a bone are known (needed to account for the various 'sRotOrder' that can exist on a given bone)        
-        
-        #--- Members related to our (optional) bone rig visualizer. Was instrumental during development ---
-        self.oRigVis_Bone           = None              # Bone 'empty'.  Is parent of the other three visualizer nodes and is the one to rotate to simulate bone rig 
-        self.oRigVis_Arrow          = None              # Draws a properly-sized arrow and oriented arrow of this oriented bone
-        self.oRigVis_Axes           = None              # Draws the Blender-domain 'axes' showing this bone's orientation
-        self.oRigVis_AxesDAZ        = None              # Draws the DAZ-domain 'axes' showing this bone's orientation in DAZ
-
-        
-
-
-class CBodyImporter():          # CBodyImporter: Singleton instance in charge of heavily modifying raw DAZ bodies into a form we can used for further Blender + Unity modifications.
-    INSTANCE = None             # We're a singleton so set our single instance in our INSTANCE static for convenience once initialized
-    
-    def __init__(self):
-        CBodyImporter.INSTANCE  = self
+class CBodyImporter_Base():          # CBodyImporter_Base: In charge of heavily modifying raw DAZ bodies into a form we can used for further Blender + Unity modifications.  This class is the 'base' and provides common functions for CBodyImporter_Original and CBodyImporter_Source
+    def __init__(self, sNameSuffix):
+        self.sNameSuffix            = sNameSuffix       # Name suffix appended to our self.oMesh as specified by subclass (either '-Original' or '-Source')
+        self.sNamePrefix            = ""                # The prefix we will give this new mesh type.  (Either 'Man' or 'Woman')
+        self.sNamePrefix_Daz        = ""                # The name DAZ gives the armature object and the mesh (suffixed with '.Shape')  Like 'Genesis3Female' or 'Genesis3Male'
+        self.sNamePrefix_Material   = ""                # The prefix applied to each material (also for texture & image??)
+        self.sNameArmatureNode      = ""                # Name given to our armature node.  Always "[" + self.sNamePrefix + "]"
+        self.oMesh                  = None              # The mesh this instance processes.  Is the 'original' (untouched) mesh for CBodyImporter_Original subclass and the 'source' mesh (heavily modified) for CBodyImporter_Source subclass 
         self.bIsWoman               = None
         self.bIsMan                 = None
-        self.bFirstImport           = None              # If 'True' we are currently importing the first time (so create '-Original' body).  If 'False', we are appending an additional morph to the existing body.
-        self.sNameDazImportMesh     = ""
-        self.sNameMeshPrefix        = ""
-        self.oArm                   = None              # Armature
-        self.oArmBones              = None              # Edit-time bones from self.self.oArm armature
-        self.oMeshOriginalO         = None              # The orinal untouched mesh.  (Has '-Original' appended)
-        self.mapBones               = {}                # Dictionary of all the CBone objects in our armature.  Key is CBone.sNameBone
 
-        #=== Detect what raw input the user has imported from Daz.  Either a "Genesis 3 Male" or "Genesis 3 Female" body ===        
+        #=== Detect what type of mesh the user has imported from Daz from the existance of known .  We can process either a "Genesis 3 Male" or "Genesis 3 Female" body ===        
         if "Genesis3Female" in bpy.data.objects:
-            self.bIsWoman   = True
-            self.bIsMan     = False
-            self.bFirstImport = ("[WomanA]" not in bpy.data.objects)    ###WEAK20: Hardoded mesh 'A'
-            self.sNameMeshPrefix    = "WomanA"                          ###TODO20: Body versions?  now always 'A'
-            self.sNameDazImportMesh = "Genesis3Female"
+            self.bIsWoman           = True
+            self.bIsMan             = False
+            self.sNamePrefix_Daz    = "Genesis3Female"
+            self.sNamePrefix        = "Woman"
         elif "Genesis3Male" in bpy.data.objects:
-            self.bIsMan     = True
-            self.bIsWoman   = False
-            self.bFirstImport = ("[ManA]" not in bpy.data.objects)      ###WEAK20: Hardoded mesh 'A'
-            self.sNameMeshPrefix    = "ManA"                            ###TODO20: Body versions?  now always 'A'
-            self.sNameDazImportMesh = "Genesis3Male"
+            self.bIsMan             = True
+            self.bIsWoman           = False
+            self.sNamePrefix_Daz    = "Genesis3Male"
+            self.sNamePrefix        = "Man"
         else:
             raise Exception("###EXCEPTION: CBodyImporter.ctor() can't find a raw source mesh to process.")
+        self.sNameArmatureNode      = "[" + self.sNamePrefix + "]"
+        self.sNamePrefix_Material   = "_" + self.sNamePrefix + "_"              ###INFO: First "_" indicates a material managed by this codebase, second "_" to separate prefix from actual material name
 
-        #=== Branch to appropriate processing whether we're a first import or not ===
-        if self.bFirstImport:
-            self.FirstImport_ProcessRawDazImport()
-        else:
-            self.ImportShape_AddImportedBodyToGameBody()
-            
-            
-
-    def FirstImport_ProcessRawDazImport(self):
-
-        print("\n===== FirstImport_ProcessRawDazImport() =====")
-
-        #===== DAZ MESH PROCEDURE AFTER RAW DAZ IMPORT =====
-        sNameMeshOriginal = self.sNameMeshPrefix + "-Original"
-        self.oMeshOriginalO = self.Import_FirstCleanupOfDazImport(sNameMeshOriginal)
-        
-        #=== Remove dumb 90 degree orientation of root node and set scale to unity ===
-        oRootNodeO = self.oMeshOriginalO.parent                    # Mesh root node is parent of the main mesh
-        oRootNodeO.name = "[" + self.sNameMeshPrefix + "]"
-        oRootNodeO.name = "[" + self.sNameMeshPrefix + "]"
-        oRootNodeO.rotation_euler.x = 0
-        oRootNodeO.scale = Vector((1,1,1))
-        
-        #=== Make imported mesh and its bone rig visible on the layers we need ===
-        self.oMeshOriginalO.layers[1] = self.oMeshOriginalO.layers[2] = self.oMeshOriginalO.layers[3] = self.oMeshOriginalO.layers[4] = True
-        oRootNodeO.layers[1] = oRootNodeO.layers[2] = oRootNodeO.layers[3] = oRootNodeO.layers[4] = True
-        
-        #=== Obtain reference to armature ===
-        self.oArm = self.oMeshOriginalO.modifiers["Armature"].object.data
-        self.oArm.name = self.sNameMeshPrefix + "-Armature"
-        self.oArm.name = self.sNameMeshPrefix + "-Armature"
-        self.oArm.draw_type = "OCTAHEDRAL" #"WIRE"
-    
-        #=== Rotate the armature bones to nullify node rotation above and rescale to return bones to meter units (and nullify re-scaling above) ===
-        SelectObject(oRootNodeO.name, True)           
-        bpy.ops.object.mode_set(mode='EDIT')                                        ###INFO: Modifying armature bones is done by simply editing root node containing armature.
-        self.oArmBones = self.oArm.edit_bones
-        bpy.ops.armature.select_all(action='SELECT')                                ###INFO: How to select bones... almost like 'mesh'
-        self.Import_RotateAndRescale()
-        bpy.ops.armature.select_all(action='DESELECT')
-    
-        #=== Adjust bone angle and rolls from our exported DAZ data ===
-        self.Bones_DefineFromDazInfo()
-    
-        #=== Manually add additional bones we need ===
-#         if self.bIsWoman:        ###BROKEN20
-#             bpy.ops.object.mode_set(mode='EDIT') 
-#             oBoneVagina = self.Import_AddBone("Vagina", "Genitals")
-#             self.Import_AddBone("VaginaPin0", oBoneVagina.name, Vector((0.00, -0.08,  0.96)))           ###WEAK: Hardcoded vectors... derive from geometry would be better but lenghty to code for not much benefits!
-#             self.Import_AddBone("VaginaPin1", oBoneVagina.name, Vector((0.00,  0.10,  1.05)))           # Add 'triangulation bones' so every vagina Flex softbody particle doesn't stray too far from where it started in relation to the body.
-#             self.Import_AddBone("VaginaPin2", oBoneVagina.name, Vector((0.15,  0.00,  0.96)))           # First bone is right above vagina, second right above butt crack. third one at center of left butt check
-    
-        #=== Exit edit mode and hide rig ===
-        bpy.ops.object.mode_set(mode='OBJECT')
-        oRootNodeO.hide = True
-        SelectObject(self.oMeshOriginalO.name, True)
-    
-    
-    #---------------------------------------------------------------------------    FIRST-IMPORT BONE ADJUSTERS
-    
-    def ConnectParentTailToHeadOfMostImportantChild1(self, sNameBoneParent, sNameBoneChild):      # Ensures a perfectly linked chain of bones by setting a parent's tail to the head of its 'most important' child (e.g. upperChest tail to head of lowerChest)
-        oBoneParent = self.oArmBones[sNameBoneParent]
-        oBoneChild  = self.oArmBones[sNameBoneChild]
-        oBoneParent.tail = oBoneChild.head              # Parent will now flow right into its most important child (thereby providing intuitive deformation when rotated)
-    
-    def ConnectParentTailToHeadOfMostImportantChild2(self, sNameBoneParent, sNameBoneChild):      # Split the 'ConnectParentTailToHeadOfMostImportantChild1' to both left and right body sides.
-        self.ConnectParentTailToHeadOfMostImportantChild1("l"+sNameBoneParent, "l"+sNameBoneChild)
-        self.ConnectParentTailToHeadOfMostImportantChild1("r"+sNameBoneParent, "r"+sNameBoneChild)
-    
-    def OrientSmallBoneFromParents1(self, sNameSmallBone, sNameParent1, sNameParent2):
-        oBoneParent1    = self.oArmBones[sNameParent1]
-        oBoneParent2    = self.oArmBones[sNameParent2]
-        oBoneSmall      = self.oArmBones[sNameSmallBone]
-        vecParent = oBoneParent2.head - oBoneParent1.head
-        oBoneSmall.tail = oBoneSmall.head + (vecParent * 0.25)      # Set the tail to be starting from the head plus some distance of parent vector 
-    
-    def OrientSmallBoneFromParents2(self, sNameSmallBone, sNameParent1, sNameParent2):  # Split the 'OrientSmallBoneFromParents1' to both left and right body sides.
-        self.OrientSmallBoneFromParents1("l"+sNameSmallBone, "l"+sNameParent1, "l"+sNameParent2)
-        self.OrientSmallBoneFromParents1("r"+sNameSmallBone, "r"+sNameParent1, "r"+sNameParent2)
-        
-    def ManuallyAdjustRoll1(self, sNameBone, nRoll):
-        self.oArmBones[sNameBone].roll = radians(nRoll)
-    
-    def ManuallyAdjustRoll2(self, sNameBone, nRoll):
-        self.ManuallyAdjustRoll1("l"+sNameBone,  nRoll)
-        self.ManuallyAdjustRoll1("r"+sNameBone, -nRoll)
-        
-    
-    
-    #---------------------------------------------------------------------------    LEFT / RIGHT SYMMETRY
-    
-    def FirstImport_VerifyBoneSymmetry(self, oMeshBodyO):           ###OBS??    
-        #=== Iterate through all left bones to see if their associated right bone is positioned properly ===
-        print("\n\n=== FirstImport_VerifyBoneSymmetry() ===")
-#         self.oArm = oMeshBodyO.modifiers["Armature"].object.data
-#         SelectObject(oMeshBodyO.parent.name, True)            ###INFO: Armature editing is done through the mesh's parent object
-#         self.oArmBones = self.oArm.edit_bones    
-#         nAdjustments = 0
-#         bpy.ops.object.mode_set(mode='EDIT')                                        ###INFO: Modifying armature bones is done by simply editing root node containing armature.
-#         for oBoneL in self.oArmBones:
-#             sNameBoneL = oBoneL.name 
-#             if (sNameBoneL[0] == 'l' and sNameBoneL[1] >= 'A' and sNameBoneL[1] <= 'Z'):            # Test left bone / right bone symmetry
-#                 sNameBoneR = 'r' + sNameBoneL[1:]
-#                 print("--- Testing bone '{}' - '{}' ---".format(sNameBoneL, sNameBoneR))
-#                 oBoneR = self.oArmBones[sNameBoneR]
-#                 vecBoneL = oBoneL.head.copy()
-#                 vecBoneR = oBoneR.head.copy()
-#                 vecBoneR.x = -vecBoneR.x
-#                 if (vecBoneL != vecBoneR):
-#                     vecDiff = vecBoneR - vecBoneL 
-#                     print("- Bone head mismatch on '{}'  {}   {}   {}  Dist={:6f}".format(sNameBoneL, vecBoneL, vecBoneR, vecDiff, vecDiff.magnitude))
-#                     if (vecDiff.magnitude > 0.0001):
-#                         print("     ###WARNING: Bone symmetry difference is large!\n")
-#                     vecBoneCenter = (vecBoneL + vecBoneR) / 2 
-#                     oBoneL.head = vecBoneCenter.copy()
-#                     vecBoneCenter.x = -vecBoneCenter.x
-#                     oBoneR.head = vecBoneCenter.copy()
-#                     nAdjustments += 1
-#             elif (sNameBoneL[0] != 'r' or sNameBoneL[1] < 'A' or sNameBoneL[1] > 'Z'):                # Test that center bones are indeed centered at x = 0
-#                 print("--- Testing center bone '{}' ---".format(sNameBoneL))
-#                 oBoneC = self.oArmBones[sNameBoneL]
-#                 if (oBoneC.head.x != 0 or oBoneC.tail.x != 0):
-#                     print("- Center bone '{}' has head {} and tail {}".format(sNameBoneL, oBoneC.head, oBoneC.tail))
-#                     oBoneC.head.x = oBoneC.tail.x = 0
-#                     nAdjustments += 1
-#         bpy.ops.object.mode_set(mode='OBJECT')
-#         return nAdjustments
-    
-    
-    
-    
-    
-    #---------------------------------------------------------------------------    IMPORT COMMONS
-    
-    def Import_FirstCleanupOfDazImport(self, sNameMeshNew):
-        #=== Rename, rotate and rescale meshes verts (to nullify node rotation, rescaling above) ===
-        sNameDazImportMeshShape = self.sNameDazImportMesh + ".Shape"
-        oMeshImportedO = self.Import_RenameRotateAndRescaleMesh(sNameDazImportMeshShape, sNameMeshNew)
-        oMeshImportedO.show_all_edges = True
-    
-        #=== Obtain reference to armature and name properly ===
-        oMeshImportedO.modifiers[0].name = "Armature"       # Ensure first modifier is called what we need throughout codebase (FBX sets only one modifier = Armature) 
-    
-        #=== Remove the root node's children that are NOT the expected mesh names (Deletes unwanted DAZ nodes) ===
-        oRootNodeO = SelectObject(oMeshImportedO.parent.name, True)     # Select parent node (owns the bone rig)
-        aNodesToDelete = []
-        for oChildNodesO in oRootNodeO.children:
-            if oChildNodesO.name != sNameMeshNew:
-                DeleteObject(oChildNodesO.name)
-    
-        #=== Remove (empty) vertex groups we don't need ===            ###IMPROVE: Delete all those with zero verts in them?  (slow?)
-        SelectObject(oMeshImportedO.name, True)
-        VertGrp_Remove(oMeshImportedO, "Genesis3Female")
-        VertGrp_Remove(oMeshImportedO, "hip")
-        VertGrp_Remove(oMeshImportedO, "lowerFaceRig")
-        VertGrp_Remove(oMeshImportedO, "upperFaceRig")
-        VertGrp_Remove(oMeshImportedO, "lToe")
-        VertGrp_Remove(oMeshImportedO, "rToe")
-    
-    #     #=== Remove the un-needed bones (raw import has duplicate bones for genitalia mesh) ===  ###OBS: not needed if we export from DAZ with FBX option 'Merge Clothing into Figure Skeleton'
-    #     SelectObject(oRootNodeO.name, True)           
-    #     bpy.ops.object.mode_set(mode='EDIT')                                        ###INFO: Modifying armature bones is done by simply editing root node containing armature.
-    #     self.oArm = oMeshImportedO.modifiers["Armature"].object.data
-    #     self.oArmBones = self.oArm.edit_bones
-    #     for oBoneO in self.oArmBones:
-    #         if oBoneO.name.find(".00") != -1:                # Duplicate bones have names like 'pelvis.001'.  Anything with a .00 in its name can be safely deleted
-    #             self.oArmBones.remove(oBoneO)
-    
-        #=== Clean up bone weights and vertex groups ===
-        SelectObject(oMeshImportedO.name)
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.select_all(action='SELECT')
-        bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)                    ###CHECK!!! Does this lose any information? (for example limb rotation??)
-        bpy.ops.object.vertex_group_clean(group_select_mode='ALL', limit=0, keep_single=False)
-        bpy.ops.object.vertex_group_normalize_all(group_select_mode='ALL', lock_active=False)
-        bpy.ops.object.vertex_group_sort(sort_type='NAME')
-        bpy.ops.mesh.select_all(action='DESELECT')
-        bpy.ops.object.mode_set(mode='OBJECT')
-    
-        #=== Set the materials to better defaults ===
-    #     for oMat in oMeshImportedO.data.materials:
-    #         oMat.diffuse_intensity = 1
-    #         oMat.specular_intensity = 0
-    
-        #=== Clear the pose (FBX import screws that up royally!) ===
-        SelectObject(oRootNodeO.name, True)     # Select parent node (owns the bone rig)
-        bpy.ops.object.mode_set(mode='POSE')
-        bpy.ops.pose.select_all(action='SELECT')                ###INFO: How to select bones in pose mode
-        bpy.ops.pose.transforms_clear()                         # Clears all the pose transforms so each bone in the default pose returns to the edit bones
-        bpy.ops.pose.select_all(action='DESELECT')
-        bpy.ops.object.mode_set(mode='OBJECT')
-    
-        SelectObject(oMeshImportedO.name, True)
-        return oMeshImportedO
-    
-        
-    def Import_RenameRotateAndRescaleMesh(self, sNameMeshOld, sNameMeshNew):
+        #=== First-order intialization of the raw DAZ mesh ===
+        self.oMesh = CMesh.Attach(self.sNamePrefix_Daz + ".Shape")              # The DAZ exporter appends '.Shape' to the actual body mesh.
+        self.oMesh.SetName(self.sNamePrefix + self.sNameSuffix)
+        self.oMesh.GetMesh().show_all_edges = True
         SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', True)
-        oMeshO = SelectObject(sNameMeshOld, True)
-        oMeshO.name = oMeshO.data.name = sNameMeshNew
-        oMeshO.name = oMeshO.data.name = sNameMeshNew
-        bpy.ops.object.mode_set(mode='EDIT')
-        bpy.ops.mesh.select_all(action='SELECT')
-        self.Import_RotateAndRescale()
-        bpy.ops.mesh.select_all(action='DESELECT')
-        bpy.ops.object.mode_set(mode='OBJECT')
-        return oMeshO
     
+        #=== Remove the root node's children that are NOT the expected mesh names (Deletes unwanted DAZ nodes like separated genitals) ===
+        oRootNodeO = SelectObject(self.oMesh.GetMesh().parent.name, True)     # Select parent node (owns the bone rig)
+        for oChildNodesO in oRootNodeO.children:
+            if oChildNodesO.name != self.oMesh.GetName():
+                DeleteObject(oChildNodesO.name)
+
+        if self.oMesh.Open():
+            bpy.ops.mesh.customdata_custom_splitnormals_clear()         ###INFO:!! Fixes the annoying 'Invalid clnors in this fan!' warnings... See https://blender.stackexchange.com/questions/77332/invalid-clnors-in-this-fan-warning  ###CHECK:!! Are custom loop normal useful for anything?  Placing in this super-important call appropriate for all contexts?  (Can damage some meshes??)
+            bpy.ops.mesh.select_all(action='DESELECT')          ###CHECK: No longer required?  What happened to export / import?
+            bpy.ops.object.vertex_group_sort(sort_type='NAME')
+            self.oMesh.Close()
         
-    def Import_RotateAndRescale(self):
-        bpy.ops.transform.rotate(value=radians(90), axis=(1, 0, 0), constraint_axis=(True, False, False))
-        bpy.ops.transform.resize(value=(0.01, 0.01, 0.01))
+        #=== Lock up all the DAZ vertex groups for protection ===
+        self.oMesh.VertGrp_LockUnlock(True, G.C_RexPattern_EVERYTHING)
+            
     
-    
+    def Materials_MergeSlavesToMasters(self, bDefineResources):
+        self.oMesh.Material_Remove("EyeMoisture")       # Completely remove 'EyeMoisture' and associated verts in both original and source bodies.
+
+        #=== Define the map of 'master material' (first in each sub-list) to the 'slave materials (after first in each list).  The verts of each slave material are assigned to the master one (and the slave material is destroyed)        
+        mapTexturesToMaterials = [ 
+            [ "Arms",           "Fingernails"                           ],
+            [ "Legs",           "Toenails"                              ],
+            [ "Face",           "Lips",         "Ears",     "EyeSocket" ],
+            [ "Mouth",          "Teeth"                                 ],
+            [ "Cornea",         "Pupils",       "Sclera",   "Irises"    ],
+            [ "Vagina&Rectum",  "Labia Minora", "Torso",    "Anus"      ]      ###TODO25:!!!! Coalescing all genitals texture into one as the insane separation is bad and UVs are aweful!  Redo this crap with new UV mapping and new texture for all genitals area!!  GensMap, d51 / d49=Vagina, d50=Anus ###BROKEN: d49 and d50 are very similar but NOT the same!  One for anus, other for vagina = Will remap anyways!
+        ]
+
+        #=== Merge the slave materials into the master ones using the table above ===
+        for aTexturesToMaterials in mapTexturesToMaterials:
+            sNameMaterialMaster = aTexturesToMaterials[0]
+            for sNameMaterialSlave in aTexturesToMaterials[1:]:
+                self.oMesh.Material_Remove(sNameMaterialSlave, sNameMaterialDestination = sNameMaterialMaster)
+
+        #=== Unpack all the image files the FBX importer packed into our .blend file to store them in the 'texture' subfolder of this .blend file.  We need to manually rename and merge them ===
+        if bDefineResources:
+            bpy.ops.file.unpack_all(method='WRITE_LOCAL')
+        
+        #=== Create a mapping of old image filenames toward those we want ===
+        self.Util_PrintMaterialToImageMapping("\n=== Material-to-Image mapping (before auto-mapping) ===")
+        mapOldImageNameToNewImageName = [
+            ["Torso",       "Torso"],        
+            ["Arms",        "Arms"],        
+            ["Legs",        "Legs"],        
+            ["Face",        "Face"],        
+            ["Eyes",        "Eyes"],        
+            ["Eyelashes",   "Eyelashes"],        
+            ["Mouth",       "Mouth"],        
+            ["d51",         "Vagina&Rectum"],          # Image names DAZ to vagina inners   ###HACK: Right now only keeping d50 = Anus to become master texture for genitals area = the least bad one!    
+#            ["d50",         "Anus"],          # Image names DAZ gives to vagina outer / labia (Should be different than 'Vagina' maps but too many maps -> will remap UVs anyways!        
+#            ["GensMap",     "VaginaArea"],        
+#            ["d51",         "VaginaArea"]        
+        ]
+        
+        #=== Automatically rename the old file names to the names we want.  This saves the manual step of having to manually edit Blender's image filepath.  Update as required ===
+        ###NOTE: This assumes the user has manually renamed the image files according to this same mapping!
+        if bDefineResources:
+            for oMat in self.oMesh.GetMeshData().materials:             # Enumerate the current mapping of materia -> texture -> image -> image filepath so user can visualize what material uses what image
+                for oTexSlot in oMat.texture_slots:                     # Also iterate through all the textures of this material (and all their related images) to prepend our prefix as well.  (So they don't get deleted by Cleanup call below!)
+                    if oTexSlot is not None:
+                        oTex = oTexSlot.texture
+                        oImg = oTex.image
+                        sImageFilename, sImageFilenameExtension = CBodyImporter_Original.Util_ExtractFilenameFromFilepath(oImg.filepath)
+                        bFoundMatch = False
+                        for aOldImageNameToNewImageName in mapOldImageNameToNewImageName:
+                            sNameOld = aOldImageNameToNewImageName[0]
+                            sNameNew = aOldImageNameToNewImageName[1]
+                            if sImageFilename.find(sNameOld) != -1:
+                                print("- Mapped old image filename '{}' ->  \t'{}'".format(sImageFilename, sNameNew))
+                                sImageFilename = self.sNamePrefix_Material + sNameNew
+                                bFoundMatch = True
+                                break
+                        if bFoundMatch:
+                            ###NOTE: Assemble the filename from 1) the .blend 'texture' subfolder Blender used during unpack above, 2) the prefix underscore to indicate this resource is managed by this codebase, 3) the name of our body sex ('Man', 'Woman'), 4) the separating '_' between sex and resource name, 5) the name of this resource (e.g. 'Torso', 'Arms', 'Legs', etc), 6) a separating '_', 7) the 'texture set suffix' ('A', 'B', 'C'...) and 8) the filename extension
+                            oImg.filepath = "//textures/" + sImageFilename + "_A" + sImageFilenameExtension     ###WEAK: Setting all filenames to the 'A' texture set... any value in getting an argument for this??    
+                            oMat.name = oTex.name = oImg.name = sImageFilename      # Sync up the material name, the texture name, the image name all to be equal to the image filename -> Four level of indirections all synced up = greatly saves confusion!!
+                        else:
+                            print("#WARNING: Could not auto-match image filename '{}' to any known symbol.  Manual renaming of this resource will be required!".format(sImageFilename))
+        else:           # Not defining resources = Source mesh being imported.  Copy materials from Original mesh into source mesh.  (Old source materials will get deleted in Cleanup call below)
+            oMeshOriginal = CMesh.Attach(self.sNamePrefix + "-Original")
+            aMatSlots_Original = oMeshOriginal.GetMesh().material_slots
+            aMatSlots_Source   =    self.oMesh.GetMesh().material_slots
+            if len(aMatSlots_Original) != len(aMatSlots_Source):
+                raise Exception("\n###EXCEPTION: Mismatch in material slots between Original and Source meshes!")
+            for nMatSlot in range(len(aMatSlots_Original)):
+                oMatSlot_Original = aMatSlots_Original[nMatSlot]
+                oMatSlot_Source   = aMatSlots_Source  [nMatSlot]
+                oMatSlot_Source.material = oMatSlot_Original.material
+        
+        self.Util_PrintMaterialToImageMapping("\n=== Material-to-Image mapping (after auto-mapping) ===")
+
+        #=== Cleanup the extra materials (created by extra meshes imported by FBX) === 
+        Cleanup_MaterialsTexturesImages()               # Any material, texture or image that doesn't start with the "_" prefix gets deleted!
+
+
+
+    def Util_PrintMaterialToImageMapping(self, sMsg):
+        print(sMsg)
+        for oMat in self.oMesh.GetMeshData().materials:             # Enumerate the current mapping of materia -> texture -> image -> image filepath so user can visualize what material uses what image
+            for oTexSlot in oMat.texture_slots:                     # Also iterate through all the textures of this material (and all their related images) to prepend our prefix as well.  (So they don't get deleted by Cleanup call below!)
+                if oTexSlot is not None:
+                    oTex = oTexSlot.texture
+                    oImg = oTex.image
+                    sImageFilepath = oImg.filepath
+                    print("- Mat '{}' -> \tTex '{}' -> \tImg '{}' \tImgFile '{}'".format(oMat.name, oTex.name, oImg.name, sImageFilepath))
+        
+    @classmethod
+    def Util_ExtractFilenameFromFilepath(cls, sFilepath):           ###MOVE:?
+        nPosLastSlash = sFilepath.rfind("\\")
+        if nPosLastSlash == -1:
+            nPosLastSlash = sFilepath.rfind("/")
+            if nPosLastSlash == -1:
+                raise Exception("\n###EXCEPTION: Util_ExtractFilenameFromFilepath could not find last slash in filepath '{}'".format(sFilepath))
+        sImageFilenamePlusExt = sFilepath[nPosLastSlash+1:]
+        nPosDot = sImageFilenamePlusExt.rfind(".")
+        if nPosDot == -1:
+            raise Exception("\n###EXCEPTION: Util_ExtractFilenameFromFilepath could not find extension dot in filepath '{}'".format(sFilepath))
+        sFilename           = sImageFilenamePlusExt[:nPosDot]
+        sFilenameExtension  = sImageFilenamePlusExt[nPosDot:]
+        return sFilename, sFilenameExtension
+
+    #---------------------------------------------------------------------------    IMPORT COMMONS
     def Import_AddBone(self, sNameBoneNew, sNameBoneParent, vecLocation = None):
         oBoneNew = self.oArmBones.new(sNameBoneNew)
         oBoneNew.parent = self.oArmBones[sNameBoneParent]
@@ -456,108 +326,6 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
         oBoneNew.tail = oBoneNew.head + Vector((0,0,0.001))       # We *must* have head <> tail or bone will get deleted without warning by Blender!!
         return oBoneNew
         
-    
-    #---------------------------------------------------------------------------    
-    #---------------------------------------------------------------------------    BODY SHAPE IMPORT
-    #---------------------------------------------------------------------------
-    
-    def ImportShape_AddImportedBodyToGameBody(self):
-        print("\n===== ImportShape_AddImportedBodyToGameBody() =====")
-
-        #=== Perform the first stage of importation by renaming, rotating and rescaling mesh as we need it.
-        oMeshDazImportO = self.Import_FirstCleanupOfDazImport("TEMP_ImportedMesh")       # Mesh will get manually renamed (if first) or merged as shape key (if not first) of main game mesh
-        oRootNodeImportedToDelete = oMeshDazImportO.parent 
-    
-        #=== Clean up the armature and the newly imported mesh's parent node (containing armature) === 
-        oModArm = oMeshDazImportO.modifiers["Armature"]
-        oModArm.object = None                                   # Unlink existing armature modifier to the importated armature (that we're about to delete)
-        sNameParent = oMeshDazImportO.parent.name
-        oMeshDazImportO.parent = None                           ###INFO: Must clear parent in sub-nodes before deleting parent or mesh will be inacessible!
-        DeleteObject(sNameParent)                               # Remove imported body's parent node (armature)
-
-        #=== Obtain reference to original body mesh ===           
-        sNameMeshOriginal = self.sNameMeshPrefix + "-Original"
-        oMeshOriginal = SelectObject(sNameMeshOriginal)
-    
-        #===== Increase breast geometry with a selective subdivide of much of the breast area =====
-        #=== First open original mesh to obtain the list of vertices ===
-        if self.bIsWoman:
-            aVertsBreasts = []
-            VertGrp_SelectVerts(oMeshOriginal, "_CBodyImporter_IncreaseBreastGeometry")
-            bpy.ops.object.mode_set(mode='OBJECT')          ###INFO: Non-bmesh access must read selections this way  ###IMPROVE: Switch to bmesh?
-            for oVert in oMeshOriginal.data.vertices:
-                if (oVert.select):
-                    aVertsBreasts.append(oVert.index)
-                    oVert.select = False
-            Util_HideMesh(oMeshOriginal)
-            #=== Open the imported mesh to select the same verts.  Original and just-imported mesh are guaranteed to be of the same geometry ===
-            oMeshDazImportO = SelectObject(oMeshDazImportO.name, True)
-            for nVert in aVertsBreasts:
-                oMeshDazImportO.data.vertices[nVert].select = True    
-            bpy.ops.object.mode_set(mode='EDIT')
-            bpy.ops.mesh.subdivide(quadtri=True, quadcorner='INNERVERT', smoothness=1)      # Adds geometry with 'fanout' to border of previous low-geometry.  Also smooths the mesh to take into account new geometry
-            bpy.ops.mesh.select_all(action='DESELECT')          ###WEAK: Above will show "Invalid clnors in this fan!" hundreds of time in error output.  As this happens even when invoking subdivide through Blender I think it can be ignored.
-            bpy.ops.object.mode_set(mode='OBJECT')
-    
-        #=== Remove verts for useless materials ===
-        Material_Remove(oMeshDazImportO, "EyeMoisture")           # Dumb 'wrapper mesh' to entire eye for 'moisture'... wtf?
-        
-        #=== Reparent to the previously-imported bone rig.  Also set as child node to that same parent ===
-        oMeshDazImportO.parent = oMeshOriginal.parent       # Set as child of previously-imported parent (with previously cleaned-up bones)               
-        oModArm.object = oMeshOriginal.parent               #bpy.ops.outliner.parent_drop(child=oMeshDazImportO.name, parent=oMeshOriginal.parent.name, type='ARMATURE')  ###NOTE: This is the Blender call when parenting to a rig in the Blender UI... fails with incorect context!
-    
-        #=== Delete the imported rig (imported mesh now properly connected to the good rig) ===
-        DeleteObject(oRootNodeImportedToDelete.name)
-    
-        #===== Rest of shape import depends if there already is a first shape or not... =====
-        if self.sNameMeshPrefix in bpy.data.objects:
-            #=== Add a shape key into the gameready mesh of the just-imported mesh ===
-            print("\n=== NOTE: ImportShape() finds basis mesh.  Adding imported mesh as a shape key to basis mesh.  Please rename newly-created shapekey.\n")
-            oMeshDazImportO = SelectObject(oMeshDazImportO.name, True)
-            oMeshGame = bpy.data.objects[self.sNameMeshPrefix]
-            oMeshGame.select = True
-            oMeshGame.hide = False
-            bpy.context.scene.objects.active = oMeshGame
-            bpy.ops.object.join_shapes()
-            DeleteObject(oMeshDazImportO.name)        # Imported mesh merged into game mesh as a shape key.  It can now be deleted
-            
-        else:
-            print("\n=== NOTE: ImportShape() did not find basis mesh.  Imported mesh becomes basis mesh.\n")
-            #=== Create the basis shape key in the gameready mesh ===
-            ###IMPROVE: Automate process of first main mesh creation?  (Have to 1: Create vert group '_ImportGeometryAdjustment-Breasts', 2: Duplicate orig mesh and rename, 
-            oMeshDazImportO.name = oMeshDazImportO.data.name = self.sNameMeshPrefix
-            oMeshDazImportO.name = oMeshDazImportO.data.name = self.sNameMeshPrefix
-            bpy.ops.object.shape_key_add(from_mix=False)
-        ###TODO: key_blocks["Breasts-Implants"].slider_max
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     ########################################################################    DAZ IMPORT
@@ -633,7 +401,7 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
         # - Flag lrPectorals Forward/Backward
  
         print("\n=== Bones_DefineFromDazInfo() ===")
-        SelectObject(self.oMeshOriginalO.parent.name)           
+        SelectObject(self.oMesh.GetMesh().parent.name)           
         bpy.ops.object.mode_set(mode='EDIT')                                        ###INFO: Modifying armature bones is done by simply editing root node containing armature.
         self.BoneFix_SetOrientationFlag_RECURSIVE('D', self.oArmBones['hip'])
         self.BoneFix_SetOrientationFlag_RECURSIVE('U', self.oArmBones['abdomenLower'])
@@ -1250,12 +1018,9 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
                     bpy.ops.object.parent_set(keep_transform=True)  ###INFO: keep_transform=True is critical to prevent reparenting from destroying the previously set transform of object!!
 
 
-
-
-
     def Bone_Define(self, sNameBone, sLabelBone, sRotOrderDAZ, nLenBone, OX, OY, OZ, eulX, eulY, eulZ):
         #=== Define the constants we need to convert from DAZ coordinate systems to Blender's === 
-        C_DazToBlenderResize = 100                          ### Everything is 100 times bigger in DAZ
+        C_DazToBlenderResize = 100                          # Everything is 100 times bigger in DAZ
         PI2 = pi/2                                          # Commonly-used 90 degree rotation        
         eulRotateDazCoordinatesToBlender = Euler((PI2,0,0)) ###NOTE: Note the IMPORTANT top-level 90 degree rotation to Blender's geometry (up is +Z, forward is -Y, left is -X)   Define top-level transform that converts coordinate and angle from Daz to Blende
 
@@ -1432,11 +1197,10 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
 
 
 
-
     ########################################################################    DEBUG POSING TESTS
 
     def DEBUG_ShowDazPose(self):
-        oRootNodeO = SelectObject(self.oMeshOriginalO.parent.name) 
+        oRootNodeO = SelectObject(self.oMesh.parent.name) 
         bpy.ops.object.mode_set(mode='POSE')
         
         self.Pose_SetBoneRotation("lThighBend", 'X', "Bend", -115);
@@ -1554,7 +1318,6 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
             self.Pose_FinalizeBoneRotation(sNameBone)
 
 
-
     def Pose_SetBoneRotation(self, sNameBone, chAxisDAZ, sLabel, nValue):
         oBone = self.mapBones[sNameBone]
         chAxisBlender, chSign = self.Util_DetermineRotatedAxisFromDazAxis(oBone, chAxisDAZ)
@@ -1580,7 +1343,7 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
             matNewRotation  = quatNewRotation.to_matrix().to_4x4()
 
             #=== Set the Blender bones ===
-            oBonePoseO = self.oMeshOriginalO.parent.pose.bones[sNameBone]
+            oBonePoseO = self.oMesh.parent.pose.bones[sNameBone]
             oBonePoseO.rotation_quaternion = quatNewRotation 
 
             #=== Set the bone visualizer rig: Convert old rotation from Blender to Daz domain, append new rotation, convert back to Blender domain and apply to bone ===            
@@ -1592,3 +1355,391 @@ class CBodyImporter():          # CBodyImporter: Singleton instance in charge of
             print("- PoseB '{}'  O={}   R={}".format(sNameBone, oBone.sRotOrder, eulNewRotation))
 
             oBone.vecRotationBuild = Vector()           # Rest build vector for next time
+
+
+
+class CBone():                      # CBone: Information-storage object used to store everything related to an individual bone as needed during body importer phase
+    def __init__(self, sNameBone):
+        self.sNameBone = sNameBone
+        self.sNameBoneParent = None                     # Name of bone parent.  Used for bone rig visualizer re-parenting
+        self.sRotOrder = None                           # DAZ-provided Euler 'rotation order'.  Hugely important to interpret its Eulers (and pose as intended).  A string that looks like "XYZ", "ZXY", "YXZ", etc
+        self.matBoneEdit = None                         # Backup of the matrix we stuff for this 'edit bone'.  Used so we can traverse back to Daz-domain and back for pose update
+        self.matDazToBlender = None                     # Stores the conversion matrix that can traverse bones from DAZ-domain to Blender-domain (e.g. to traverse the complex bone re-orientation we do during import)  (e.g. This quaternion can rotate oRigVis_AxesDAZ to oRigVis_Axes)
+        self.matBlenderToDaz = None                     # Reverse of matDazToBlender
+        self.vecRotationBuild = Vector()                # Temporary storage for the X, Y, Z rotations before a fully-qualified Euler can be constructed once all X,Y,Z rotations on a bone are known (needed to account for the various 'sRotOrder' that can exist on a given bone)        
+        
+        #--- Members related to our (optional) bone rig visualizer. Was instrumental during development ---
+        self.oRigVis_Bone           = None              # Bone 'empty'.  Is parent of the other three visualizer nodes and is the one to rotate to simulate bone rig 
+        self.oRigVis_Arrow          = None              # Draws a properly-sized arrow and oriented arrow of this oriented bone
+        self.oRigVis_Axes           = None              # Draws the Blender-domain 'axes' showing this bone's orientation
+        self.oRigVis_AxesDAZ        = None              # Draws the DAZ-domain 'axes' showing this bone's orientation in DAZ
+
+
+
+
+
+
+
+
+class CBodyImporter_Original(CBodyImporter_Base):       # Perform the first import of a DAZ-based body.  Rarely done!  Mandatory first step before being able to import source bodies.
+    INSTANCE = None
+
+    def __init__(self):
+        self.oArm                   = None              # The armature itself
+        self.oArmNode               = None              # The armature node (Blender object storing the armature = also parent to mesh)
+        self.oArmBones              = None              # Edit-time bones from self.oArm armature
+        self.mapBones               = {}                # Dictionary of all the CBone objects in our armature.  Key is CBone.sNameBone
+        
+        print("\n=== CBodyImporter_Original() ===")
+        super(self.__class__, self).__init__("-Original")           # Call the base class ctor to perform import steps that are common to both original and source subclasses
+
+        #=== Remove dumb 90 degree orientation of root node and set scale to 1:1.  We do inverse operation at vert level to provide identical results ===
+        oRootNodeO = self.oMesh.GetMesh().parent                    # Mesh root node is parent of the main mesh
+        oRootNodeO.name = self.sNameArmatureNode
+        oRootNodeO.name = self.sNameArmatureNode
+        oRootNodeO.rotation_euler.x = 0
+        oRootNodeO.scale = Vector((1,1,1))
+        
+        #=== Obtain reference to armature ===
+        self.oMesh.GetMesh().modifiers[0].name = "Armature"         # Ensure first modifier is called what we need throughout codebase (FBX sets only one modifier = Armature)
+        self.oArmNode = self.oMesh.GetMesh().modifiers["Armature"].object  
+        self.oArm = self.oArmNode.data
+        self.oArm.name = self.sNamePrefix + "-Armature"
+        self.oArm.name = self.sNamePrefix + "-Armature"
+        self.oArm.draw_type = "OCTAHEDRAL"
+    
+        #=== Remove all shape keys.  '-Original' mesh is only to preserve our custom vertex groups.  Shape keys stored in '-Source' mesh ===
+        self.oMesh.ShapeKeys_RemoveAll()
+        
+        #=== Apply the inverse rotation we did to the root node above.  All this to ensure vertex positions can be read directly as global coordinate without messy conversions ===
+        if self.oMesh.Open():
+            bpy.ops.transform.rotate(value=radians(90), axis=(1, 0, 0), constraint_axis=(True, False, False))
+            bpy.ops.transform.resize(value=(0.01, 0.01, 0.01))
+            self.oMesh.Close()
+
+        #=== Adjust bone angle and rolls from our exported DAZ data ===
+        SelectObject(oRootNodeO.name, True)           
+        bpy.ops.object.mode_set(mode='EDIT')                        ###INFO: Modifying armature bones is done by simply editing root node containing armature.
+        bpy.ops.armature.select_all(action='SELECT')                ###INFO: How to select bones... almost like 'mesh'
+        bpy.ops.transform.rotate(value=radians(90), axis=(1, 0, 0), constraint_axis=(True, False, False))       # Rotate and rescale the armature bones to nullify node rotation above and rescale to return bones to meter units (and nullify re-scaling above)
+        bpy.ops.transform.resize(value=(0.01, 0.01, 0.01))
+        bpy.ops.armature.select_all(action='DESELECT')
+
+        #=== Perform the complex process of modifying the bone armature to have compute usable bone bending angles from custom-exported DAZ information ===
+        self.oArmBones = self.oArm.edit_bones
+        self.Bones_DefineFromDazInfo()
+        SelectObject(self.oMesh.GetName())
+        
+        #=== Merge the overly-detailed materials mapped to the same texture all together ===
+        self.Materials_MergeSlavesToMasters(bDefineResources = True)
+       
+        
+
+
+mapRawShapeKeyNamesToGametimeMorphs = {     # Maps DAZ unique morph name to morphing information we need at gametime:
+    # 1) Morph category, 2) Morph sub-category, 3) Morph name, 4) Morph subscription level, 5), Morph minimum, 6) Morph maximum
+    "CTRLFitness":                  ["Body",        "Shape",        "Fitness",              0, -1.0, 1.5],
+    "FBMThin":                      ["Body",        "Shape",        "Thin",                 0, -2.0, 1.2],
+    "FBMVictoria7":                 ["Body",        "Shape",        "Type 1",               0, -0.5, 1.0],
+    "FBMVoluptuous":                ["Body",        "Shape",        "Voluptuous",           0, -1.0, 1.5],
+    "PBMBreastsSize":               ["Breasts",     "Shape",        "Size",                 0, -0.5, 4.0],
+    "CTRLBreastsImplants":          ["Breasts",     "Shape",        "Implants",             0, -1.0, 5.0],
+    "CTRLBreastsNatural":           ["Breasts",     "Shape",        "Natural",              0, -2.0, 2.0],
+    "PBMBreastsHeavy":              ["Breasts",     "Shape",        "Heavy",                0, -0.0, 4.0],
+    "PBMBreastsShape05":            ["Breasts",     "Shape",        "Shape 1",              0, -0.5, 2.0],
+    "PBMBreastsShape08":            ["Breasts",     "Shape",        "Shape 2",              0, -1.0, 4.0],
+    "PBMNipples":                   ["Breasts",     "Nipples",      "Nipples",              0, -0.0, 2.0],
+    "PBMNipplesDepth":              ["Breasts",     "Nipples",      "Nipple Depth",         0, -0.0, 2.0],
+    "PBMNipplesDiameter":           ["Breasts",     "Nipples",      "Nipple Diameter",      0, -0.0, 3.0],
+    "PBMNipplesLarge":              ["Breasts",     "Nipples",      "Nipple Large",         0, -0.0, 3.0],
+    "PBMNipplesSize":               ["Breasts",     "Nipples",      "Nipple Size",          0, -0.0, 2.0],
+
+    "Shape - Details A":            ["Penis",       "Shape",        "Shaft Wrinkles",       0, -0.0, 2.0],
+    "Heavily Wrinkled":             ["Penis",       "Shape",        "Wrinkles",             0, -0.5, 0.5],
+    "Super Round Straight":         ["Penis",       "Shape",        "Irregular Shape 1",    0, -3.0, 3.0],
+    "Super Straight Alt":           ["Penis",       "Shape",        "Irregular Shape 2",    0, -2.0, 4.0],
+    "Shape - Misshapen A":          ["Penis",       "Shape",        "Irregular Shape 3",    0, -0.8, 1.2],
+    "UnderBulge":                   ["Penis",       "Shape",        "Base Folds",           0, -1.0, 1.0],
+
+    "Shape - C Cavernosum U":       ["Penis",       "Cavernosum",   "Cavernosum",           0, -0.0, 2.0],
+    "Shape - C Cavernosum U Alt":   ["Penis",       "Cavernosum",   "Cavernosum Edges",     0, -0.0, 3.0],
+
+    "Shape - Big Veins":            ["Penis",       "Veins",        "Large Veins",          0, -0.0, 1.0],
+    "Prominent Veins":              ["Penis",       "Veins",        "",                     0, -0.0, 1.5],
+    "Shape - Veins A":              ["Penis",       "Veins",        "Veins A",              0, -0.0, 3.0],
+    "Shape - Veins B":              ["Penis",       "Veins",        "Veins B",              0, -0.0, 2.0],
+    "Dorsal Vein C":                ["Penis",       "Veins",        "Dorsal Vein 1",        0, -0.0, 5.0],
+
+    "Glans Size":                   ["Penis",       "Glans",        "",                     0, -0.5, 1.0],
+    "Glans Shape A":                ["Penis",       "Glans",        "",                     0, -0.5, 1.5],
+    "Glans Shape B":                ["Penis",       "Glans",        "",                     0, -0.5, 1.0],
+    "Glans Shape C":                ["Penis",       "Glans",        "",                     0, -0.5, 1.0],
+
+    "Balloon Balls":                ["Penis",       "Scrotum",      "Scrotum Size",         0, -0.5, 1.0],
+    "Turkeyneck":                   ["Penis",       "Scrotum",      "Testicle Fold",        0, -0.3, 1.0],
+    "Scrotum Wrinkles":             ["Penis",       "Scrotum",      "",                     0, -1.0, 1.0],
+    "Testicle Definition":          ["Penis",       "Scrotum",      "Testicles Shape",      0, -0.5, 1.5],
+    "No Testicles":                 ["Penis",       "Scrotum",      "No Testicles",         0, -1.0, 1.0],
+
+}
+
+class CBodyImporter_Source(CBodyImporter_Base):
+    
+    def __init__(self):
+        
+        print("\n=== CBodyImporter_Source() ===")
+        super(self.__class__, self).__init__("-Source")             # Call the base class ctor to perform import steps that are common to both original and source subclasses
+
+        self.oMeshOriginal = CMesh.Attach(self.sNamePrefix + "-Original")       # Obtain access to the original mesh (Original import must have ran before!)
+
+        DeleteObject(self.sNamePrefix_Daz)                          # Delete the just-imported armature object.  We use the armature created in original import step
+        self.oMesh.SetParent(self.sNameArmatureNode)                # Reparent the just-imported source mesh to the previously-processed armature node created in 'CBodyImporter_Original' class
+
+        #=== Rotate and rescale all the morphs / shape keys so source mesh is properly oriented in Blender without any node rotation.  We also change their names to human-friendly names ===
+        Util_ConvertShapeKeys(self.oMesh, self.sNamePrefix_Daz)
+
+        #=== Connect our mesh to the armature of the '-Original' mesh previously imported ===
+        self.oMesh.GetMesh().modifiers[0].name = "Armature"         # Ensure first modifier is called what we need throughout codebase (FBX sets only one modifier = Armature)
+        self.oMesh.GetMesh().modifiers["Armature"].object = bpy.data.objects[self.sNameArmatureNode]  
+
+        #=== Copy the vertex groups from the original mesh to the just-imported 'source' one ===  ###NOTE: Note that this procedure CANNOT transfer vertex groups that have verts at exactly 0 weight!!  (Set them to a tiny value like 1e-30 or something)
+        Util_CopyVertGroups(self.oMeshOriginal, self.oMesh)        
+
+        #=== Merge the slave materials into the master ones (as we did for the original mesh) ===
+        self.Materials_MergeSlavesToMasters(bDefineResources = False)
+
+        #=== Modify the source woman mesh to give it new bones around vagina opening ===         ###DESIGN: Merge CHoleRig here??
+        if self.bIsWoman:
+            CHoleRig.CHoleRig(self.oMesh, 0.15)
+
+        print("--- CBodyImporter_Source() finishes ---\n")
+
+
+
+class CBodyImporter_Penis():
+    def __init__(self):
+        self.sNamePrefix            = ""                # The prefix we will give this new mesh type.  (Either 'Man' or 'Woman' or 'Penis')
+        self.sNamePrefix_Daz        = ""                # The name DAZ gives the armature object and the mesh (suffixed with '.Shape')  Like 'Genesis3Female' or 'Genesis3Male'
+        self.sNameArmatureNode      = ""                # Name given to our armature node.  Always "[" + self.sNamePrefix + "]"
+        self.oMesh                  = None              # The mesh this instance processes.  Is the 'original' (untouched) mesh for CBodyImporter_Original subclass and the 'source' mesh (heavily modified) for CBodyImporter_Source subclass 
+
+        #=== Detect what type of mesh the user has imported from Daz from the existance of known .  We can process either a "Genesis 3 Male" or "Genesis 3 Female" body ===
+        self.sNamePrefix_Daz = "TAB_Gen3M_27097"         
+        if self.sNamePrefix_Daz not in bpy.data.objects:
+            raise Exception("\n###EXCEPTION: Could not locate a raw DAZ import mesh for penis.  Exiting importer.")
+        self.sNamePrefix = "Penis"
+        self.sNameArmatureNode = "[" + self.sNamePrefix + "]" 
+
+        #=== First-order intialization of the raw DAZ mesh ===
+        self.oMesh = CMesh.Attach(self.sNamePrefix_Daz + ".Shape")
+        self.oMesh.SetName(self.sNamePrefix)
+        self.oMesh.GetMesh().show_all_edges = True
+        SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', True)
+
+        #=== Copy the vertex groups from our reference mesh so we don't have to re-enter them at every DAZ import! ===  
+        oMeshSrc = CMesh.Attach("PenisA-VertGroupReference")
+        Util_CopyVertGroups(oMeshSrc, self.oMesh)        
+
+        #=== Remove dumb 90 degree orientation of root node and set scale to 1:1.  We do inverse operation at vert level to provide identical results ===
+        oRootNodeO = self.oMesh.GetMesh().parent                    # Mesh root node is parent of the main mesh
+        oRootNodeO.name = self.sNameArmatureNode
+        oRootNodeO.name = self.sNameArmatureNode
+        oRootNodeO.rotation_euler.x = 0
+        oRootNodeO.scale = Vector((1,1,1))
+    
+        #=== Apply the inverse rotation we did to the root node above.  All this to ensure vertex positions can be read directly as global coordinate without messy conversions ===
+        if self.oMesh.Open(bSelect = True):
+            bpy.ops.mesh.customdata_custom_splitnormals_clear()         ###INFO:!! Fixes the annoying 'Invalid clnors in this fan!' warnings... See https://blender.stackexchange.com/questions/77332/invalid-clnors-in-this-fan-warning  ###CHECK:!! Are custom loop normal useful for anything?  Placing in this super-important call appropriate for all contexts?  (Can damage some meshes??)
+            bpy.ops.object.vertex_group_sort(sort_type='NAME')
+            self.oMesh.Close(bDeselect = True)
+        
+        #=== Lock up all the DAZ vertex groups for protection ===
+        self.oMesh.VertGrp_LockUnlock(True, G.C_RexPattern_EVERYTHING)
+        
+        #=== Obtain reference to armature ===
+        self.oMesh.GetMesh().modifiers[0].name = "Armature"         # Ensure first modifier is called what we need throughout codebase (FBX sets only one modifier = Armature)
+        self.oArmNode = self.oMesh.GetMesh().modifiers["Armature"].object  
+        self.oArm = self.oArmNode.data
+        self.oArmBones = self.oArm.edit_bones
+        self.oArm.name = self.sNamePrefix + "-Armature"
+        self.oArm.name = self.sNamePrefix + "-Armature"
+        self.oArm.draw_type = "OCTAHEDRAL"
+    
+        #=== Remove extraneous penis bones ===
+        SelectObject(oRootNodeO.name, True)           
+        bpy.ops.object.mode_set(mode='EDIT')                        ###INFO: Modifying armature bones is done by simply editing root node containing armature.
+        self.oArmBones.remove(self.oArmBones['hip'])                ###NOTE: We must leave the 'pelvis' bone in otherwise scaling of 'shaft1' would not 'blend' the shaft with the base and look horrible
+        self.oArmBones.remove(self.oArmBones['abdomenLower'])
+        self.oArmBones.remove(self.oArmBones['lThighBend'])
+        self.oArmBones.remove(self.oArmBones['lThighTwist'])
+        self.oArmBones.remove(self.oArmBones['rThighBend'])
+        self.oArmBones.remove(self.oArmBones['rThighTwist'])
+
+        #=== Rescale and rotate the bones to counter the global rotation / rescale we removed above ===        
+        bpy.ops.armature.select_all(action='SELECT')                ###INFO: How to select bones... almost like 'mesh'
+        bpy.ops.transform.rotate(value=radians(90), axis=(1, 0, 0), constraint_axis=(True, False, False))       # Rotate and rescale the armature bones to nullify node rotation above and rescale to return bones to meter units (and nullify re-scaling above)
+        bpy.ops.transform.resize(value=(0.01, 0.01, 0.01))
+        SetView3dPivotPointAndTranOrientation('INDIVIDUAL_ORIGINS', 'GLOBAL', True)     ###INFO: How to rotate individual items about their origin
+        bpy.ops.transform.rotate(value=radians(90), axis=(1, 0, 0), constraint_axis=(True, False, False))       # Rotate and rescale the bones about themselves so they orient from penis base toward tip
+        SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', True)
+        bpy.ops.armature.select_all(action='DESELECT')
+
+        #=== Rotate and rescale all the morphs / shape keys so source mesh is properly oriented in Blender without any node rotation.  We also change their names to human-friendly names ===
+        Util_ConvertShapeKeys(self.oMesh, self.sNamePrefix_Daz)
+
+        #=== Remove the extraneous material slots ===
+        SelectObject(self.oMesh.GetName())
+        self.oMesh.GetMesh().active_material_index = 2
+        bpy.ops.object.material_slot_remove()
+        self.oMesh.GetMesh().active_material_index = 1
+        bpy.ops.object.material_slot_remove()
+        self.oMesh.GetMesh().active_material_index = 0
+
+        #=== Set our material to a known one so Penis fitter can override ===
+        aMatSlots = self.oMesh.GetMesh().material_slots
+        aMatSlots[0].material = bpy.data.materials["_PenisA"]
+
+        #=== Cleanup the extra materials (created by extra meshes imported by FBX) === 
+        Cleanup_MaterialsTexturesImages()               # Any material, texture or image that doesn't start with the "_" prefix gets deleted!
+        SetView3dPivotPointAndTranOrientation('INDIVIDUAL_ORIGINS', 'GLOBAL', True)     ###INFO: How to rotate individual items about their origin
+
+        #=== Create additional shape keys from the manipulation of bones ===
+        self.Util_CreateShapeKeyFromCurrentArmatureShape("Penis_Shaft_Size_0",        -1.0, 1.0, "shaft1",    1.6)        ###TUNE
+        self.Util_CreateShapeKeyFromCurrentArmatureShape("Penis_Scrotum_Size_0",      -0.6, 1.0, "scrotum1",  1.8)
+        #-- Create a penis lenght morph --  (more involved than a single bone scale)
+        SelectObject(self.oArmNode.name)
+        bpy.ops.object.mode_set(mode='POSE')
+        n = 0.06                                ###TUNE
+        self.oArmNode.pose.bones["shaft1"]  .location.y = n / 4     # Shaft1 cannot move as much because of base
+        self.oArmNode.pose.bones["shaft2"]  .location.y = n
+        self.oArmNode.pose.bones["shaft3"]  .location.y = n
+        self.oArmNode.pose.bones["shaft4"]  .location.y = n
+        self.oArmNode.pose.bones["foreskin"].location.y = n / 2
+        self.oArmNode.pose.bones["glans"]   .location.y = n / 4
+        self.Util_CreateShapeKeyFromCurrentArmatureShape("Penis_Shaft_Length_0", -0.3, 1.0)
+
+        #=== Remove the DAZ vertex groups.  They are useless now that we 'baked' all bone modifications into shape keys.  (They would interfere with gametime skinning) ===
+        self.oMesh.VertGrp_Remove(G.C_RexPattern_StandardBones)     ###TODO: This makes armature & bones useless.  Remove them too?
+        #self.oMeshO.modifiers.remove()
+
+        #=== Return mesh and scene to defaults ===
+        SetView3dPivotPointAndTranOrientation('CURSOR', 'GLOBAL', True)     ###NOW: Add new armature, turn into fn, test!
+        self.oArmNode.select = False
+        self.oArmNode.hide = True
+        SelectObject(self.oMesh.GetName())
+
+    
+    def Util_CreateShapeKeyFromCurrentArmatureShape(self, sNameShapeKey, nShapeKeyMin, nShapeKeyMax, sNameBoneToModify = None, nScaleXYZ = None):       # Creates a new shape key from the current armature rig.  If 'sNameBoneToModify' is specified it will scale it to 'nScaleXYZ' for a one-line command
+        #=== Apply a given transformation to a single armature bone ===
+        if sNameBoneToModify is not None:
+            SelectObject(self.oArmNode.name)
+            bpy.ops.object.mode_set(mode='POSE')
+            self.oArmNode.pose.bones[sNameBoneToModify].scale = Vector((nScaleXYZ, nScaleXYZ, nScaleXYZ))
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        #=== 'Bake' the current shape of the skinned mesh to a new shape key ===
+        SelectObject(self.oMesh.GetName())
+        bpy.ops.object.modifier_apply(modifier="Armature", apply_as='SHAPE')
+        self.oMesh.Modifier_AddArmature_ArmatureNode(self.oArmNode)     ###NOTE: Above removes the armature.  Recreate a new one with the same armature node as before
+        
+        #=== Update the parameters of the just-created shape key ===
+        aShapeKeys =  self.oMesh.GetMeshData().shape_keys.key_blocks
+        oShapeKey_CreatedFromArmature = aShapeKeys["Armature"]          ###NOTE: modifier_apply() above create a new shape key of the same name with each vert positioned as the bones were set when modifier_apply() was called 
+        oShapeKey_CreatedFromArmature.name = sNameShapeKey
+        oShapeKey_CreatedFromArmature.slider_min = nShapeKeyMin
+        oShapeKey_CreatedFromArmature.slider_max = nShapeKeyMax
+        SelectObject(self.oArmNode.name)
+        
+        #=== Reset all the bones to their default position / rotation / scale ===
+        bpy.ops.object.mode_set(mode='POSE')
+        bpy.ops.pose.select_all(action='SELECT')
+        bpy.ops.pose.transforms_clear()
+        bpy.ops.pose.select_all(action='DESELECT')
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+
+
+
+
+
+def Util_CopyVertGroups(oMeshSrc, oMeshDst):       ###MOVE:??
+    #=== Copy the vertex groups from the original mesh to the just-imported 'source' one ===  ###NOTE: Note that this procedure CANNOT transfer vertex groups that have verts at exactly 0 weight!!  (Set them to a tiny value like 1e-30 or something)
+    print("\n=== Util_CopyVertGroups() ===")
+    SelectObject(oMeshDst.GetName())
+    oModDataTransfer = oMeshDst.GetMesh().modifiers.new(name="DATA_TRANSFER", type="DATA_TRANSFER")
+    oModDataTransfer.object = oMeshSrc.GetMesh()
+    oModDataTransfer.use_vert_data = True
+    oModDataTransfer.data_types_verts = {'VGROUP_WEIGHTS'}
+    bpy.ops.object.datalayout_transfer(modifier="DATA_TRANSFER")
+    AssertFinished(bpy.ops.object.modifier_apply(modifier=oModDataTransfer.name, apply_as='DATA'))      ###INFO: How to properly apply a modifier.  Note we must pass in the name!!
+    if oMeshDst.Open(bSelect = True):
+        bpy.ops.object.vertex_group_clean(group_select_mode='ALL')
+        oMeshDst.Close(bDeselect = True)
+    print("--- Util_CopyVertGroups() finishes ---\n")
+
+def Util_ConvertShapeKeys(oMesh, sNamePrefix_Daz):     ###MOVE:??
+    #=== Create a temporary copy so we can rotate all shape keys 90 degrees ===
+    oMeshCopy = CMesh.AttachFromDuplicate(oMesh.GetName() + "-Temp-ShapeKeysRotator", oMesh)
+    oMesh.GetMesh().active_shape_key_index = 0
+    aShapeKeysS =  oMeshCopy.GetMeshData().shape_keys.key_blocks
+    aShapeKeysD = oMesh.GetMeshData().shape_keys.key_blocks
+    nShapeKeys = len(aShapeKeysS)
+    nVerts = len(oMesh.GetMeshData().vertices)
+    nLenNameShapeKeyPrefixToRemove = len(sNamePrefix_Daz) + 2 
+
+    #=== Rotate and rescale all the morphs / shape keys so source mesh is properly oriented in Blender without any node rotation ===
+    for nShapeKey in range(nShapeKeys):
+        oShapeKeyS = aShapeKeysS[nShapeKey]
+        oShapeKeyD = aShapeKeysD[nShapeKey]     
+        if nShapeKey > 0:                       # Avoid renaming first shape key (Basis)        ###IMPROVE: Remove common prefix like FBM, PBM, CTRL, etc
+            oShapeKeyD.name = oShapeKeyD.name[nLenNameShapeKeyPrefixToRemove:]      # Remove the prefix DAZ exported inserted into the shape key name
+        aVerts_ShapeKeysS = oShapeKeyS.data
+        aVerts_ShapeKeysD = oShapeKeyD.data
+        oShapeKeyS.value = 0
+        oShapeKeyD.value = 0
+        for nVert in range(nVerts):
+            oVertS = aVerts_ShapeKeysS[nVert]
+            vecVertSource   = oVertS.co.copy()
+            vecVertRotated  = Vector((vecVertSource.x / 100, -vecVertSource.z / 100, vecVertSource.y / 100))        # Rotate 90 degrees about X and reduce scale by 100
+            aVerts_ShapeKeysD[nVert].co = vecVertRotated
+            nVert += 1
+    oMeshCopy = DeleteObject(oMeshCopy.GetName())                   # We are done with our mesh copy and can delete it.
+
+    #=== Fix the 'Basis' shape key by entering and exiting edit mode === 
+    SelectObject(oMesh.GetName())
+    oMesh.GetMesh().active_shape_key_index = 0
+    bpy.ops.object.mode_set(mode='EDIT')                ###NOTE: Shape key rotation / rescaling above has a basis that doesn't 'take' unless we enter and exit edit mode (there is probably a more efficient way to really 'set' it but I don't know what command)  If we don't do this then some meshes (penis) will have a different scaling orientation when we remove all the shape keys!
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    #=== Convert the raw DAZ shape key names into fully-qualified morphing definitions Unity can use at gametime.  Definition string includes morph category, morphing level, morph name, minimum value, maximum value        
+    for oShapeKey in aShapeKeysD:
+        sNameShapeKey_DAZ = oShapeKey.name
+        if sNameShapeKey_DAZ in mapRawShapeKeyNamesToGametimeMorphs:
+            aMorphDefinition = mapRawShapeKeyNamesToGametimeMorphs[sNameShapeKey_DAZ]           # 1) Morph category, 2) Morph sub-category, 3) Morph name, 4) Morph subscription level, 5), Morph minimum, 6) Morph maximum
+            oShapeKey.slider_min = aMorphDefinition[4]
+            oShapeKey.slider_max = aMorphDefinition[5]
+            if aMorphDefinition[2] == "":                   # If morph human name empty use the DAZ name instead
+                aMorphDefinition[2] = sNameShapeKey_DAZ 
+            oShapeKey.name = aMorphDefinition[0] + "_" + aMorphDefinition[1] + "_" + aMorphDefinition[2] + "_" + str(aMorphDefinition[3])       # + "_" + aMorphDefinition[3] + "_" + aMorphDefinition[4]    ###WEAK: Separate the definition fields into one string so Unity can quickly obtain the same information from the morph description string.  (A cheap but flimsy design!) 
+            print("- Converted raw DAZ shape key '{}' to Unity morph '{}'".format(sNameShapeKey_DAZ, oShapeKey.name))
+        else:
+            if sNameShapeKey_DAZ != "Basis":        # Basis is a valid shape key that is deliberately ignored 
+                print("#WARNING: CBodyImporter_Source() cannot find mapping for DAZ shape key '{}'".format(sNameShapeKey_DAZ))
+
+        
+
+
+
+
+
+
+
+
+
+
+        #bpy.ops.object.parent_clear(type='CLEAR')       # Unparent and reparent to clear the bad transform between the two
+        #oRootNodeO.select = True
+        #bpy.context.scene.objects.active = oRootNodeO
+        #bpy.context.scene.objects.active = self.oMesh.GetMesh()
+        #bpy.ops.object.parent_set(keep_transform=True)        ###INFO: keep_transform=True is critical to prevent reparenting from destroying the previously set transform of object!!
+        #bpy.context.scene.objects.active = self.oMesh.GetMesh()

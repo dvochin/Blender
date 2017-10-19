@@ -2,8 +2,7 @@
 
 ###DOCS24: Aug 2017 - CBody rewrite
 # === DEV ===
-#- Bad hack with breaking morphing body
- 
+
 # === NEXT ===
 #- Could retune fluid collider to have more verts
  
@@ -17,6 +16,7 @@
 # === REMINDERS ===
  
 # === IMPROVE ===
+#- Could insert a line of particles along penis shaft center just before decimation.  Those that stay would help large girth penis simulate more like a solid
  
 # === NEEDS ===
  
@@ -29,7 +29,9 @@
 # === LEARNED ===
  
 # === PROBLEMS ===
- 
+#- Last bone of penis softbody is always very low density!  Why??
+    #- Problem with penis last bone being different is because a loop doesn't iterate from 1?
+
 # === WISHLIST ===
 
 
@@ -55,9 +57,9 @@ import CObject
 #---------------------------------------------------------------------------    CBODY PUBLIC ACCESSOR
 #---------------------------------------------------------------------------    
 
-def CBodyBase_Create(nBodyID, sSex, sMeshSource, sGenitals):
+def CBodyBase_Create(nBodyID, sSex):
     "Proxy for CBody ctor as we can only return primitives back to Unity"
-    oBodyBase = CBodyBase(nBodyID, sSex, sMeshSource, sGenitals)
+    oBodyBase = CBodyBase(nBodyID, sSex)
     return str(oBodyBase.nBodyID)
 
 def CBodyBase_GetBodyBase(nBodyID):
@@ -114,18 +116,16 @@ class CBody:
     C_SoftBodyID_BreastR    = 0x03
     C_SoftBodyID_Penis      = 0x04
     #-------------------------------------------------- Dynamic Bone naming constants shared between Blender and Unity        ###DEV24:2???
-#     C_Prefix_DynBone_Penis      = "+DynBone-Penis-"     # The dynamic penis bones.   Created and skinned in Blender and responsible to repel (only) vagina bones
-#     C_Prefix_DynBone_Vagina     = "+DynBone-Vagina-"    # The dynamic vagina bones.  Created and skinned in Blender and repeled (only) by penis bones
-#     C_Prefix_DynBone_VaginaHole = "+DynBone-VaginaHole-"# The dynamic vagina hole bones.  Created and skinned in Blender and responsible to guide penis in rig body.
+    C_Prefix_DynBone_Penis      = "+Penis-"             # The dynamic penis bones.   Created and skinned in Blender and responsible to repel (only) vagina bones
+    C_Prefix_DynBone_Vagina     = "+Vagina-"            # The dynamic vagina bones.  Created and skinned in Blender and repeled (only) by penis bones
+    C_Prefix_DynBone_VaginaHole = "+VaginaHole-"        ###OBS?? The dynamic vagina hole bones.  Created and skinned in Blender and responsible to guide penis in rig body.
     #-------------------------------------------------- DEV
     DEBUG_INSTANCE = None                               # Stores the singleton class instance to facilitate access from Blender Python console 
 
 
-    def __init__(self, oBodyBase, bDisableRigCreation_HACK=False):
+    def __init__(self, oBodyBase):
         self.oBodyBase = oBodyBase          # Our owning body base.  In charge of creating / destroying us.  Body base is form morphing / configuration, CBody for gameplay
-        self.oMeshBody = None               # The 'body' skinned mesh.   Originally copied from oMeshMorph.  Has softbody parts (like breasts and penis) removed. 
-        self.oMeshSrcBreast = None          # Our copy of source separated breast.  Used for breast morphs        ###OBS?
-        self.aSoftBodies = {}               # Dictionary of CSoftBody objects representing softbody-simulated meshes.  (Contains items such as "BreastL", "BreastR", "Penis", to point to the object responsible for their meshes)
+        self.oMeshBody = None               # The 'gametime body' skinned mesh   Originally copied from the morphing body encompassing the user's morphing preferences.  Has softbody parts (like breasts and penis) removed. 
         self.aMapVertsSrcToMorph = {}       # Map of which original vert maps to what morph/assembled mesh verts.  Used to traverse morphs intended for the source body
         self.oArmNode   = None              # Our source body's armature Blender node 
         self.oArm       = None              # The armature itself.  This is what we use to edit bones
@@ -134,8 +134,8 @@ class CBody:
         
         self.oMeshFlexTriCol_BodyMain   = None          # The 'Flex Triangle Collider' this class creates representing this body's shape in Flex's main solver and has the softbody parts removed.   This mesh is 'shrunken' for skin-level collisions and this is what repels softbodies and cloth from non-softbody areas.  Separated from the rig in Finalize() from the skinned particles.
         self.oMeshFlexTriCol_BodyFluid  = None          # The 'Flex Triangle Collider' representing this full body's shape in Flex's fluid solver and includes the softbody parts.  This is what repels fluid particles from the ENTIRE body.  A simple remesh of the source body
-        self.oMeshBodySimplified_TEMP = None            # Simplified version of main body free of extraneous geometry (inner mouth, vagina, anus, etc) to act as source to our colliders.  This mesh is TEMPORARY and becomes 'self.oMeshFlexTriCol_BodyFluid' in Finalize()
-        self.oMeshPenisColliderPhysX_HACK = None
+        self.oMeshBodySimplified = None            # Simplified version of main body free of extraneous geometry (inner mouth, vagina, anus, etc) to act as source to our colliders.  This mesh is TEMPORARY and becomes 'self.oMeshFlexTriCol_BodyFluid' in Finalize()
+        self.oMeshPenisColliderPhysX = None
 
         self.nBoneID = 1                                # Static counter that uniquely identifies each bone created by this class.  These are sent to Unity and enable it to match raw vertices in the Flex rig with the ID used in the presentation vertex groups.  FlexParticleType with a bone ID of 0 have no bone.
         self.bPerformSafetyChecks = bpy.context.scene.SafetyChecks  # If true algorithm performs many 'safety checks' as complex Flex Rig construction proceeds. 
@@ -148,146 +148,91 @@ class CBody:
 
 
         print("\n=== CBody()  nBodyID:{}  sMeshPrefix:'{}' ===".format(self.oBodyBase.nBodyID, self.oBodyBase.sMeshPrefix))
-    
+
+        #=== Create the main skinned body from the base's Morph mesh.  This mesh will have softbody body parts cut out from it ===
+        self.oMeshBody = CMesh.AttachFromDuplicate(self.oBodyBase.sMeshPrefix + 'Body' , self.oBodyBase.oMeshMorph)
+        self.oMeshBody.oMeshSource = self.oBodyBase.oMeshSource     # Push in what the source to this mesh is so Unity can extract valid normals
+
         #=== Obtain access to the armature Blender node and the armature itself ===
-        self.oArmNode               = self.oBodyBase.oMeshSource.GetMesh().modifiers["Armature"].object 
+        self.oArmNode               = self.oMeshBody.GetMesh().modifiers["Armature"].object 
         self.oArm                   = self.oArmNode.data
 
-        #=== Create the main skinned body from the base's MorphResult mesh.  This mesh will have softbody body parts cut out from it ===
-        ###DEV24:!!!!!!!!!!!!! HUGE FUCKING HACK.  MorphResult trampled by Unity!!!!!  self.oMeshBody = CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + 'Body' , self.oBodyBase.oMeshMorphResult)
-        self.oMeshBody = CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + 'Body' , self.oBodyBase.oMeshMorph)
-        self.oMeshBody.SetParent(self.oBodyBase.oNodeRoot.name)
-
-        # Convert to tris and remove the super-close geometry
-        ###DEV24:2????? Cleanup_RemoveDoublesAndConvertToTris(0.001)     ###TUNE:!!! Useful to remove stuff user can't really see?                                                              
-
-        #=== Create a data layer that will store source body verts for possible vert domain traversal (e.g. soft body skin) ===
-        if self.oMeshBody.Open():
-            oLayVertSrcBody = self.oMeshBody.bm.verts.layers.int.new(G.C_DataLayer_VertSrcBody)        ###CHECK: Should be in CBodyBase??  Redundant?  Still used??
-            for oVert in self.oMeshBody.bm.verts:
-                oVert[oLayVertSrcBody] = oVert.index            # Store the vert ID into its own data layer.  This way we can always get back the (authoritative) vert ID and always know exactly which vert we're refering to in any vert domain (e.g. mesh parts cut off from source body)
-            self.oMeshBody.Close()
-
-        #=== Create the critically-important Flex rig to act as the body's super-complex collider during gameplay ===
-        if bDisableRigCreation_HACK == False:
-            self.PrepareSourceBody()
-            if self.oBodyBase.sSex != "Woman":          ###CHECK24: Identification / separation of the softbodies for each sex done here??
-                CFlexSoftBody.CFlexSoftBodyPenis(self, CBody.C_SoftBodyID_Penis, "Penis", "#Penis", ["pelvis", "Genitals", "abdomenLower", "lThighBend", "lThighTwist", "rThighBend", "rThighTwist"])
-            CFlexSoftBody.CFlexSoftBody(self, CBody.C_SoftBodyID_BreastL, "BreastL", "lPectoral", ["chestLower", "chestUpper", "lCollar", "lShldrBend"])    ###IMPROVE: Add a 'quick mode' from Unity to not separate breasts??
-            CFlexSoftBody.CFlexSoftBody(self, CBody.C_SoftBodyID_BreastR, "BreastR", "rPectoral", ["chestLower", "chestUpper", "rCollar", "rShldrBend"])
-            self.Finalize()
-
-
-
-
-    def DoDestroy(self):
-        print("X--- CBody.DoDestroy() called on body '{}' ---X".format(self.oBodyBase.sMeshPrefix))
-        self.oMeshBody.DoDestroy()
-        for sSoftBody in self.aSoftBodies:  # Destroy the members of our collections
-            self.aSoftBodies[sSoftBody].DoDestroy()
-#         for sCloth in self.aCloths:
-#             self.aCloths[sCloth].DoDestroy()
-        return None         # Conveniently return None so CBodyBase can set its oBody member to none.
-    
-    
-
-    def CreateSoftBody(self, sSoftBodyPart, nSoftBodyFlexColliderShrinkRatio):
-        "Create a softbody by detaching sSoftBodyPart verts from game's skinned main body"
-        self.aSoftBodies[sSoftBodyPart] = CSoftBody.CSoftBody(self, sSoftBodyPart, nSoftBodyFlexColliderShrinkRatio)  # This will enable Unity to find this instance by our self.sSoftBodyPart key and the body.
-        return "OK"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    #-----------------------------------------------------------------------    PREPARE SOURCE BODY
-    
-    def PrepareSourceBody(self):                              # Shrinks the entire body mesh by a ratio of the Flex particle distance so collisions appear at skin level.  Important first step in the creation of the game-critical Flex rig.
-        print("\n=== CBody.PrepareSourceBody() ===")                             ###IMPROVE: Utility function to print and show short info tooltip!
-
-
+        #=== 'Bake' the user's morphing choices into a regular mesh this code needs for softbody separation & processing ===
+        aKeys = self.oMeshBody.GetMeshData().shape_keys.key_blocks
+        bpy.ops.object.shape_key_add(from_mix=True)  ###INFO: How to 'bake' the current shape key mix into one: We first create a new shape from the user's mix of morphs the delete all the shape keys starting at the first one ('Basis')
+        nKeys = len(aKeys)
+        for nKey in range(nKeys): 
+            bpy.context.object.active_shape_key_index = 0
+            bpy.ops.object.shape_key_remove(all=False)
+        
         #===== SIMPLIFY SOURCE BODY =====
         #=== Obtain access to main body and setup vert groups properly ===
-        oMeshBody = self.oMeshBody
-        oMeshBody.VertGrp_LockUnlock(False, G.C_RexPattern_DynamicBones)      # Unlock ALL our dynamic bones vertex groups so we can edit what we need  ###
-        ###DEV24:!!!!! oMeshBody.VertGrp_RemoveAndSelect_RegEx(G.C_RexPattern_DynamicBones)                 # Ensure the source body has none of our dynamic bones assigned.
+        self.oMeshBody.VertGrp_LockUnlock(False, G.C_RexPattern_DynamicBones)      # Unlock ALL our dynamic bones vertex groups so we can edit what we need  ###
+        ###DEV24:!!!!! self.oMeshBody.VertGrp_RemoveAndSelect_RegEx(G.C_RexPattern_DynamicBones)                 # Ensure the source body has none of our dynamic bones assigned.
         ###IMPROVE: Bones_RemoveBonesWithNamePrefix(self.oArm, G.C_Prefix_DynBones)                      # Ensure the source body has none of our dynamic bones assigned. and clean up bones / vertex groups containing our reserved prefix (left from a previous run?)
 
         #=== Create a version of the main body stripped of extraneous geometry like inner mouth, inner vagina, anus, eyebrows, etc.  This will be the source for our colliders & rig ===
-        self.oMeshBodySimplified_TEMP = CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + "CBody-Simplified", oMeshBody)
-        self.oMeshBodySimplified_TEMP.ShapeKeys_RemoveAll()              ###CHECK: Needed?
-        self.oMeshBodySimplified_TEMP.Material_Remove("Eyelashes")       # Remove materials AND their associated verts to remove unneeded geometry like teeth, eyes, ears, etc.
-        self.oMeshBodySimplified_TEMP.Material_Remove("Fingernails")
-        self.oMeshBodySimplified_TEMP.Material_Remove("Toenails")
-        self.oMeshBodySimplified_TEMP.Material_Remove("Cornea")
-        self.oMeshBodySimplified_TEMP.Material_Remove("Pupils")
-        self.oMeshBodySimplified_TEMP.Material_Remove("Teeth")
-        self.oMeshBodySimplified_TEMP.Material_Remove("Sclera")
-        self.oMeshBodySimplified_TEMP.Material_Remove("Ears")
-        self.oMeshBodySimplified_TEMP.Material_Remove("Irises")
-        self.oMeshBodySimplified_TEMP.Material_Remove("EyeSocket")
-        self.oMeshBodySimplified_TEMP.Material_Remove("EyeMoisture")
-        self.oMeshBodySimplified_TEMP.Material_Remove("Mouth")
-        self.oMeshBodySimplified_TEMP.Material_Remove("Vagina&Rectum")
-        self.oMeshBodySimplified_TEMP.Materials_Remove(G.C_RexPattern_EVERYTHING, bLeaveVerts = True)         # Remove all REMAINING materials but leave their verts.  (Above removed verts + materials we don't want, now we remove all materials to have one mesh un-divided by materials)
+        self.oMeshBodySimplified = CMesh.AttachFromDuplicate(self.oBodyBase.sMeshPrefix + "CBody-Simplified", self.oMeshBody)
+        self.oMeshBodySimplified.Materials_Remove(G.C_RexPattern_EVERYTHING, bLeaveVerts = True)         # Remove all REMAINING materials but leave their verts.  (Above removed verts + materials we don't want, now we remove all materials to have one mesh un-divided by materials)
 
-        #=== Simplify the high-geometry extremities (fingers and toes) so shrinking produces better geometry ===
-        if self.oMeshBodySimplified_TEMP.Open(bSelect = True):
+        #=== Remove the geometry-dense areas like fingers and toes so the decimated mesh is much more efficient over the large body areas ===
+        if self.oMeshBodySimplified.Open(bSelect = True):
             bpy.ops.mesh.mark_seam(clear=True)                              ###INFO: How to remove the 'red lines' between UV seams (formed when we had several materials).  See https://blender.stackexchange.com/questions/10580/what-are-the-colored-highlighted-edges-in-edit-mode
-            self.oMeshBodySimplified_TEMP.VertGrps_SelectVerts(r"Index[2-3]")    ###IMPROVE: ###OPT:!! Remove vertex group too?
-            self.oMeshBodySimplified_TEMP.VertGrps_SelectVerts(r"Mid[2-3]",   bClearSelection = False)       ###TODO24: weld toes / fingers together instead of clipping them!
-            self.oMeshBodySimplified_TEMP.VertGrps_SelectVerts(r"Ring[2-3]",  bClearSelection = False)
-            self.oMeshBodySimplified_TEMP.VertGrps_SelectVerts(r"Pinky[2-3]", bClearSelection = False)
-            for nRepeat in range(3):
-                bpy.ops.mesh.select_more()
-            bpy.ops.mesh.delete(type='FACE')
-            self.oMeshBodySimplified_TEMP.VertGrps_SelectVerts(r"Toe[1-4]_2")
-            self.oMeshBodySimplified_TEMP.VertGrps_SelectVerts(r"BigToe_2", bClearSelection = False)
-            for nRepeat in range(3):
-                bpy.ops.mesh.select_more()
-            bpy.ops.mesh.delete(type='FACE')
-            self.oMeshBodySimplified_TEMP.VertGrps_SelectVerts(r"Thumb[2-3]")
+            self.oMeshBodySimplified.VertGrps_SelectVerts("_CBody_DeleteForSimplification")
             bpy.ops.mesh.delete(type='FACE')
             
             #=== Fill holes so the mesh remains closed ===
             bpy.ops.mesh.select_all(action='SELECT')
             bpy.ops.mesh.fill_holes(sides = 0)                               ###WEAK: Still can contain holes!  (e.g. left eye)
             bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')
-            self.oMeshBodySimplified_TEMP.Close(bDeselect = True)
+            self.oMeshBodySimplified.Close(bDeselect = True)
 
 
         #===== CREATE MAIN-SCENE COLLIDER BODY =====
         #=== Shrink the entire main-scene Flex collider body (still containing softbody geometry ===
-        self.oMeshFlexTriCol_BodyMain = CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + "CBody-BodyMain", self.oMeshBodySimplified_TEMP)
+        self.oMeshFlexTriCol_BodyMain = CMesh.AttachFromDuplicate(self.oBodyBase.sMeshPrefix + "CBody-BodyMain", self.oMeshBodySimplified)
         if self.oMeshFlexTriCol_BodyMain.Open():
             nDistShrink = CBody.C_FlexParticleSpacing / 2 * CBody.C_RatioSpacingMult_MeshShrink       # Our shrink distance is the Flex particle radius (so collisions appear at skin-depth) but adjusted by a multiplier for best effect in game (it is beneficial to have colliders stick out of the skin a bit because collisions are 'soft') 
-            self.WorkerFunction_DoSafeShrink(self.oMeshFlexTriCol_BodyMain, nDistShrink, CBody.C_NumIterationsForFullBodyShrink, 0)  ###DEV24:2:!!! Remove doubles??  CBody.C_RemoveDoublesDistDuringShrink)
-            oLayFlexParticleInfo = self.oMeshFlexTriCol_BodyMain.bm.verts.layers.int.new(G.C_DataLayer_FlexParticleInfo)          # Create the important 'ParticleInfo' custom data layer to store much info on each particle including the type of Flex particle each vert in Unity represents (e.g. 'skinned', simulated-surface-with-bone, simulated-inner, etc)
+            self.Util_DoSafeShrink(self.oMeshFlexTriCol_BodyMain, nDistShrink, CBody.C_NumIterationsForFullBodyShrink, 0)  ###DEV24:2:!!! Remove doubles??  CBody.C_RemoveDoublesDistDuringShrink)
+            self.oMeshFlexTriCol_BodyMain.bm.verts.layers.int.new(G.C_DataLayer_FlexParticleInfo)          # Create the important 'ParticleInfo' custom data layer to store much info on each particle including the type of Flex particle each vert in Unity represents (e.g. 'skinned', simulated-surface-with-bone, simulated-inner, etc)
             self.oMeshFlexTriCol_BodyMain.Close() 
 
-        #=== If mesh has a vagina, perform important removal of the vagina / anus geometry and replace it with the prepared vagina hole collision mesh (a simple hexagon tube) ===
-        if self.oBodyBase.sSex == "Woman":
+        #=== If mesh has a vagina (woman or shemale), perform important removal of the vagina / anus geometry and replace it with the prepared vagina hole collision mesh (a simple hexagon tube) ===
+        if self.oBodyBase.sSex != "Man":
             if self.oMeshFlexTriCol_BodyMain.Open(): 
-                self.oMeshFlexTriCol_BodyMain.VertGrp_SelectVerts("#CFlexRig_VaginaRig_DeleteVerts")        ###CHECK24: Usage of #?
+                self.oMeshFlexTriCol_BodyMain.VertGrp_SelectVerts("_CBody_VaginaCollider_DeleteVerts")        ###CHECK24: Usage of #?
                 bpy.ops.mesh.delete(type='FACE')
                 self.oMeshFlexTriCol_BodyMain.Close() 
-            oMeshVaginaHoleCollider_TEMP = CMesh.CreateFromDuplicate_ByName("CFlexRig_VaginaRig_Collider_TEMPFORJOIN", "CFlexRig_VaginaRig_Collider") 
+            oMeshVaginaHoleCollider_TEMP = CMesh.AttachFromDuplicate_ByName("CBody_VaginaRig_Collider_TEMPFORJOIN", "CBody_VaginaRig_Collider") 
             oMeshVaginaHoleCollider_TEMP = oMeshVaginaHoleCollider_TEMP.Util_JoinWithMesh(self.oMeshFlexTriCol_BodyMain)            # Call always returns None so we can clear our reference (source of join is destroyed by join as its geometry becomes part of target)
             if self.oMeshFlexTriCol_BodyMain.Open(bDeselect = True):
-                self.oMeshFlexTriCol_BodyMain.VertGrp_SelectVerts("#CFlexRig_VaginaRig_DeleteVerts")         # Select the edge of the just-removed vagina geometry and the bottom part of the vagina collider cylinder to bridge them with the amazing 'bridge edge loop'
-                self.oMeshFlexTriCol_BodyMain.VertGrp_SelectVerts("+DynBone-VaginaHole-Lower", bClearSelection = False)
+                self.oMeshFlexTriCol_BodyMain.VertGrp_SelectVerts("_CBody_VaginaCollider_DeleteVerts")         # Select the edge of the just-removed vagina geometry and the bottom part of the vagina collider cylinder to bridge them with the amazing 'bridge edge loop'
+                self.oMeshFlexTriCol_BodyMain.VertGrp_SelectVerts(CBody.C_Prefix_DynBone_VaginaHole + "Lower", bClearSelection = False)
                 bpy.ops.mesh.bridge_edge_loops(type = "PAIRS")
                 self.oMeshFlexTriCol_BodyMain.Close(bDeselect = True)
+
+        #=== Define the appropriate soft-bodies for the character's sex ===
+        if self.oBodyBase.sSex != "Woman":          ###CHECK24: Identification / separation of the softbodies for each sex done here??
+            CFlexSoftBody.CFlexSoftBodyPenis(self, CBody.C_SoftBodyID_Penis, "Penis", "#Penis", ["pelvis", "Genitals", "abdomenLower", "lThighBend", "lThighTwist", "rThighBend", "rThighTwist"])
+        CFlexSoftBody.CFlexSoftBody(self, CBody.C_SoftBodyID_BreastL, "BreastL", "lPectoral", ["chestLower", "chestUpper", "lCollar", "lShldrBend"])    ###IMPROVE: Add a 'quick mode' from Unity to not separate breasts??
+        CFlexSoftBody.CFlexSoftBody(self, CBody.C_SoftBodyID_BreastR, "BreastR", "rPectoral", ["chestLower", "chestUpper", "rCollar", "rShldrBend"])
+        self.Finalize()
+
+    def DoDestroy(self):
+        print("X--- CBody.DoDestroy() called on body '{}' ---X".format(self.oBodyBase.sMeshPrefix))
+        self.oMeshBody.DoDestroy()
+        self.oMeshFlexTriCol_BodyMain .DoDestroy()
+        self.oMeshFlexTriCol_BodyFluid.DoDestroy()
+        
+        for sNameSoftBody in self.mapFlexSoftBodies:
+            oSoftBody = self.mapFlexSoftBodies[sNameSoftBody]
+            oSoftBody.DoDestroy()
             
+        return None         # Conveniently return None so CBodyBase can set its oBody member to none.
+    
+    
+
+          
 
     
     
@@ -318,17 +263,18 @@ class CBody:
             self.oMeshFlexTriCol_BodyMain.Close()
         bpy.context.object.select = False           # Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
         bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')
-        oFlexSoftBody.oMeshSoftBody = CMesh(self.oBodyBase.sMeshPrefix + "CBody-SoftBody-" + oFlexSoftBody.sNameSoftBody, bpy.context.scene.objects.active, None)  # Obtain CMesh reference to the just-separated softbody mesh
+        oFlexSoftBody.oMeshSoftBody = CMesh(self.oBodyBase.sMeshPrefix + "CBody-SoftBody-" + oFlexSoftBody.sNameSoftBody, bpy.context.scene.objects.active, bDeleteBlenderObjectUponDestroy = True)  # Obtain CMesh reference to the just-separated softbody mesh
 
         #=== Separate a copy of the softbody rim from the just-separated softbody mesh.  (We need to process backplate separately from surface particles) ===
         if oFlexSoftBody.oMeshSoftBody.Open(bDeselect = True):
+            oFlexSoftBody.oMeshSoftBody.VertGrp_Remove(G.C_RexPattern_CodebaseBones)        # Remove all the codebase vertex groups so this doesn't interfere with weighting
             bpy.ops.mesh.select_non_manifold()          # Select the edge of the mesh...
             bpy.ops.mesh.duplicate()                    # Make a copy as we need to keep softbody surface intact 
             bpy.ops.mesh.separate(type='SELECTED')      # Separate into another mesh.
             oFlexSoftBody.oMeshSoftBody.Close()
         bpy.context.object.select = False           # Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
         bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')
-        oMeshSoftBodyBackplate = CMesh(self.oBodyBase.sMeshPrefix + "CBody-SoftBody-" + oFlexSoftBody.sNameSoftBody  + "-Backplate-TEMP", bpy.context.scene.objects.active, None)  # Obtain CMesh reference to the just-separated softbody mesh
+        oMeshSoftBodyBackplate = CMesh(self.oBodyBase.sMeshPrefix + "CBody-SoftBody-" + oFlexSoftBody.sNameSoftBody  + "-Backplate-TEMP", bpy.context.scene.objects.active, bDeleteBlenderObjectUponDestroy = True)  # Obtain CMesh reference to the just-separated softbody mesh
         
 
         #===== B. PROCESS 'BACKPLATE' SOFTBODY FLEX PARTICLES =====        
@@ -360,10 +306,12 @@ class CBody:
         if oFlexSoftBody.oMeshSoftBody.Open(bDeselect = True):            # Open the working-copy softbody mesh so we can simplify its geometry for appropriately-spaced Flex particles
             oLayFlexParticleInfo = oFlexSoftBody.oMeshSoftBody.bm.verts.layers.int[G.C_DataLayer_FlexParticleInfo]
             bpy.ops.mesh.select_non_manifold()              # Select the non manifold geometry.  This will select the rim verts of the softbody...        ###WEAK: This code assumes this surface mesh is perfectly manifold!  Any non-manifold geometry will trip this next test where code will think non-manifold geometry is the rim we're now searching for
+            for n in range(2):                              # Select more verts around the rim to account for heavy decimation.  (If we just flag real rim very few verts will have that flag set after heavy decimation resulting in very few pinned rim particles)
+                bpy.ops.mesh.select_more()                  ###BUG:!! Is dependant on geometry!  Penis much denser than breasts!!
             for oVert in oFlexSoftBody.oMeshSoftBody.bm.verts:            # Flag the backplate rim verts as such so we can find them again after remove_doubles()
                 if oVert.select:
                     oVert[oLayFlexParticleInfo] = CBody.C_ParticleType_SkinnedBackplateRim
-    
+                    
             #=== Perform the super-important remove double to obtain the edge-length we need for proper Flex runtime simulation.  If verts / particles were any closer Softbody would 'jitter' and be unstable ===
             bpy.ops.mesh.select_all(action='SELECT') 
             bpy.ops.mesh.remove_doubles(threshold=CBody.C_FlexParticleSpacing)
@@ -376,7 +324,7 @@ class CBody:
                     oVert[oLayFlexParticleInfo] = CBody.C_ParticleType_SimulatedSurface     ###DEV24:2:!!!!! leaves very little rim!
             oFlexSoftBody.oMeshSoftBody.Close()
 
-        #=== Give an opportunity for our Flex Soft Body instance to modify the surface particles.  (Penis will for example add its custom core bones and identify the uretra particle) ===
+        #=== Give an opportunity for our Flex Soft Body instance to modify the surface particles.  (Penis will for example will identify the uretra particle Unity needs for the fluid emitter) ===
         oFlexSoftBody.OnModifyParticles()
 
         
@@ -384,7 +332,7 @@ class CBody:
         #=== Create a temporary copy of our softbody surface mesh that we will gradually 'shrink' in order to provide a source of inner verts for remove_doubles() to create the inner particles ===
         aVertsInnerParticles = []
         if oFlexSoftBody.bPreventInnerParticleCreation == False:
-            oMeshSoftBodyShrinker = CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + "CBody-SoftBody" + oFlexSoftBody.sNameSoftBody  + "-Shrinker-TEMP", oFlexSoftBody.oMeshSoftBody)
+            oMeshSoftBodyShrinker = CMesh.AttachFromDuplicate(self.oBodyBase.sMeshPrefix + "CBody-SoftBody" + oFlexSoftBody.sNameSoftBody  + "-Shrinker-TEMP", oFlexSoftBody.oMeshSoftBody)
     
             if oMeshSoftBodyShrinker.Open(bDeselect = True):
                 #=== Make the shrinker mesh fully closed === 
@@ -398,7 +346,7 @@ class CBody:
                 nVertsInWorkMesh = sys.float_info.max
                 C_ShrinkPerIterationOnShrinker  = 0.01          ###TUNE:
                 while nVertsInWorkMesh > 25:                    # Stop when the shrunken mesh have very few verts        
-                    nVertsInWorkMesh = self.WorkerFunction_DoSafeShrink(oMeshSoftBodyShrinker, C_ShrinkPerIterationOnShrinker, 1, C_ShrinkPerIterationOnShrinker)
+                    nVertsInWorkMesh = self.Util_DoSafeShrink(oMeshSoftBodyShrinker, C_ShrinkPerIterationOnShrinker, 1, C_ShrinkPerIterationOnShrinker)
                     for oVert in oMeshSoftBodyShrinker.bm.verts:      # Add the position of the continuously shrinking softbody mesh at each 'shrink level'.  We need these 'raw verts' to act as source for the softbody inner particles for remove_doubles() below
                         aVertsInnerParticles.append(oVert.co.copy())
                 oMeshSoftBodyShrinker = oMeshSoftBodyShrinker.DoDestroy()          # We're done with this helper mesh and can destroy it.  (The results we needed are in 'aVertsInnerParticles')      
@@ -462,7 +410,7 @@ class CBody:
             for nVert in aBonesToChange:            ###WEAK: We access non BMesh structure in object mode as vertex_group.add() can only be called in Object mode and current CMesh implementation would overwrite our changes in Close() with stale BMesh data
                 nParticleBoneID = aBonesToChange[nVert]
                 oVert = oFlexSoftBody.oMeshSoftBody.GetMeshData().vertices[nVert]
-                oVertGrp_Vert = oFlexSoftBody.oMeshSoftBody.GetMesh().vertex_groups.new(G.C_Prefix_DynBones + str(nParticleBoneID))
+                oVertGrp_Vert = oFlexSoftBody.oMeshSoftBody.GetMesh().vertex_groups.new(self.C_Prefix_DynBone_Penis + str(nParticleBoneID))
                 oVertGrp_Vert.add([oVert.index], 1, 'REPLACE')          # Every vert gets to take 100% of only one vertex group = its own
         else:        
             oFlexSoftBody.oMeshSoftBody.Util_TransferWeights(self.oMeshFlexTriCol_BodyMain)             # Other softbodies have regular weight transfer
@@ -549,6 +497,7 @@ class CBody:
                     
             
             #=== Smooth, limit than normalize all bones in Flex rig ===
+            oFlexSoftBody.oMeshSoftBody.VertGrp_Remove(G.C_RexPattern_CodebaseBones)        # Remove all the codebase vertex groups so this doesn't interfere with weighting
             oFlexSoftBody.oMeshSoftBody.VertGrp_LimitAndNormalize(0.5)
             oFlexSoftBody.oMeshSoftBody.Close()
         
@@ -573,9 +522,6 @@ class CBody:
         
         #=======  PHASE II: PROCESS PRESENTATION SOFTBODY MESH =======
         #===== A. CREATE BONES WHERE SURFACE-LEVEL PARTICLES ARE =====
-        #=== Remove completely the vertex group for our parent bone ===
-        oMeshBody = self.oMeshBody                                # Having dealt with the rig mesh we now turn our attention to the presentation mesh: We need to 're-skin' the softbody part to the bones we create for the softbody. 
-
         #=== Open the main body's armature ===         
         SelectObject(self.oArmNode.name)                                # Must select armature Blender object to modify 'edit_bones' collection...
         bpy.ops.object.mode_set(mode='EDIT')                            #... and then place it in edit mode for us to be able to view / edit bones
@@ -586,7 +532,7 @@ class CBody:
         #=== Add the new bones to the open armature ===
         for nBoneID in aBonesToAdd:
             vecPosBone = aBonesToAdd[nBoneID]
-            oBone = self.oArm.edit_bones.new(G.C_Prefix_DynBones + str(nBoneID))
+            oBone = self.oArm.edit_bones.new(G.C_Prefix_DynBones + oFlexSoftBody.sNameSoftBody + "-" + str(nBoneID))
             oBone.parent = oBoneParent
             oBone.head = vecPosBone                                         ###NOTE: The bone will *move* from the particle position we're setting it now (so bone envelope work properly) to the shape center that Unity needs later (converted in Finalize)
             oBone.tail = oBone.head - Vector((0,0.001,0))                   ###OPT:!!!! We can probably find a bone orientation that gets ride of nasty runtime bone re-orientation in Unity Update()
@@ -596,13 +542,13 @@ class CBody:
             oBone.head_radius = oBone.tail_radius = nDistBone * (1 - nRatioEnvelopeToBone)
 
         #=== Separate the softbody in the presentation mesh so we can re-weight it from the envelopes of the bones we just created ===
-        if oMeshBody.Open():
-            oMeshBody.VertGrp_SelectVerts(sNameVertGrp_SoftBody)
+        if self.oMeshBody.Open():
+            self.oMeshBody.VertGrp_SelectVerts(sNameVertGrp_SoftBody)
             bpy.ops.mesh.separate(type='SELECTED')      # Separate into another mesh.
-            oMeshBody.Close()
+            self.oMeshBody.Close()
         bpy.context.object.select = False           # Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
         bpy.context.scene.objects.active = bpy.context.selected_objects[0]  # Set the '2nd object' as the active one (the 'separated one')
-        oMeshSoftBodyPres = CMesh(self.oBodyBase.sMeshPrefix + "CBody-" + oFlexSoftBody.sNameSoftBody  + "-Presentation", bpy.context.scene.objects.active, None)
+        oMeshSoftBodyPres = CMesh(self.oBodyBase.sMeshPrefix + "CBody-" + oFlexSoftBody.sNameSoftBody  + "-Presentation", bpy.context.scene.objects.active, bDeleteBlenderObjectUponDestroy = True)
         
         #=== Remove vertex groups we're supposed to take over.  This will clear their influence in just the softbody area while not touching the other body verts.  This will give us the dynamic range to claim all four bones for the softbody and have the smoothing possible run-time appearance (Smoothing in Finalize() will blend DAZ-bones at the border)  Note that still exist in main body and will feature an abrubt cut in bone weighting that is deliberate.  (Smoothing in Finalize() will take care of this)
         for sBoneToTakeOver in oFlexSoftBody.aListBonesToTakeOver:
@@ -618,16 +564,20 @@ class CBody:
         bpy.ops.object.parent_set(type='ARMATURE_ENVELOPE')                     ###INFO: How to re-parent with an operation  ###INFO: How to re-weight an entire mesh by envelope  Note that this clears existing vertex groups            #self.oArmNode.hide = True                                                   ###INFO: For some reason hiding the parent makes it impossible later on to deselect causing next iteration of this call to crash when body armature cannot be unselected during next softbody separation!
         
         if oFlexSoftBody.nSoftBodyID == CBody.C_SoftBodyID_Penis:               ###DESIGN24: Move to subclass??
-            self.oMeshPenisColliderPhysX_HACK = CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + "CBody-Penis-Collider", oMeshSoftBodyPres)
-            self.oMeshPenisColliderPhysX_HACK.SetParent(self.oBodyBase.oNodeRoot.name)
-            self.oMeshPenisColliderPhysX_HACK.Materials_Remove(G.C_RexPattern_EVERYTHING, bLeaveVerts = True)    # Remove all materials as we're a PhysX collider
-            if self.oMeshPenisColliderPhysX_HACK.Open():                     ###IMPROVE: Remove scrotum?  Remove base?  Cap as solid?
-                self.oMeshPenisColliderPhysX_HACK.Decimate_All(600)          ###TUNE:
-                #self.oMeshPenisColliderPhysX_HACK.Decimate_MinArea(0.50, nFaceAreaMin = 0.000015)
-                self.oMeshPenisColliderPhysX_HACK.Close(bHide = True)
+            self.oMeshPenisColliderPhysX = CMesh.AttachFromDuplicate(self.oBodyBase.sMeshPrefix + "CBody-Penis-Collider", oMeshSoftBodyPres)
+            self.oMeshPenisColliderPhysX.SetParent(self.oBodyBase.oNodeRoot.GetName())
+            self.oMeshPenisColliderPhysX.Materials_Remove(G.C_RexPattern_EVERYTHING, bLeaveVerts = True)    # Remove all materials as we're a PhysX collider
+            if self.oMeshPenisColliderPhysX.Open():
+                self.oMeshPenisColliderPhysX.VertGrp_SelectVerts("_CPenis_Shaft")        # Remove the scrotum from the penis collider.  Only the shaft is needed to expand vagina
+                bpy.ops.mesh.select_all(action='INVERT')
+                bpy.ops.mesh.delete(type='FACE')          
+                self.oMeshPenisColliderPhysX.VertGrp_Remove(G.C_RexPattern_CodebaseBones)        # Remove all the codebase vertex groups so this doesn't interfere with weighting
+                self.oMeshPenisColliderPhysX.Decimate_All(600)          ###TUNE:
+                #self.oMeshPenisColliderPhysX.Decimate_MinArea(0.50, nFaceAreaMin = 0.000015)
+                self.oMeshPenisColliderPhysX.Close(bHide = True)
 
         #=== Join temporarily-separated softbody presentation mesh back into main body presentation mesh =====
-        oMeshSoftBodyPres = oMeshSoftBodyPres.Util_JoinWithMesh(oMeshBody)            # Call always returns None so we can clear our reference (source of join is destroyed by join as its geometry becomes part of target)
+        oMeshSoftBodyPres = oMeshSoftBodyPres.Util_JoinWithMesh(self.oMeshBody)            # Call always returns None so we can clear our reference (source of join is destroyed by join as its geometry becomes part of target)
 
 
 
@@ -636,22 +586,30 @@ class CBody:
     
     def Finalize(self):                             # Called by top-level CBody to 'Finalize' the mesh following a sequence of calls to 'AddSoftBody()'.  In charge of smoothing the meshes around damaged areas, forming softbody links and constructing structures Unity needs for Flex softbody creation.   
         print("\n=== CBody.Finalize() ===")
+        G.Dump("- Finalize()")
 
+
+        #=======  BODY MAIN-SCENE COLLIDER MESH FINALIZATION =======
         #=== Shrink the main-scene Flex body collider so collisions appear at skin level ===
         if self.oMeshFlexTriCol_BodyMain.Open():
+            G.Dump("- Before area decimates")
             #=== Perform gradual decimation of smallest geometry ===
-            self.oMeshFlexTriCol_BodyMain.Decimate_MinArea(0.30, nFaceAreaMin = 0.000005)         ###TUNE:
-            self.oMeshFlexTriCol_BodyMain.Decimate_MinArea(0.35, nFaceAreaMin = 0.000010)
-            self.oMeshFlexTriCol_BodyMain.Decimate_MinArea(0.45, nFaceAreaMin = 0.000015)
-            self.oMeshFlexTriCol_BodyMain.Decimate_MinArea(0.50, nFaceAreaMin = 0.000025)
+#             self.oMeshFlexTriCol_BodyMain.Decimate_MinArea(0.30, nFaceAreaMin = 0.000005)         ###TUNE:
+#             self.oMeshFlexTriCol_BodyMain.Decimate_MinArea(0.35, nFaceAreaMin = 0.000010)        ###BROKEN:!!! These make Decimate_All() crash Blender below!!
+#             self.oMeshFlexTriCol_BodyMain.Decimate_MinArea(0.45, nFaceAreaMin = 0.000015)
+#             self.oMeshFlexTriCol_BodyMain.Decimate_MinArea(0.50, nFaceAreaMin = 0.000025)
 
             #=== Perform controlled decimation ===
+            G.Dump("- Before DecimateAll()")
             self.oMeshFlexTriCol_BodyMain.Decimate_All(900)         ###TUNE:            ###WARNING: Decimate on woman can decimate vagina track!!
-            self.oMeshFlexTriCol_BodyMain.Decimate_MinArea(0.50, nFaceAreaMin = 0.000200)        # Perform one final LARGE area-based decimation as master decimate-all above still leaves faces that can be quite small
+            G.Dump("- After DecimateAll()")
+            #self.oMeshFlexTriCol_BodyMain.Decimate_MinArea(0.50, nFaceAreaMin = 0.000200)        # Perform one final LARGE area-based decimation as master decimate-all above still leaves faces that can be quite small
+            #G.Dump("- After DecimateArea()")
 
             #=== Limit and normalize then check that all verts have four bones and the weight sums add to one ===
             bpy.ops.mesh.select_all(action='SELECT')
             bpy.ops.mesh.faces_shade_flat()
+            self.oMeshFlexTriCol_BodyMain.VertGrp_Remove(G.C_RexPattern_CodebaseBones)        # Remove all the codebase vertex groups so this doesn't interfere with weighting
             self.oMeshFlexTriCol_BodyMain.VertGrp_LimitAndNormalize()
             self.oMeshFlexTriCol_BodyMain.Close()  
             
@@ -662,26 +620,36 @@ class CBody:
 
 
         #=======  PRESENTATION MESH FINALIZATION =======
-        #=== Weld the separated-then-rejoined softbody presentation meshes back with the main presentation mesh by welding non-manifold (rim) verts ===
-        oMeshBody = self.oMeshBody
-        if oMeshBody.Open():
+        if self.oMeshBody.Open():
+            #=== Weld the separated-then-rejoined softbody presentation meshes back with the main presentation mesh by welding non-manifold (rim) verts ===
             bpy.ops.mesh.select_non_manifold()                      ###WEAK: This non-manifold can easily pickup bad geometry on the softbodies and perform heaving smoothing on them... a problem?
             bpy.ops.mesh.remove_doubles(threshold=0.000001)
     
             #=== Destroy the vertex groups we're supposed to remove before any smoothing occurs (we need their dynamic range during important 'Normalize' below) ===
             for sNameVertGrp_ToDelete in self.aVertGroups_ToDelete:
-                oMeshBody.VertGrp_Remove(re.compile(sNameVertGrp_ToDelete))
+                self.oMeshBody.VertGrp_Remove(re.compile(sNameVertGrp_ToDelete))
     
+            #=== Decimate high-geometry parts of the body mesh to reasonable levels (now that user has morphed the body we can decimate) ===
+            if self.oBodyBase.sSex != "Woman":
+                self.oMeshBody.Decimate_VertGrp("_CSoftBody_Penis", 0.15)           ###TUNE:
+            if self.oBodyBase.sSex != "Man":
+                self.oMeshBody.VertGrp_SelectVerts("_CVagina_Decimate")
+                bpy.ops.mesh.tris_convert_to_quads()            ###IMPROVE: Do this before triangulation?
+                bpy.ops.mesh.unsubdivide(iterations=6)
+                bpy.ops.mesh.quads_convert_to_tris()
+                bpy.ops.object.vertex_group_assign()
+                #self.oMeshBody.Decimate_VertGrp("_CVagina_Decimate", 0.1)           ###TUNE:    ###INFO: Crashes Blender!  (Because of non-manifold geometry?)  ->  Switched to unsubdivide approach
+            
             #=== Perform HEAVY *global* smoothing on the verts around the rims of all softbodies for ALL vertex groups ===
             bpy.ops.mesh.select_all(action='DESELECT')
             for sNameVertGrp_SoftBodies in self.aVertGroups_SoftBodies:
-                oMeshBody.VertGrp_SelectVerts(sNameVertGrp_SoftBodies, bClearSelection = False)
+                self.oMeshBody.VertGrp_SelectVerts(sNameVertGrp_SoftBodies, bClearSelection = False)
             bpy.ops.mesh.select_less()          # Select one less so region-to-loop + select_more select more toward the softbody
             bpy.ops.mesh.region_to_loop()       ###INFO: The amazing weight paint mode unfortunately cannot perform advanced selection, but it takes the selection of edit mode so we do our advanced selection stuff there.
-            for nRepeat in range(3):            # Select rings around the rim border for heavy smoothing below        ###TUNE
+            for nRepeat in range(2):            # Select rings around the rim border for heavy smoothing below        ###TUNE
                 bpy.ops.mesh.select_more()
-            oMeshBody.VertGrp_LockUnlock(False, G.C_RexPattern_EVERYTHING)
-            #bpy.ops.object.mode_set(mode='WEIGHT_PAINT')            #oMeshBody.GetMeshData().use_paint_mask_vertex = True            ###INFO: Weight paint's masking by vertex is amazing!  Enables partial update to bones!
+            self.oMeshBody.VertGrp_LockUnlock(False, G.C_RexPattern_EVERYTHING)
+            #bpy.ops.object.mode_set(mode='WEIGHT_PAINT')            #self.oMeshBody.GetMeshData().use_paint_mask_vertex = True            ###INFO: Weight paint's masking by vertex is amazing!  Enables partial update to bones!
             bpy.ops.object.vertex_group_smooth(factor=0.5, repeat=3, expand=0, group_select_mode='ALL')     ###TUNE
             
             #=== Fix possible problem with vertex_group_smooth() above leaving some verts completely ungrouped ===
@@ -692,32 +660,33 @@ class CBody:
             #=== Select only the softbodies and perform strong smoothing of ONLY our dynamic bones ===
             bpy.ops.mesh.select_all(action='DESELECT')
             for sNameVertGrp_SoftBodies in self.aVertGroups_SoftBodies:
-                oMeshBody.VertGrp_SelectVerts(sNameVertGrp_SoftBodies, bClearSelection = False)
-            oMeshBody.VertGrp_LockUnlock(True, G.C_RexPattern_StandardBones)
-            oMeshBody.VertGrp_LockUnlock(False, G.C_RexPattern_DynamicBones)
+                self.oMeshBody.VertGrp_SelectVerts(sNameVertGrp_SoftBodies, bClearSelection = False)
+            self.oMeshBody.VertGrp_LockUnlock(True,  G.C_RexPattern_StandardBones)
+            self.oMeshBody.VertGrp_LockUnlock(False, G.C_RexPattern_DynamicBones)
             bpy.ops.object.vertex_group_smooth(repeat=3, factor=0.5)
     
             #=== Unlock EVERYTHING and perform FINAL limit and normalize that ensure Mesh renders properly in Unity === 
             bpy.ops.mesh.select_all(action='SELECT')
-            oMeshBody.VertGrp_LockUnlock(False, G.C_RexPattern_EVERYTHING)
+            self.oMeshBody.VertGrp_LockUnlock(False, G.C_RexPattern_EVERYTHING)
+            self.oMeshBody.VertGrp_Remove(G.C_RexPattern_CodebaseBones)        # Remove all the codebase vertex groups so this doesn't interfere with weighting
             bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)       ###INFO: We *must* first limit, then normalize to guarantee we have a max of 4 bones AND all verts have weight sums of 1
             bpy.ops.object.vertex_group_normalize_all(lock_active=False)
 
-            oMeshBody.Close()
+            self.oMeshBody.Close()
             
         #=== Ensure that all verts have four bones and the weight sums add to one ===
         if self.bPerformSafetyChecks:
-            oMeshBody.SafetyCheck_CheckBoneWeighs()
+            self.oMeshBody.SafetyCheck_CheckBoneWeighs()
 
             
         
         
         #===== CREATE FLEX FLUID COLLIDER =====    
         #=== Take over the simplified mesh so it becomes our fluid-scene collider mesh.  (No further need of simplified body) ===
-        #self.oMeshFlexTriCol_BodyFluid = CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + "CBody-BodyFluid", self.oMeshBodySimplified_TEMP)
-        self.oMeshFlexTriCol_BodyFluid = self.oMeshBodySimplified_TEMP
+        #self.oMeshFlexTriCol_BodyFluid = CMesh.AttachFromDuplicate(self.oBodyBase.sMeshPrefix + "CBody-BodyFluid", self.oMeshBodySimplified)
+        self.oMeshFlexTriCol_BodyFluid = self.oMeshBodySimplified
         self.oMeshFlexTriCol_BodyFluid.SetName(self.oBodyBase.sMeshPrefix + "CBody-BodyFluid")
-        self.oMeshBodySimplified_TEMP = None
+        self.oMeshBodySimplified = None
         SelectObject(self.oMeshFlexTriCol_BodyFluid.GetName())                ###IMPROVE: Remove inner parts of the body mesh like teeth, eyes, vagina inside and anus so no verts of decimate are wasted on geometry we don't need
         self.oMeshFlexTriCol_BodyFluid.Modifier_Remesh(7, 0.7)          ###OPT: ###TUNE # Remesh the whole source body into reasonably-spaced geometry suitable for repeling fluid particles in Flex fluid solver
 
@@ -737,6 +706,7 @@ class CBody:
         #=== Limit and normalize then check that all verts have four bones and the weight sums add to one ===
         if self.oMeshFlexTriCol_BodyFluid.Open(bSelect = True):
             bpy.ops.mesh.faces_shade_flat()
+            self.oMeshFlexTriCol_BodyFluid.VertGrp_Remove(G.C_RexPattern_CodebaseBones)        # Remove all the codebase vertex groups so this doesn't interfere with weighting
             self.oMeshFlexTriCol_BodyFluid.VertGrp_LimitAndNormalize()       
             self.oMeshFlexTriCol_BodyFluid.Close()
 
@@ -750,6 +720,7 @@ class CBody:
         self.oMeshFlexTriCol_BodyMain.Finalize()
         self.oMeshBody.Hide()
         self.oArmNode.hide = True
+        G.Dump("- Done Finalize()")
 
         print("\n=== CBody.Finalize('{}') finishes without errors ===\n".format(self.oBodyBase.sMeshPrefix))
 
@@ -759,11 +730,11 @@ class CBody:
 
     #-----------------------------------------------------------------------    WORKER FUNCTIONS
 
-    def WorkerFunction_DoSafeShrink(self, oMesh, nShrinkDistance, nIterations, nRemoveDoublesPerIteration):       # Utility function that performs a 'safe shrink' of the 'oMesh' mesh while maintaining mesh fully manifold 
+    def Util_DoSafeShrink(self, oMesh, nShrinkDistance, nIterations, nRemoveDoublesPerIteration):       # Utility function that performs a 'safe shrink' of the 'oMesh' mesh while maintaining mesh fully manifold 
         nShrinkPerIteration = nShrinkDistance / nIterations
         
         #=== Perform the super-important safe remove doubles first.  This safe version will clean up horrible degenerate geometry that would cause later code to fail ===
-        oMesh.VertGrp_SelectVerts("#CFlexRig_SafeVertsForShrink", bDeselect=True, bThrowIfNotFound=False)
+        oMesh.VertGrp_SelectVerts("#CBody_SafeVertsForShrink", bDeselect=True, bThrowIfNotFound=False)
         oMesh.Util_SafeRemoveDouble(nRemoveDoublesPerIteration)      # Start with dissolve right off the top so every shrink in loop below is followed by a dissolve to clean things up
         
         #=== Iterate the required number of times to gradually & safely shrinking the mesh.  We clean up after every iteration to avoid compounding non-manifold problems ===
@@ -776,7 +747,7 @@ class CBody:
             bpy.ops.transform.shrink_fatten(value=nShrinkPerIteration)
 
             #=== Right after shrink we perform the super-important safe remove doubles.  This safe version will clean up horrible degenerate geometry that would cause later code to fail ===
-            oMesh.VertGrp_SelectVerts("#CFlexRig_SafeVertsForShrink", bDeselect=True, bThrowIfNotFound=False)
+            oMesh.VertGrp_SelectVerts("#CBody_SafeVertsForShrink", bDeselect=True, bThrowIfNotFound=False)
             oMesh.Util_SafeRemoveDouble(nRemoveDoublesPerIteration)
             
             #=== Perform smoothing on the sharpest edges, applying more strength to sharpest ones first ===
@@ -802,16 +773,18 @@ class CBody:
 
         #=== Make sure we are leaving a shrunken mesh that is still manifold! ===
         if self.bPerformSafetyChecks:       ###DEV24:!!! Too expensive? ###OPT:
-            oMesh.SafetyCheck_CheckForManifoldMesh("WorkerFunction_DoSafeShrink() found non-manifold geometry on mesh '{}'".format(oMesh.GetName()))      # If this fails we need to refine shrinking algorithm that ran above
+            oMesh.SafetyCheck_CheckForManifoldMesh("Util_DoSafeShrink() found non-manifold geometry on mesh '{}'".format(oMesh.GetName()))      # If this fails we need to refine shrinking algorithm that ran above
         
         return nVertsInWorkMesh
 
     
     @classmethod
-    def DEBUG_SelectDataLayerMatch(cls, nValueSearch, nValueMask = C_ParticleInfo_Mask_Type):           # Debug function to show which rig verts are of what C_ParticleType_xxx
-        ###DEBUG: To call: from CBody import *; CBody.DEBUG_SelectDataLayerMatch(4)
-        cls.DEBUG_INSTANCE.oBody.oMeshBody.Hide()                                                       ###IMPROVE: Have more of these 'debug functions' to easily verify algorithm functioning from Python console!
-        if cls.DEBUG_INSTANCE.oMeshRig_Softbodies.Open():
-            oLayFlexParticleInfo = cls.DEBUG_INSTANCE.oMeshRig_Softbodies.bm.verts.layers.int[G.C_DataLayer_FlexParticleInfo]
-            cls.DEBUG_INSTANCE.oMeshRig_Softbodies.DataLayer_SelectMatchingVerts(oLayFlexParticleInfo, nValueSearch, nValueMask)
-            cls.DEBUG_INSTANCE.oMeshRig_Softbodies.Close(bDeselectVerts=False)
+    def DEBUG_SelectDataLayerMatch(cls, nSoftBodyID, nValueSearch, nValueMask = C_ParticleInfo_Mask_Type):           # Debug function to show which rig verts are of what C_ParticleType_xxx
+        ###DEBUG: To call: from CBody import *; CBody.DEBUG_SelectDataLayerMatch(4, 4)
+        oSoftBody = cls.DEBUG_INSTANCE.mapFlexSoftBodies[nSoftBodyID]       ###IMPROVE: Have more of these 'debug functions' to easily verify algorithm functioning from Python console!
+        oSoftBody.oMeshSoftBody.MeshMode_Object()
+        if oSoftBody.oMeshSoftBody.Open():
+            oLayFlexParticleInfo = oSoftBody.oMeshSoftBody.bm.verts.layers.int[G.C_DataLayer_FlexParticleInfo]
+            oSoftBody.oMeshSoftBody.DataLayer_SelectMatchingVerts(oLayFlexParticleInfo, nValueSearch, nValueMask)
+            oSoftBody.oMeshSoftBody.Close(bDeselect = False)
+        oSoftBody.oMeshSoftBody.MeshMode_Edit()

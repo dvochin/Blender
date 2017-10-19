@@ -1,7 +1,7 @@
 #=============================================================================== COMMON COMMANDS
 # CBody.CBody_GetBodyBase(0).aSoftBodies['Breasts'].aMapSavedRimNormals
 # from gBlender import *
-# DataLayer_EnumerateInt_DEBUG("WomanA", "CmdLine")
+# DataLayer_EnumerateInt_DEBUG("Woman", "CmdLine")
 # bpy.ops.object.mode_set(mode='EDIT')
 # bpy.ops.object.mode_set(mode='OBJECT')
 # bpy.ops.mesh.select_all(action='SELECT')
@@ -151,18 +151,18 @@ C_VertGrp_Area_BreastMorph = C_VertGrp_Area + "BreastMorph"     # The name of th
 # C_Area_HeadHandFeet = C_VertGrp_Area + "HeadHandFeet"   # Vertex group of body that contains all verts of head, hands and feet.  (Used to remove unneeded verts for BodyCol that would slow down its algorithm)
 
 #---------------------------------------------------------------------------    PROPERTY ARRAY CONSTANTS
-C_PropArray_MapTwinVerts        = "aMapTwinVerts"           # Property array stored in Blender objects storing verts that are 'twinned' (e.g. at same position) between two meshes (e.g. body part and main body)
-C_PropArray_MapSharedNormals    = "aMapSharedNormals"       # Property array stored in Blender objects storing serialized array of what verts share the same normal in Client.
-C_PropArray_ClothSkinToSim      = "aMapClothSkinToSim"      # Property array that maps what verts in the skinned-part of a cloth maps to what (identically positioned) vert of the simulated-part of the same cloth.
+#C_PropArray_MapTwinVerts        = "aMapTwinVerts"           # Property array stored in Blender objects storing verts that are 'twinned' (e.g. at same position) between two meshes (e.g. body part and main body)
+#C_PropArray_MapSharedNormals    = "aMapSharedNormals"       # Property array stored in Blender objects storing serialized array of what verts share the same normal in Client.
+#C_PropArray_ClothSkinToSim      = "aMapClothSkinToSim"      # Property array that maps what verts in the skinned-part of a cloth maps to what (identically positioned) vert of the simulated-part of the same cloth.
 
-#---------------------------------------------------------------------------    CUSTOM DATA LAYERS
-C_DataLayer_VertSrcBody         = "DataLayer_VertSrcBody"      # Data layer to store the source body verts (the untouched vert IDs as they existed in the source body mesh)  Used for traversal between the different vert domains such as soft skin
+#---------------------------------------------------------------------------    CUSTOM DATA LAYERS        ###CLEANUP: Update these and remove useless ones
+C_DataLayer_VertSrcBody         = "DataLayer_VertSrcBody"       # Data layer to store the source body verts (the untouched vert IDs as they existed in the source body mesh)  Used for traversal between the different vert domains such as soft skin
 C_DataLayer_VertsSrc            = "DataLayer_VertsSrc"          # Original vertex indices in untouched original mesh.  Enables traversal to assembled / morph meshes
 C_DataLayer_VertsAssy           = "DataLayer_VertsAssy"         # Original vertex indices in assembled body.  Enables traversal of morphs to assembled body to reach detached softbody meshes (e.g. breasts)
 C_DataLayer_Particles           = "DataLayer_Particles"         # Data layer storing the mapping between tetra verts close to their rim and original tetra verts
 C_DataLayer_FlexParticleInfo    = "DataLayer_FlexParticleInfo"  # Data layer storing the type of Flex particle in the Flex collider mesh.  (Either 'skinned', simulated-surface-with-bone or simulated-inner)
 C_DataLayer_TwinID              = "DataLayer_RimVerts"          # Temporary data layer to store twin-vert ID as mesh is split into parts (Used to reconnect verts at the same location from different meshes)  ####CHECK: Names can't be too long to be unique???
-C_DataLayer_SharedNormals       = "DataLayer_SharedNormals"     # Temporary data layer used while preparing a mesh for Client to construct what just-separated verts should share the same normal (because of Client's need to have one vert per UV)
+C_DataLayer_SplitVertIDs        = "DataLayer_SplitVertIDs"      # Data layer used while preparing a mesh for Client to construct what just-separated verts for Unity rendering
 C_DataLayer_SourceBreastVerts   = 'DataLayer_SourceBreastVerts' # Data layer to store the vertIDs of left and right breast verts from cutoff breast
 C_DataLayer_SlaveMeshVerts      = 'DataLayer_SlaveMeshVerts'    # Data layer to store the vertIDs of the verts closest to each verts of this mesh
 
@@ -178,20 +178,21 @@ C_PiDivBy2 = pi/2
 
 # C_BodyCollider_TrimMargin = 0.03               # Extra space given when trimming body collider verts to create body collider fit to a cloth so as to not remove verts too close to cloth
 # C_TypicalRatioTrisToEdges = (35034 / (53283-1000))       # Typical ratio of edges to tris for meshes.  Used to estimate how many faces to decimate when we want an approx number of edges (Calculated from Vic42-17K mesh stats)
-# C_RatioEstimatedReductionBodyCol = 0.68       # Ratio of reduction body collider edges after it has removed edge triangles, mirrored and deleted the edges-on-edge
-# C_MaxSize_BodyColSphere = 0.110             # The maximum radius of body collider spheres (measured by inserting the largest possible sphere inside body without any poke-through 
+# C_RatioEstimatedReductionBodyCol = 0.68        # Ratio of reduction body collider edges after it has removed edge triangles, mirrored and deleted the edges-on-edge
+# C_MaxSize_BodyColSphere = 0.110                # The maximum radius of body collider spheres (measured by inserting the largest possible sphere inside body without any poke-through 
 C_BreastMorphPivotPt = "BreastMorphPivotPt"                                   # Part of name given to reference points used as pivot points for breast morphing
 
-C_VectorUp      = Vector((0,0,1))                    # The 'up vector' in blender is Z+.  This is used to obtain quaternions to rotate this default vector to another vector (e.g. the normal of a cloth polygon)
-C_VectorForward = Vector((0,-1,0))                    # The 'up vector' in blender is Z+.  This is used to obtain quaternions to rotate this default vector to another vector (e.g. the normal of a cloth polygon)
-C_SymmetrySuffixNames = ['L', 'R']               # Suffix given to symmetrical cuts like arms & legs.  Given to vertex groups and node names...  (Left is 'master' and right the 'slave')  
+C_VectorUp      = Vector((0, 0,1))              # The 'up vector' in blender is Z+.  This is used to obtain quaternions to rotate this default vector to another vector (e.g. the normal of a cloth polygon)
+C_VectorForward = Vector((0,-1,0))              # The 'up vector' in blender is Z+.  This is used to obtain quaternions to rotate this default vector to another vector (e.g. the normal of a cloth polygon)
+C_SymmetrySuffixNames = ['L', 'R']              # Suffix given to symmetrical cuts like arms & legs.  Given to vertex groups and node names...  (Left is 'master' and right the 'slave')  
 
 C_OffsetVertIDs = 1000000                       # Offset applied to all vert IDs pushed into mesh.  Used to separate 'real IDs' from new verts which would have zero ID
 
-C_Prefix_DynBones = '+DynBone-'                   # Prefix applied to all the 'dynamic bones' this class creates.  These bones are assigned to different bone parents as appropriate for each soft body (e.g. Left breast to 'lPectoral' DAZ bone, Penis to 'Genitals' DAZ bone etc)
-C_RexPattern_StandardBones = r"^[a-zA-Z]"      # RegEx search pattern to find DAZ-defined bones = They all start wih a lower-case or upper-case letter. (ALL our bones have a prefix like '+', '_', etc)
+C_Prefix_DynBones = '+'                         # Prefix applied to all the 'dynamic bones' this class creates.  These bones are assigned to different bone parents as appropriate for each soft body (e.g. Left breast to 'lPectoral' DAZ bone, Penis to 'Genitals' DAZ bone etc)
+C_RexPattern_StandardBones = r"^[a-zA-Z]"       # RegEx search pattern to find DAZ-defined bones = They all start wih a lower-case or upper-case letter. (ALL our bones have a prefix like '+', '_', etc)
 C_RexPattern_DynamicBones = r"^\+"              # RegEx search pattern to find dynamic bones.  They ALL start with '+'
-C_RexPattern_EVERYTHING = r""                  # RegEx search pattern that matches everything
+C_RexPattern_CodebaseBones = r"^_"              # RegEx search pattern to find codebase bones / vertex groups.  They ALL start with '_'
+C_RexPattern_EVERYTHING = r""                   # RegEx search pattern that matches everything
 
 
 #---------------------------------------------------------------------------    
@@ -199,12 +200,14 @@ C_RexPattern_EVERYTHING = r""                  # RegEx search pattern that match
 #---------------------------------------------------------------------------    
 class CGlobals:
     cm_nFlexParticleSpacing = 0.02                  # The inter-particular distance Flex uses to keep its particles away from other particles.  Used to 'shrink' our collision meshes so that collisions appear to occur at the surface of the presentation meshes.
-    cm_aClothSources = {}
+    cm_bSkipLongUnnecessaryOps = False                           # When true codebase will skip long-winded unecessary operations (like breast softbodies)
+    cm_aClothSources = {}       ###OBS:?
     DEBUG = None                                    # Debug variable used for quick command-line access to DEBUG_xxx functions
     
     @classmethod
-    def Initialize(cls, nFlexParticleSpacing):
+    def Initialize(cls, nFlexParticleSpacing, bSkipLongUnnecessaryOps):
         CGlobals.cm_nFlexParticleSpacing = nFlexParticleSpacing       ###DESIGN: Store diameter or radius??
+        CGlobals.cm_bSkipLongUnnecessaryOps = bSkipLongUnnecessaryOps
         CGlobals.cm_aClothSources['BodySuit'] = CClothSrc.CClothSrc('BodySuit')            ###IMPROVE: Create function to automatically create all the cloth sources
         return "OK"                     ###IMPROVE: Try to remove need for functions returning a string from gBlender c code!
     
@@ -319,7 +322,7 @@ class CVisualizerCubes():           # CVisualizeCubes:  Extremely useful little 
         oVisualizerCube = self.aCubes[self.nCubeNext]
         oVisualizerCube.name = oVisualizerCube.name = sName     # Change mesh name too?
         oVisualizerCube.location = vecLocation
-        oVisualizerCube.material_slots[0].material = bpy.data.materials['VisualizerCube-' + sColor]
+        oVisualizerCube.material_slots[0].material = bpy.data.materials['_VisualizerCube-' + sColor]
         oVisualizerCube.hide = False
         oVisualizerCube.show_x_ray = bIsXray
         oVisualizerCube.scale *= nScale              
@@ -344,5 +347,3 @@ bpy.context.user_preferences.inputs.ndof_deadzone = 0
 bpy.context.user_preferences.inputs.ndof_show_guide = True
 bpy.context.user_preferences.inputs.ndof_view_navigate_method = 'ORBIT'
 bpy.context.user_preferences.inputs.ndof_view_rotate_method = 'TURNTABLE'
-
-

@@ -580,7 +580,7 @@ def gBL_Util_HideGameMeshes():
 	oNodeFolderGame = bpy.data.objects[G.C_NodeFolder_Game]
 	for oNodeO in oNodeFolderGame.children:
 		Util_HideMesh(oNodeO)
-	#bpy.data.objects["WomanA" + G.C_NameSuffix_Face].hide = False			###HACK
+	#bpy.data.objects["Woman" + G.C_NameSuffix_Face].hide = False			###HACK
 					
 def Util_RemoveProperty(o, sNameProp):		# Safely removes a property from an object.
 	if sNameProp in o:
@@ -675,7 +675,40 @@ def Cleanup_DecimateEdges(oObj, nness, nRatioOfFacesToKeep):  ###OBS? ###IMPROVE
 	bpy.ops.mesh.select_all(action='DESELECT') 
 	bpy.ops.object.mode_set(mode='OBJECT')
 
+def Cleanup_MaterialsTexturesImages():
+	print("\n===== Cleanup_MaterialsTexturesImages() =====")
+	
+	#=== Remove the duplicate materials the FBX importer created for the source body import ===		###MOVE??
+	print("\n=== Removing duplicate materials ===")
+	for oMat in bpy.data.materials:						 ###INFO: All materials, textures, images that do not begin with "_" are considered transient are can be safely deleted (Code that needs to persist materials, textures or images will prefix them with "_")
+		if oMat.name[0] != "_":
+			print("- Deleting material '{}'".format(oMat.name))
+			bpy.data.materials.remove(oMat)
 
+	#=== Remove the duplicate textures the FBX importer created for the source body import ===
+	print("\n=== Removing duplicate textures ===")
+	for oTex in bpy.data.textures:
+		if oTex.name[0] != "_":
+			print("- Deleting texture '{}'".format(oTex.name))
+			bpy.data.textures.remove(oTex)
+	
+	#=== Remove the duplicate images the FBX importer created for the source body import ===
+	print("\n=== Removing duplicate images ===")
+	for oImg in bpy.data.images:
+		if oImg.name[0] != "_":
+			print("- Deleting image '{}'".format(oImg.name))
+			bpy.data.images.remove(oImg)
+
+	#=== Enumerating duplicate materials ===
+	print("\n=== Enumerating duplicate materials ===")
+	for oMat in bpy.data.materials:						 ###INFO: All materials, textures, images that do not begin with "_" are considered transient are can be safely deleted (Code that needs to persist materials, textures or images will prefix them with "_")
+		if oMat.name.find(".") != -1:
+			print("#WARNING: Found duplicate material '{}'!".format(oMat.name))
+			#bpy.data.materials.remove(oMat)		# User must manually fix this to avoid mesh losing a material
+	
+	print("--- Cleanup_MaterialsTexturesImages() finishes ---\n")
+
+	
 
 
 #---------------------------------------------------------------------------	VertGrp Functions: Helper functions centered on Vertex Groups
@@ -774,14 +807,6 @@ def VertGrp_RemoveNonBones(oMeshO, bCleanUpBones=False):	 # Remove non-bone vert
 # 			gBL_Util_Hide(oMeshO)
 
 
-#---------------------------------------------------------------------------	BONES
-def Bones_RemoveBonesWithNamePrefix(oArm, sNameBonePrefix):	
-	aBonesToDelete = []
-	for oBone in oArm.edit_bones:
-		if oBone.name.startswith(sNameBonePrefix):
-			aBonesToDelete.append(oBone)
-	for oBone in aBonesToDelete:
-		oArm.edit_bones.remove(oBone)
 
 
 
@@ -959,6 +984,19 @@ def DataLayer_CreateVertIndex(sNameMesh, sNameLayer):
 		oVert[oLayVertsSrc] = oVert.index + G.C_OffsetVertIDs          # We apply an offset so we can differentiate between newly added verts 
 	bpy.ops.object.mode_set(mode='OBJECT')
 
+#---------------------------------------------------------------------------	BONES
+def Bones_RemoveBones(oArm, rexPattern):		# Armature node object MUST be selected and in edit mode!	
+	print("=== Bones_RemoveBones('{}', '{}') ===".format(oArm.name, rexPattern))
+	if len(oArm.edit_bones) == 0:				# If armature object is not selected and opened in edit mode, edit_bones will be empty!
+		raise Exception("\n###EXCEPTION: Bones_RemoveBones() has zero edit_bones!  Selected and opened in edit mode??")
+	aBonesToDelete = []
+	for oBone in oArm.edit_bones:
+		if re.search(rexPattern, oBone.name):
+			aBonesToDelete.append(oBone)
+	for oBone in aBonesToDelete:
+		print("- Removing bone '{}'".format(oBone.name))
+		oArm.edit_bones.remove(oBone)
+		
 
 #---------------------------------------------------------------------------	
 #---------------------------------------------------------------------------	####MOVE?
@@ -985,11 +1023,11 @@ def Body_InitialPrep(sNameSource):
 # 	bpy.ops.object.mode_set(mode='OBJECT')
 
 # 	#=== Define both breast colliders ===
-# 	CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BreastLCol", 0.000001, bMirror=False, bSkin=False)
-# 	CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BreastRCol", 0.000001, bMirror=False, bSkin=False)
+# 	CBody.SlaveMesh_DefineMasterSlaveRelationship("Woman", "BreastLCol", 0.000001, bMirror=False, bSkin=False)
+# 	CBody.SlaveMesh_DefineMasterSlaveRelationship("Woman", "BreastRCol", 0.000001, bMirror=False, bSkin=False)
 # 
 # 	#===== Define cloth colliders =====			###IMPROVE: Auto-generate these from a naming pattern??
-# 	CBody.SlaveMesh_DefineMasterSlaveRelationship("WomanA", "BodyColCloth-Top", 0.000001, bMirror=True, bSkin=True)
+# 	CBody.SlaveMesh_DefineMasterSlaveRelationship("Woman", "BodyColCloth-Top", 0.000001, bMirror=True, bSkin=True)
 
 
 ###OBS: Recursive search through BMesh topology... replaced by KDTree but can still be useful in some cases?

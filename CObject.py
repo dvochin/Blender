@@ -77,6 +77,19 @@ class CObjectMeshShapeKeys(CObject):
             if oShapeKey.name != "Basis":
                 self.PropAdd(oShapeKey.name, "Description for " + oShapeKey.name, oShapeKey.value, oShapeKey.slider_min, oShapeKey.slider_max)
 
+#         #=== Sort the shape keys by name ===
+#         aShapeKeys_Sorted = []
+#         for oShapeKey in self.oMeshShapeKeyBlocks:
+#             if oShapeKey.name != "Basis":
+#                 aShapeKeys_Sorted.append(oShapeKey.name)
+#         aShapeKeys_Sorted.sort()
+# 
+#         #=== Populate our properties with our mesh shape keys ===
+#         for sNameShapeKey in aShapeKeys_Sorted:
+#             oShapeKey = self.oMeshShapeKeyBlocks[sNameShapeKey]
+#             self.PropAdd(oShapeKey.name, "Description for " + oShapeKey.name, oShapeKey.value, oShapeKey.slider_min, oShapeKey.slider_max)
+
+
         #self.PropAdd("Breasts-Implants", 123)
         #self.PropAdd("Breasts-Nipple", 234)
         #self.PropSet("Breasts-Implants", 4.0)
@@ -87,10 +100,10 @@ class CObjectMeshShapeKeys(CObject):
         
     def PropGet(self, sName):
         oProp = self.PropFind(sName)
-        oProp.nValue =self.oMeshShapeKeyBlocks[oProp.sName].value
+        oProp.nValue = self.oMeshShapeKeyBlocks[oProp.sName].value
         return oProp.nValue
 
-    def PropSet(self, sName, nValueNew):
+    def PropSet(self, sName, nValueNew):                ###OPT:!!! It is highly inneficient to update mesh shape key at every update!!  Consider 'caching' the properties in Unity and setting all at once when changing game mode!  
         oProp = self.PropFind(sName)
         nValueNew = oProp.PropSet(nValueNew)
         self.oMeshShapeKeyBlocks[oProp.sName].value = nValueNew

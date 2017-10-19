@@ -214,14 +214,14 @@ class CCloth:
         bpy.ops.object.mode_set(mode='OBJECT')
 
         #=== Obtain CMesh reference to 3D cloth mesh we just created ===        
-        self.oMesh_3DD = CMesh.Create(self.oMeshO_3DD.name)       ###IMPROVE17: Go all on CMesh??
+        self.oMesh_3DD = CMesh.Attach(self.oMeshO_3DD.name)       ###IMPROVE17: Go all on CMesh??
 
 
     def PrepareClothForGame(self, sVertGrp_ClothSkinArea):
         #===== Prepare the cloth for gaming runtime by separating cut-cloth into skinned and simulated areas.  sVertGrp_ClothSkinArea enables caller to specify which cloth area should be skinned (instead of flex-simulated) =====       
         sNameClothSimulated = self.oNodeRoot.name + "-Simulated"
         sNameClothSkinned   = self.oNodeRoot.name + "-Skinned"
-        self.oMeshClothSimulated = CMesh.CreateFromDuplicate(sNameClothSimulated, self.oMesh_3DD)     # Simulated mesh is sent to Unity untouched.
+        self.oMeshClothSimulated = CMesh.AttachFromDuplicate(sNameClothSimulated, self.oMesh_3DD)     # Simulated mesh is sent to Unity untouched.
         self.oMeshClothSimulated.SetParent(self.oNodeRoot.name)
     
         #=== Transfer the skinning information from the skinned body mesh to the clothing.  _ClothSkinArea_xxx vert groups are to define various areas of the cloth that are skinned and not simulated ===
@@ -254,7 +254,7 @@ class CCloth:
         self.oMeshClothSimulated.Close()
 
         #=== Create the skinned mesh as a copy of the simulated one (note the twin vert IDs are still present) ===
-        self.oMeshClothSkinned = CMesh.CreateFromDuplicate(sNameClothSkinned, self.oMeshClothSimulated)     # Skinned mesh is sent to Unity with only skinned part
+        self.oMeshClothSkinned = CMesh.AttachFromDuplicate(sNameClothSkinned, self.oMeshClothSimulated)     # Skinned mesh is sent to Unity with only skinned part
         self.oMeshClothSkinned.SetParent(self.oNodeRoot.name)
             
         #=== Delete the verts in the skinned mesh that are not to be skinned ===

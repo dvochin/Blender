@@ -69,29 +69,33 @@ class CMesh:
         self.eMeshMode = EMeshMode.Closed  
         self.bDeleteBlenderObjectUponDestroy = bDeleteBlenderObjectUponDestroy  # By default we delete our Blender object when we get destroyed
         self.bm = None                              # The opened BMesh.  Exists only when Open() is called
+        self.bRanConvertMeshForUnity = False        # Flag to ensure ConvertMeshForUnity() only runs once
+        self.aaSplitVerts = None                    # Map of arrays of verts that have been split to prepare for Unity rendering
         self.aMapSharedNormals = None               # Shared normals array (computed by ConvertMeshForUnity() to fix normals across seams ###OBS:???
+        #self.aNormals = None                        # Normals for each vert.  Stored separately because once we split multi-uv verts for Unity each split will have a separate (wrong) normal so we send Unity the just-before-split normal
+        self.oMeshSource = None                     # Reference to the 'source mesh' that was used to create this mesh.  Used to extract 'good normals' for Unity as Unity meshes get their verts split at material seams.  Used only by GetNormals()
         if oMeshO.name != sNameMesh:
             self.SetName(sNameMesh)
 
     #-----------------------------------------------------------------------    CLASS METHODS CREATORS
     @classmethod
-    def Create(cls, sNameMesh):
+    def Attach(cls, sNameMesh, bDeleteBlenderObjectUponDestroy = False):
         "Creates a CMesh instance from an existing object Blender mesh object."
         oMesh = bpy.data.objects[sNameMesh]
         if (oMesh == None):
             raise Exception("###EXCEPTION: CMesh.Create() could not find mesh " + sNameMesh)
-        oInstance = cls(sNameMesh, oMesh)
+        oInstance = cls(sNameMesh, oMesh, bDeleteBlenderObjectUponDestroy)
         return oInstance
 
     @classmethod        ###DESIGN: Have a version from a CMesh?
-    def CreateFromDuplicate(cls, sNameMesh, oMeshSrc):
+    def AttachFromDuplicate(cls, sNameMesh, oMeshSrc):
         "Creates a CMesh instance from the COPY of an existing object Blender mesh object."
         oMesh = DuplicateAsSingleton(oMeshSrc.GetName(), sNameMesh)
         oInstance = cls(sNameMesh, oMesh, bDeleteBlenderObjectUponDestroy = True)   # As we're a duplicate we set the auto-destroy flag to True so Blender object is destroyed we this CMesh instance is destroyed
         return oInstance
 
     @classmethod
-    def CreateFromDuplicate_ByName(cls, sNameMesh, sNameMeshSrc):       ###IMPROVE: Naming of function... merge both into one and analyze arg type?
+    def AttachFromDuplicate_ByName(cls, sNameMesh, sNameMeshSrc):       ###IMPROVE: Naming of function... merge both into one and analyze arg type?
         "Creates a CMesh instance from the COPY of an existing object Blender mesh object."
         oMeshO = DuplicateAsSingleton(sNameMeshSrc, sNameMesh)
         oInstance = cls(sNameMesh, oMeshO, bDeleteBlenderObjectUponDestroy = True)   # As we're a duplicate we set the auto-destroy flag to True so Blender object is destroyed we this CMesh instance is destroyed
@@ -141,7 +145,8 @@ class CMesh:
             self.Hide()
 
     def DoDestroy(self):
-        self.Close()
+        if self.eMeshMode != EMeshMode.Closed:
+            self.Close()
         if self.bDeleteBlenderObjectUponDestroy:
             DeleteObject(self.GetName())       ###CHECK
         self.oMeshO = None
@@ -180,6 +185,7 @@ class CMesh:
                 self.oMeshO.vertex_groups.active_index = oVertGrp.index
                 if bSelectVerts:
                     bpy.ops.object.vertex_group_select()
+                print("- VertGrp_Remove('{}' removing vertex group '{}')".format(self.GetName(), oVertGrp.name))
                 self.oMeshO.vertex_groups.remove(oVertGrp)
     
     def VertGrp_SelectVerts(self, sNameVertGrp, bDeselect=False, bClearSelection=True, bThrowIfNotFound=True):            # Select all the verts of the specified vertex group 
@@ -243,23 +249,44 @@ class CMesh:
         bpy.ops.object.vertex_group_normalize_all(lock_active=False)
         bpy.ops.mesh.select_all(action='DESELECT')
 
+    def VertGrp_FindFirstVertInGroup(self, sNameVertGrp):
+        self.PrepareForOp(bRequiredOpen = False)
+        self.VertGrp_SelectVerts(sNameVertGrp)
+        for oVert in self.bm.verts:
+            if oVert.select:
+                return oVert
+        raise Exception("###EXCEPTION: VertGrp_FindFirstVertInGroup() could not find a single vert while searching in vertex group '{}'".format(sNameVertGrp))
+        
+         
 
     #---------------------------------------------------------------------------    MATERIALS
-    def Material_Remove(self, sNameMaterial, bLeaveVerts = False):        # Remove material 'sNameMaterial' from mesh (and optionally the associated verts)
+    def Material_Remove(self, sNameMaterial, bLeaveVerts = False, sNameMaterialDestination = None):        # Remove material 'sNameMaterial' from mesh (and optionally the associated verts)  If 'sNameMaterialDestination' is set these verts will be assigned to that material (i.e. are merged)
         #print("- CMesh.Material_Remove('{}') attempting to remove material slot '{}' with bLeaveVerts = '{}'".format(self.GetName(), sNameMaterial, bLeaveVerts))
         aMaterials = self.GetMeshData().materials
-        nMatSlotOrdinal = aMaterials.find(sNameMaterial)            ###LEARN: Search by name using find() the only way to delete materials? 
-        if nMatSlotOrdinal != -1:
-            self.oMeshO.active_material_index = nMatSlotOrdinal
-            if bLeaveVerts == False:
-                self.MeshMode_Edit()
-                bpy.ops.mesh.select_all(action='DESELECT')
+        nMatSlotID = aMaterials.find(sNameMaterial)            ###LEARN: Search by name using find() the only way to delete materials? 
+        if nMatSlotID != -1:
+            self.oMeshO.active_material_index = nMatSlotID
+            if sNameMaterialDestination is not None:
+                print("- Material_Remove() merging slave material '{}' into master material '{}'".format(sNameMaterial, sNameMaterialDestination))
+                self.MeshMode_Edit(bDeselect = True)
                 bpy.ops.object.material_slot_select()
-                bpy.ops.mesh.delete(type='FACE')
-                self.MeshMode_Object()
+                nMatSlotID_Destination = aMaterials.find(sNameMaterialDestination)
+                if nMatSlotID_Destination == -1:
+                    raise Exception("\n###EXCEPTION: Material_Remove() could not find sNameMaterialDestination '{}'.".format(sNameMaterialDestination)) 
+                self.oMeshO.active_material_index = nMatSlotID_Destination
+                bpy.ops.object.material_slot_assign()
+                self.oMeshO.active_material_index = nMatSlotID      # Return material slot selection back to the material slot we need to delete
+                self.MeshMode_Object(bDeselect = True)
+            else:
+                if bLeaveVerts == False:
+                    self.MeshMode_Edit()
+                    bpy.ops.mesh.select_all(action='DESELECT')
+                    bpy.ops.object.material_slot_select()
+                    bpy.ops.mesh.delete(type='FACE')
+                    self.MeshMode_Object()
             bpy.ops.object.material_slot_remove()
         else:
-            print("#WARNING: CMesh.Material_Remove('{}') cannot find material '{}'".format(self.GetName(), sNameMaterial))
+            print("#WARNING: CMesh.Material_Remove('{}') cannot find material slot '{}'".format(self.GetName(), sNameMaterial))
 
     def Materials_Remove(self, rexPattern, bLeaveVerts = False):        # Remove from all material (and their associated verts) that starts with 'sNameMaterialPrefix'
         aMaterialSlots = self.GetMesh().material_slots
@@ -276,11 +303,37 @@ class CMesh:
     #---------------------------------------------------------------------------    SHAPE KEYS
     def ShapeKeys_RemoveAll(self):                        # Remove all the shape keys of the current mesh.
         self.SelectObject()
+        bpy.context.object.active_shape_key_index = 1       ###CHECK: cannot remove shape keys if basis is selected!  ###WEAK: 1 might not exist?
         if bpy.ops.object.shape_key_remove.poll():
             bpy.ops.object.shape_key_remove(all=True)
-    
+            
+    def ShapeKey_Print(self, sSeparator = None):                          # Prints the shape keys to the console (removing the optional sSeparator) in a form that makes it easy to create the mapping Python code
+        print("\n=== Dumping shape keys of mesh '{}' ===".format(self.GetName()))
+        aShapeKeys = self.GetMeshData().shape_keys.key_blocks
+        aShapeKeyNames = []
+        for oShapeKey in aShapeKeys:
+            sNameShapeKey = oShapeKey.name
+            if sSeparator is not None:
+                nPosSeparator = sNameShapeKey.find(sSeparator)
+                if nPosSeparator != -1:
+                    sNameShapeKey = sNameShapeKey[nPosSeparator+len(sSeparator):]
+            aShapeKeyNames.append(sNameShapeKey)
+        aShapeKeyNames.sort()
+        for sNameShapeKey in aShapeKeyNames: 
+            print("\t\"{}\":\t\t[\"BBBBBBB\",     \"CCCCCCCC\",      0, -0.0, 1.0],".format(sNameShapeKey))
+            
+        print("\n--- Done ---")
+
 
     #---------------------------------------------------------------------------    DATA LAYERS
+    def DataLayer_Create_SimpleVertID(self, sNameDataLayer):        # Create a custom data layer that stores (offsetted) vertex IDs.  This is useful for domain traversal 
+        if self.Open():                                             # Store the vert ID into its own data layer.  This way we can always get back the (authoritative) vert ID and always know exactly which vert we're refering to in any vert domain (e.g. mesh parts cut off from source body)
+            oLay = self.bm.verts.layers.int.new(sNameDataLayer)
+            for oVert in self.bm.verts:    
+                oVert[oLay] = oVert.index + G.C_OffsetVertIDs       # Stored vertex IDs are offsetted so the default value of 0 means 'new vert'!
+            self.Close()
+        return oLay
+        
     def DataLayer_SelectMatchingVerts(self, oLay, nValueSearch, nValueMask = 0xFFFFFFFF, bDeselectFirst=True):    # Select verts by a given data layer test
         if bDeselectFirst:                
             bpy.ops.mesh.select_all(action='DESELECT')
@@ -312,7 +365,11 @@ class CMesh:
     #---------------------------------------------------------------------------    MODIFIERS
     def Modifier_AddArmature(self, oMeshSrcO):        # Adds an armature modifier with the same parent armature as 'oMeshSrcO'
         oModArmature = self.oMeshO.modifiers.new(name="Armature", type="ARMATURE")
-        oModArmature.object = oMeshSrcO.modifiers["Armature"].object  
+        oModArmature.object = oMeshSrcO.modifiers["Armature"].object
+    
+    def Modifier_AddArmature_ArmatureNode(self, oArmatureNodeO):        # Adds an armature modifier and set its armature node to 'oArmatureNode'
+        oModArmature = self.oMeshO.modifiers.new(name="Armature", type="ARMATURE")
+        oModArmature.object = oArmatureNodeO
     
     def Modifier_Remesh(self, nOctreeDepth, nRemeshScale):            # Applies a remesh modifier with the given arguments
         self.Modifier_RemoveAll()                   # Remove all the modifiers.  Remesh trashes everything anyways (armature has to be rebuilt)
@@ -340,12 +397,12 @@ class CMesh:
         bpy.ops.object.join()
         return None                 # Return a convenience none so caller can clear its reference while calling us.
    
-    def Util_TransferWeights(self, oMeshSrcO, bCleanGroups = True, bAddArmature = False):        # Transfer the skinning information from mesh oMeshSrcO to oMeshO
-        print("- Util_TransferWeights() begins transferring weights from '{}' to  '{}'".format(oMeshSrcO.GetName(), self.GetName()))
+    def Util_TransferWeights(self, oMeshSrc, bCleanGroups = True, bAddArmature = False):        # Transfer the skinning information from mesh oMeshSrc to oMeshO
+        print("- Util_TransferWeights() begins transferring weights from '{}' to  '{}'".format(oMeshSrc.GetName(), self.GetName()))
         self.SelectObject()
-        oMeshSrcO.Unhide()
+        oMeshSrc.Unhide()
         oModTransfer = self.oMeshO.modifiers.new(name="DATA_TRANSFER", type="DATA_TRANSFER")
-        oModTransfer.object = oMeshSrcO.GetMesh()
+        oModTransfer.object = oMeshSrc.GetMesh()
         oModTransfer.use_vert_data = True
         oModTransfer.data_types_verts = { "VGROUP_WEIGHTS" }
         bpy.ops.object.datalayout_transfer(modifier=oModTransfer.name)    ###INFO: Operation acts upon the setting of 
@@ -355,7 +412,7 @@ class CMesh:
             bpy.ops.object.vertex_group_clean(group_select_mode='ALL')    ###INFO: Needs weight mode to work! (???)  ###DESIGN: Keep??
         self.MeshMode_Object()
         if bAddArmature:
-            self.Modifier_AddArmature(oMeshSrcO.GetMesh())
+            self.Modifier_AddArmature(oMeshSrc.GetMesh())
         print("= Util_TransferWeights() completes.")
 
     def Util_RemoveNonManifoldGeometry(self):
@@ -385,6 +442,11 @@ class CMesh:
         bpy.ops.mesh.select_all(action='DESELECT')
 
     
+    
+    
+    
+    
+    
     #---------------------------------------------------------------------------    ###MOVE
     def SelectObject(self):         
         SelectObject(self.GetName(), bCheckForPresence = True)      ###DESIGN:? Merge base version in?
@@ -409,6 +471,12 @@ class CMesh:
         bpy.ops.mesh.decimate(ratio=nRatioDecimate)
         #bpy.ops.mesh.quads_convert_to_tris()        ###OPT:!!! Needed??
         bpy.ops.mesh.select_all(action='DESELECT')
+
+    def Decimate_VertGrp(self, sNameVertGrp, nRatioDecimate):        # Decimate the mesh to attempt to reach 'nNumTargetVerts' verts
+        self.PrepareForOp()
+        self.VertGrp_SelectVerts(sNameVertGrp)
+        bpy.ops.mesh.decimate(ratio=nRatioDecimate)
+        bpy.ops.object.vertex_group_assign()                # Decimate above removes most verts from the vertex group.  As post-decimate vertex groups are currently selected, assign them to the source vertex group 
 
 
 
@@ -513,8 +581,9 @@ class CMesh:
 
     def ConvertMeshForUnity(self, bSplitVertsAtUvSeams):  # Convert a Blender mesh so Client can properly display it. Client requires a tri-based mesh and verts that only have one UV. (e.g. no polys accross different seams/materials sharing the same vert)
         ###IMPROVE: bSplitVertsAtUvSeams obsolete now that we catch?
+        ###IMPROVE: Make sure this expensive call can only run ONCE and that it MUST run (before it is sent to Unity)  Unity cannot render multi-material meshes without modifications for shared normals ###CHECK: Maybe recent Unity can?
         # bSplitVertsAtUvSeams will split verts at UV seams so Unity can properly render.  (Cloth currently unable to simulate this way) ####FIXME ####SOON
-        if (self.aMapSharedNormals is not None):        # Only do once ###WEAK: poor deicsion... set a flag to make clearer?
+        if self.bRanConvertMeshForUnity:
             return  
         
         #=== Separate all seam edges to create unique verts for each UV coordinate as Client requires ===
@@ -555,54 +624,62 @@ class CMesh:
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
     
     
-    
-        #=== Load/create a persistent custom data layer to store the 'SharedNormalID' of duplicated verts accross seams that must have their normal averaged out by Client ===
-        ###TODO11: Update docs & cleanup!!
-        ###NOTE: as this call can be called multiple times with the mesh getting its edges split each time that this data layer persists and gets added to at each wave of splits.
-        ###NOTE: While this data layer is stored in the mesh to persists between call, the 'aMapSharedNormals' below is recreated from this persistent info each time this function is called so Client receives shared normals that had their edges split accross multiple calls
-        ###NOTE: An common/important example is Blender taking the morphed body that was client-ready, and appends clothing & separates parts to have result be client-ready again.   
-        nNextSharedNormalID = 1
-        if G.C_DataLayer_SharedNormals in bm.verts.layers.int:
-            oLayVertSharedNormalID = bm.verts.layers.int[G.C_DataLayer_SharedNormals]
-        else:
-            oLayVertSharedNormalID = bm.verts.layers.int.new(G.C_DataLayer_SharedNormals)
-            nNextSharedNormalID = 1
         
-        #=== Iterate through the verts that will be split to store into a temp custom data layer a temporary unique ID so that split verts that must have the same normal can be 'twinned' together again so Client can average out their normals
+        #=== Load/create a persistent custom data layer to store the 'SplitVertID' of duplicated verts accross seams.  Unity needs these to properly move verts in some situation (like local morphing) ===
+        # Iterate through the verts that will be split to store into a temp custom data layer a temporary unique ID so that split verts that must have the same normal can be 'twinned' together again so Client can average out their normals
+        oLaySplitVertID = bm.verts.layers.int.new(G.C_DataLayer_SplitVertIDs)
         for oVert in bm.verts:
             if oVert.select:
-                oVert[oLayVertSharedNormalID] = nNextSharedNormalID  # Note that we are only assigning new IDs here.  If this call ran before on this mesh, the split verts during that call would have previous IDs in our custom data layer
-                nNextSharedNormalID += 1
+                oVert[oLaySplitVertID] = oVert.index + G.C_OffsetVertIDs
                 
         #=== Split the seam edges so each related polygon gets its own edge & verts.  This way each vert always has one exact UV like Client requires ===
         bpy.ops.mesh.edge_split()                           ###NOTE: Loses selection!
         
         #=== After edge split all verts we have separated can still be 'matched together' by their shared normal ID that has also been duplicated as verts were duplicated === 
-        aaSharedNormals = {}  # Create a 'map-of-arrays' that will store the matching vertex indices for each 'shared normals group'.  Done this way because a vert can be split more than once (e.g. at a T between three seams for example)
+        self.aaSplitVerts = {}                              # Create a 'map-of-arrays' that will store the matching vertex indices for each 'shared normals group'.  Done this way because a vert can be split more than once (e.g. at a T between three seams for example)
         for oVert in bm.verts:
-            nSharedNormalID = oVert[oLayVertSharedNormalID]
-            if nSharedNormalID > 0:  # If this vert has a shared normal ID (from this call or a previous one) the insert it into our map to construct our list of shared normals
-                if nSharedNormalID not in aaSharedNormals:  # If our map entry for this group does not exist create an empty array at this map ID so next line will have an array to insert the first item of the group
-                    aaSharedNormals[nSharedNormalID] = []
-                aaSharedNormals[nSharedNormalID].append(oVert.index)  # Append the vert index to this shared normal group.
+            nSplitVertID = oVert[oLaySplitVertID]
+            if nSplitVertID >= G.C_OffsetVertIDs:           # If this vert has a shared vert ID then insert it into our map to construct our list of shared normals
+                if nSplitVertID not in self.aaSplitVerts:   # If our map entry for this group does not exist create an empty array at this map ID so next line will have an array to insert the first item of the group
+                    self.aaSplitVerts[nSplitVertID] = []
+                self.aaSplitVerts[nSplitVertID].append(oVert.index)    # Append the vert index to this shared normal group.
     
         #=== 'Flatten' the aaSharedNormals array by separating the groups with a 'magic number' marker.  This enables groups of irregular size to be transfered more efficiently to Client ===
         self.aMapSharedNormals = CByteArray()  # Array of unsigned shorts.   Client can only process meshes under 64K verts anyways...
-        for nSharedNormalID in aaSharedNormals:
-            aSharedNormals = aaSharedNormals[nSharedNormalID]
+        for nSharedNormalID in self.aaSplitVerts:
+            aSharedNormals = self.aaSplitVerts[nSharedNormalID]
             nCountInThisSharedNormalsGroup = len(aSharedNormals)
             if nCountInThisSharedNormalsGroup > 1:  # Groups can be from size 1 (alone) to about 4 verts sharing the same normal with 2 by far the most frequent.  Don't know why we get about 10% singles tho... Grabbed by groups with 3+??
                 for nVertID in aSharedNormals:
                     self.aMapSharedNormals.AddUShort(nVertID)
                 self.aMapSharedNormals.AddUShort(G.C_MagicNo_EndOfFlatGroup)  # When Client sees this 'magic number' it knows it marks the end of a 'group' and updates the normals for the previous group
-    
         self.aMapSharedNormals.CloseArray()
 
-        #self.oMeshO[G.C_PropArray_MapSharedNormals] = aMapSharedNormals.tobytes()  # Store this 'ready-to-serialize' array that is sent with all meshes sent to Client so it can fix normals for seamless display 
         bpy.ops.mesh.select_all(action='DESELECT')
         bpy.ops.object.mode_set(mode='OBJECT')
+        
+        self.bRanConvertMeshForUnity = True
     
 
+#     def Unity_GetMeshNormals(self):             # Store the mesh normals and return in a serializable form for Unity.         
+#         #=== Store the 'good' normals so Unity can render the multi-material mesh seamlessly with the best normals available (Blender's mesh before splitting verts)
+#         if self.oMeshSource is None:            # Codebase MUST have specified the source for this mesh so we can extract valid normals!
+#             raise Exception("\n###EXCEPTION: CMesh.Unity_GetMeshNormals() called when self.oMeshSource was not set!")
+#         aVerts_SourceMesh = self.oMeshSource.GetMeshData().vertices 
+#         if self.Open():
+#             oLayVertSrcBody = self.bm.verts.layers.int[G.C_DataLayer_VertSrcBody]
+#             self.aNormals = CByteArray()                        # Array of vectors
+#             self.bm.verts.ensure_lookup_table()
+#             for oVert in self.bm.verts:
+#                 nVertSrcBody = oVert[oLayVertSrcBody] - G.C_OffsetVertIDs           ###CHECK: Looks great but is it better to get the normal of the un-split source mesh?
+#                 #oVertOther = self.bm.verts[nVertSrcBody]
+#                 vecNormal = aVerts_SourceMesh[nVertSrcBody].normal.copy()               
+#                 #self.aNormals.AddVector(oVertOther.normal)
+#                 self.aNormals.AddVector(vecNormal)
+#             self.aNormals.CloseArray()
+#             self.Close()
+#         return self.aNormals
+    
     #---------------------------------------------------------------------------    
     #---------------------------------------------------------------------------    SUPER PUBLIC -> Global top-level functions exported to Client
     #---------------------------------------------------------------------------    
@@ -626,22 +703,16 @@ class CMesh:
         oBA = CByteArray()
         oBA.AddInt(nVerts)  ###INFO!!!: Really fucking bad behavior by struct.pack where pack of 'Hi' will give 8 byte result (serialized as both 32-bit) while 'HH' will give 4 bytes (both serialzed as 16-bit)  ###WTF?????
         oBA.AddInt(nTris)
+        nMats = 0                               ###WEAK ###CHECK: How come we have to test for null now?  wtf?
+        for oMat in oMesh.materials:
+            if oMat is not None:
+                nMats += 1
         oBA.AddByte(nMats)
         
         #=== Send our collection of material.  Client will link to the image files to create default materials ===
-        for nMat in range(nMats):
-            oMat = oMesh.materials[nMat]
-            sImgFilepathEnc = "NoTexture"
-            if oMat is not None:
-                sImgFilepathEnc = oMat.name         ###TODO19: Redo whole material import procedure to require materials to be already present in Unity! (Far easier to get the right look by first depending on Unity's awesome FBX importer!!)
-#                 if oMat.name.startswith("Material_"):  # Exception to normal texture-path behavior is for special materials such as 'Material_Invisible'.  Just pass in name of special material and Unity will try to fetch it.  It is assume that Blender and client both define this same material!
-#                     sImgFilepathEnc = oMat.name  ###IMPROVE: Could pass in more <Unity defined Material>' names to pass special colors and materials??
-#                 else:  # For non-special material we pass in texture path.
-#                     oTextureSlot = oMat.texture_slots[0]
-#                     if oTextureSlot:
-#                         sImgFilepathEnc = oTextureSlot.texture.image.filepath
-#                         # aSplitImgFilepath = oTextureSlot.texture.image.filepath.rsplit(sep='\\', maxsplit=1)    # Returns a two element list with last being the 'filename.ext' of the image and the first being the path to get there.  We only send Client filename.ext
-            oBA.AddString(sImgFilepathEnc)
+        for oMat in oMesh.materials:
+            if oMat is not None:                ###CHECK: Why can they be null now??
+                oBA.AddString(oMat.name)
     
     
         #=== Now pass processing to our C Blender code to internally copy the vert & tris of this mesh to shared memory Client can access directly ===
@@ -776,3 +847,19 @@ class EMeshMode(Enum):          ###INFO: Based on technique at https://docs.pyth
         ###DESIGN:??? self.UpdateBMeshTables()
             #bpy.types.Mesh.calc_tessface()         ###DESIGN:???
 
+
+
+
+
+           #sImgFilepathEnc = "NoTexture"
+            #if oMat is not None:
+                #sImgFilepathEnc = oMat.name         ###TODO19: Redo whole material import procedure to require materials to be already present in Unity! (Far easier to get the right look by first depending on Unity's awesome FBX importer!!)
+#                 if oMat.name.startswith("Material_"):  # Exception to normal texture-path behavior is for special materials such as 'Material_Invisible'.  Just pass in name of special material and Unity will try to fetch it.  It is assume that Blender and client both define this same material!
+#                     sImgFilepathEnc = oMat.name  ###IMPROVE: Could pass in more <Unity defined Material>' names to pass special colors and materials??
+#                 else:  # For non-special material we pass in texture path.
+#                     oTextureSlot = oMat.texture_slots[0]
+#                     if oTextureSlot:
+#                         sImgFilepathEnc = oTextureSlot.texture.image.filepath
+#                         # aSplitImgFilepath = oTextureSlot.texture.image.filepath.rsplit(sep='\\', maxsplit=1)    # Returns a two element list with last being the 'filename.ext' of the image and the first being the path to get there.  We only send Client filename.ext
+#            oBA.AddString(sImgFilepathEnc)
+ 

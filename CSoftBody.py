@@ -63,7 +63,7 @@ class CSoftBody(CSoftBodyBase):
 
         #===== FLEX COLLISION MESH CREATION =====
         #=== Create the 'collision mesh' as a 'shrunken version' of appearance mesh (about vert normals) ===
-        self.oMeshFlexCollider = CMesh.CreateFromDuplicate(self.oMeshSoftBody.GetMesh().name + G.C_NameSuffix_FlexCollider, self.oMeshSoftBody)
+        self.oMeshFlexCollider = CMesh.AttachFromDuplicate(self.oMeshSoftBody.GetMesh().name + G.C_NameSuffix_FlexCollider, self.oMeshSoftBody)
         self.oMeshFlexCollider.SetParent(self.oMeshSoftBody.GetName())
         self.oMeshFlexCollider.Open()
         bpy.ops.mesh.select_all(action='SELECT')
@@ -85,7 +85,7 @@ class CSoftBody(CSoftBodyBase):
         print("-- CSoftBody.FindPinnedFlexParticles() on body '{}' and softbody '{}' with distance {} --".format(self.oBody.oBodyBase.sMeshPrefix, self.sSoftBodyPart, nDistSoftBodyParticlesFromBackmesh))
 
         #=== Open the temp mesh Unity requested in CreateTempMesh() and push in a data layer with vert index.  This will prevent us from losing access to Unity's particles as we process this mesh toward the softbody rim ===        
-        oMeshUnity2BlenderTEMPCOPY = CMesh.CreateFromDuplicate("TEMPFORJOIN-Unity2Blender", self.oMeshUnity2Blender)        # Create a temporary copy of Unity2Blender mesh because we need to destroy our copy and Unity owns its copy and must release it on its own
+        oMeshUnity2BlenderTEMPCOPY = CMesh.AttachFromDuplicate("TEMPFORJOIN-Unity2Blender", self.oMeshUnity2Blender)        # Create a temporary copy of Unity2Blender mesh because we need to destroy our copy and Unity owns its copy and must release it on its own
         bmUnity2Blender = oMeshUnity2BlenderTEMPCOPY.Open()
         oLayParticles = bmUnity2Blender.verts.layers.int.new(G.C_DataLayer_Particles)
         for oVert in bmUnity2Blender.verts:                             # Iterate through Unity's particles so we can map between pinned particles mesh and all the Flex particles at gametime    
@@ -94,7 +94,7 @@ class CSoftBody(CSoftBodyBase):
         
         #===== Remove the particles that are too far from the backmesh =====
         #=== Combine the Flex-constructed particle verts with the backmesh mesh of our softbody.  We need to isolate the particles close to the backmesh of the softbody particles to 'pin' them ===
-        self.oMeshPinnedParticles = CMesh.CreateFromDuplicate(self.oMeshSoftBody.GetName() + "-PinnedParticles", self.oMeshSoftBodyRimBackmesh)
+        self.oMeshPinnedParticles = CMesh.AttachFromDuplicate(self.oMeshSoftBody.GetName() + "-PinnedParticles", self.oMeshSoftBodyRimBackmesh)
         self.oMeshPinnedParticles.SetParent(self.oMeshSoftBody.GetName())
          
         SelectObject(oMeshUnity2BlenderTEMPCOPY.GetName())       # First select and activate mesh that will be destroyed (temp mesh)    (Begin procedure to join temp mesh into softbody rim mesh (destroying temp mesh))
@@ -167,7 +167,7 @@ class CSoftBody(CSoftBodyBase):
         oMeshD.from_pydata(aVerts,[],[])
         oMeshD.update()
         SetParent(oMeshO.name, G.C_NodeFolder_Game)
-        self.oMeshUnity2Blender = CMesh.Create(oMeshO.name)     # Store CMesh reference into the member dedicated for this purpose so Unity can access and upload to us via its normal (efficient) channel
+        self.oMeshUnity2Blender = CMesh.Attach(oMeshO.name)     # Store CMesh reference into the member dedicated for this purpose so Unity can access and upload to us via its normal (efficient) channel
         self.oMeshUnity2Blender.SetName(sNameMeshUnity2Blender)     # Ensure we have the name we need. 
         self.oMeshUnity2Blender.SetParent(self.oMeshSoftBody.GetName())
         self.oMeshUnity2Blender.bDeleteBlenderObjectUponDestroy = True
@@ -217,11 +217,11 @@ class CSoftBody(CSoftBodyBase):
 # 
 #         #=== Create a temporary copy of rim mesh so we can transfer weights efficiently from it to new mesh including particles ===
 #         ####BUG? DoDestroy mesh of rim??
-#         self.oMeshSoftBodyRim = CMesh.CreateFromDuplicate("TEMP_SoftBodyRim", self.oMeshSoftBodyRim_Orig)
-#         oMeshSoftBodyRim_Copy = CMesh.CreateFromDuplicate("TEMP_SoftBodyRim_Copy", self.oMeshSoftBodyRim_Orig)
+#         self.oMeshSoftBodyRim = CMesh.AttachFromDuplicate("TEMP_SoftBodyRim", self.oMeshSoftBodyRim_Orig)
+#         oMeshSoftBodyRim_Copy = CMesh.AttachFromDuplicate("TEMP_SoftBodyRim_Copy", self.oMeshSoftBodyRim_Orig)
 # 
 #         #=== Create a temporary copy of Unity2Blender mesh so we can trim it to 'nNumVerts_UnityToBlenderMesh' verts ===  
-#         self.oMeshUnity2Blender = CMesh.CreateFromDuplicate("TEMP_Unity2Blender", self.oMeshUnity2Blender)
+#         self.oMeshUnity2Blender = CMesh.AttachFromDuplicate("TEMP_Unity2Blender", self.oMeshUnity2Blender)
 #         self.aMapPinnedParticles = array.array('H')  # Blank out the two arrays that must be created everytime this is called
 #         self.aMapRimVerts         = array.array('H')
 # 
@@ -344,7 +344,7 @@ class CSoftBody(CSoftBodyBase):
 #         self.aColBreastCapsuleSpheres            = array.array('H')      # This array (highly specific to CBreastCol) stores the two vertex IDs of each vertex / sphere that represends the end of each tapered capsule.  These are marked by 'sharp edges' for each capsule
 #         self.aColBreastMapSlaveMeshSlaveToMaster = array.array('H')      # This outgoing array stores the map of source vert to destination vert.  Used by Unity to set the slave mesh to the vert position of its master mesh
 #         
-#         # This Flex mesh takes a small encoded (containing about 32 verts) mesh to generate sphere & capsule collidersX.  This call process which vert will create a sphere collider in PhysX and which edge will generate a capsule colliders (currently used to repell clothing away from breasts)  (Args ex: "BodyA", "WomanA", "Breasts")        ###CHECK: Can capping during breast separation cause problem with collider overlay??
+#         # This Flex mesh takes a small encoded (containing about 32 verts) mesh to generate sphere & capsule collidersX.  This call process which vert will create a sphere collider in PhysX and which edge will generate a capsule colliders (currently used to repell clothing away from breasts)  (Args ex: "BodyA", "Woman", "Breasts")        ###CHECK: Can capping during breast separation cause problem with collider overlay??
 #         sNameSlaveMeshSlave = self.oBody.sMeshSource + "-" + self.sNameCollider + "-Slave"      ###IMPROVE: Create function to construct these names!
 #         self.oMeshColBreast = CMesh.Create(sNameSlaveMeshSlave)    
 #         
