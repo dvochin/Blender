@@ -185,7 +185,7 @@ class CMesh:
                 self.oMeshO.vertex_groups.active_index = oVertGrp.index
                 if bSelectVerts:
                     bpy.ops.object.vertex_group_select()
-                print("- VertGrp_Remove('{}' removing vertex group '{}')".format(self.GetName(), oVertGrp.name))
+                #print("- VertGrp_Remove('{}' removing vertex group '{}')".format(self.GetName(), oVertGrp.name))
                 self.oMeshO.vertex_groups.remove(oVertGrp)
     
     def VertGrp_SelectVerts(self, sNameVertGrp, bDeselect=False, bClearSelection=True, bThrowIfNotFound=True):            # Select all the verts of the specified vertex group 
@@ -714,7 +714,6 @@ class CMesh:
             if oMat is not None:                ###CHECK: Why can they be null now??
                 oBA.AddString(oMat.name)
     
-    
         #=== Now pass processing to our C Blender code to internally copy the vert & tris of this mesh to shared memory Client can access directly ===
         print("--- Unity_GetMesh() sharing mesh '{}' of {} verts, {} tris and {} mats with bytearray of size {} ---".format(self.GetName(), nVerts, nTris, nMats, len(oBA)))
         oMesh.tag = True                    ###IMPORTANT: Setting 'tag' on the mesh object and causes the next update to invoke our C-code modification of Blender share/unshare mesh memory to Client
@@ -814,7 +813,7 @@ class EMeshMode(Enum):          ###INFO: Based on technique at https://docs.pyth
 #         if (self.oMeshParent != None):         ###DESIGN ###BUG Confusion with node parent and morph parent!!!
 #             self.SetParent(self.oMeshParent.GetName())   ###IMPROVE: By CMesh instead of name??
     #def __del__(self):        ###DEV
-        ####BROKEN!!!  Game deletes objects even if they are still reference!  e.g. self.oMeshBody sometimes!!!!!!!!
+        ####BROKEN!!!  Game deletes objects even if they are still reference!  e.g. self.oSkinMeshGame sometimes!!!!!!!!
         #if (self.bDeleteBlenderObjectUponDestroy):
         #    DeleteObject(self.sNameMesh.name)
 

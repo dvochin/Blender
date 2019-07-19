@@ -89,16 +89,16 @@ class CFlexSoftBodyPenis(CFlexSoftBody):
         print("- CFlexSoftBodyPenis.OnModifyParticles() called.   Adjusting cap particles")
 
         #=== Get uretra vertex.  It will locate penis center along its long axis (x, z) and the tip location along y ===
-        oMeshBody = self.oBody.oMeshBody
-        if self.oBody.oMeshBody.Open():
-            oMeshBody.VertGrp_SelectVerts("_CPenis_Uretra")
-            for oVert in self.oBody.oMeshBody.bm.verts:             ###OPT:! Sucks we have to iterate through all verts to find one!    ###IMPROVE: Maybe we can implement a 'marking system' in BodyPrep for these special verts so we can find them much more quickly?
+        oSkinMeshGame = self.oBody.oSkinMeshGame
+        if self.oBody.oSkinMeshGame.Open():
+            oSkinMeshGame.VertGrp_SelectVerts("_CPenis_Uretra")
+            for oVert in self.oBody.oSkinMeshGame.bm.verts:             ###OPT:! Sucks we have to iterate through all verts to find one!    ###IMPROVE: Maybe we can implement a 'marking system' in BodyPrep for these special verts so we can find them much more quickly?
                 if oVert.select:
                     oVertUretra = oVert
                     break
             self.vecVertUretra = oVertUretra.co.copy()
             self.vecVertUretra.x = 0                     # Make sure we're centered
-            self.oBody.oMeshBody.Close()
+            self.oBody.oSkinMeshGame.Close()
 
         #=== Find the closest vert / particle to real uretra and move it ===
         nDistToUretra_Min = sys.float_info.max

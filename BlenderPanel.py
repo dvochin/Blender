@@ -161,7 +161,7 @@ class gBL_temp0(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        G.CGlobals.Initialize(0.02)
+        G.CGlobals.Initialize(0.02, bSkipLongUnnecessaryOps=True)
         return {"FINISHED"}
 
 class gBL_temp1(bpy.types.Operator):
@@ -171,11 +171,11 @@ class gBL_temp1(bpy.types.Operator):
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
         #CBodyBase_Create(0, 'Woman', 'Woman')
-        G.CGlobals.Initialize(0.02)
+        G.CGlobals.Initialize(0.02, bSkipLongUnnecessaryOps=False)
         CBodyBase_Create(0, 'Shemale')
         CBodyBase_GetBodyBase(0).CreateCBody()
 #         CBodyBase_GetBodyBase(0).OnChangeBodyMode('Play')
-#         CBodyBase_GetBodyBase(0).oBody.oMeshBody.GetMesh().hide = True    ###HACK17:
+#         CBodyBase_GetBodyBase(0).oBody.oSkinMeshGame.GetMesh().hide = True    ###HACK17:
 #         CBodyBase_GetBodyBase(0).oMeshMorph.GetMesh().hide = True    ###HACK17:
 #         bpy.data.objects['BodySuit'].hide = True
         #oBody.CreateFlexkin("TestFlexkin", 10)
@@ -256,7 +256,7 @@ class gBL_temp8(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     def invoke(self, context, event):
         self.report({"INFO"}, "GBOP: " + self.bl_label)
-        #oMeshBody.ShapeKeys_RemoveAll()
+        #oSkinMeshGame.ShapeKeys_RemoveAll()
         CPenis.CPenisFit.INSTANCE = CPenis.CPenisFit("Woman", "Shemale")
         CPenis.CPenisFit.INSTANCE.JoinPenisToBody()
         return {"FINISHED"}

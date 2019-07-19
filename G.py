@@ -189,9 +189,11 @@ C_SymmetrySuffixNames = ['L', 'R']              # Suffix given to symmetrical cu
 C_OffsetVertIDs = 1000000                       # Offset applied to all vert IDs pushed into mesh.  Used to separate 'real IDs' from new verts which would have zero ID
 
 C_Prefix_DynBones = '+'                         # Prefix applied to all the 'dynamic bones' this class creates.  These bones are assigned to different bone parents as appropriate for each soft body (e.g. Left breast to 'lPectoral' DAZ bone, Penis to 'Genitals' DAZ bone etc)
-C_RexPattern_StandardBones = r"^[a-zA-Z]"       # RegEx search pattern to find DAZ-defined bones = They all start wih a lower-case or upper-case letter. (ALL our bones have a prefix like '+', '_', etc)
-C_RexPattern_DynamicBones = r"^\+"              # RegEx search pattern to find dynamic bones.  They ALL start with '+'
-C_RexPattern_CodebaseBones = r"^_"              # RegEx search pattern to find codebase bones / vertex groups.  They ALL start with '_'
+C_RexPattern_BonesStandard = r"^[a-zA-Z]"       # RegEx search pattern to find DAZ-defined bones = They all start wih a lower-case or upper-case letter. (ALL our bones have a prefix like '+', '_', etc)
+C_RexPattern_BonesDynamic = r"^\+"              # RegEx search pattern to find dynamic bones.  They ALL start with '+'
+C_RexPattern_Codebase = r"^_"                   # RegEx search pattern to find codebase bones / vertex groups.  They ALL start with '_'
+C_RexPattern_CodebaseAndArea = r"(^_|^@)"       # RegEx search pattern to find codebase bones / vertex groups and areas.  They start with '_' OR '@'
+C_RexPattern_Areas = r"^@"                      # RegEx search pattern to find body surface definition areas.  They ALL start with '@'
 C_RexPattern_EVERYTHING = r""                   # RegEx search pattern that matches everything
 
 

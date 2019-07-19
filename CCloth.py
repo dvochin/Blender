@@ -225,8 +225,8 @@ class CCloth:
         self.oMeshClothSimulated.SetParent(self.oNodeRoot.name)
     
         #=== Transfer the skinning information from the skinned body mesh to the clothing.  _ClothSkinArea_xxx vert groups are to define various areas of the cloth that are skinned and not simulated ===
-        self.oBodyBase.oMeshMorphResult.GetMesh().hide = False         ###INFO: Mesh MUST be visible for weights to transfer!
-        Util_TransferWeights(self.oMeshClothSimulated.GetMesh(), self.oBodyBase.oMeshMorphResult.GetMesh())      ###IMPROVE: Insert apply statement in this function?
+        self.oBodyBase.oSkinMeshMorph.GetMesh().hide = False         ###INFO: Mesh MUST be visible for weights to transfer!
+        Util_TransferWeights(self.oMeshClothSimulated.GetMesh(), self.oBodyBase.oSkinMeshMorph.GetMesh())      ###IMPROVE: Insert apply statement in this function?
     
         #=== With the body's skinning info transfered to the cloth, select the the requested vertices contained in the 'skinned verts' vertex group.  These will 'pin' the cloth on the body while the other verts are simulated ===
         bmClothSim = self.oMeshClothSimulated.Open()

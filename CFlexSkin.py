@@ -42,10 +42,10 @@
 #         DeleteObject(sNameFlexSkin)
 #  
 # #         #=== Obtain the to-be-detached vertex group of name 'self.sFlexSkinPart' from the combo mesh that originally came from the source body ===
-# #         nVertGrpIndex_DetachPart = self.oBody.oMeshBody.GetMesh().vertex_groups.find(G.C_VertGrp_CSoftBody + self.sFlexSkinPart)  # vertex_group_transfer_weight() above added vertex groups for each bone.  Fetch the vertex group for this detach area so we can enhance its definition past the bone transfer (which is much too tight)     ###DESIGN: Make area-type agnostic
-# #         oVertGroup_DetachPart = self.oBody.oMeshBody.GetMesh().vertex_groups[nVertGrpIndex_DetachPart]
-# #         self.oBody.oMeshBody.GetMesh().vertex_groups.active_index = oVertGroup_DetachPart.index
-# #         self.oBody.oMeshBody.Open()
+# #         nVertGrpIndex_DetachPart = self.oBody.oSkinMeshGame.GetMesh().vertex_groups.find(G.C_VertGrp_CSoftBody + self.sFlexSkinPart)  # vertex_group_transfer_weight() above added vertex groups for each bone.  Fetch the vertex group for this detach area so we can enhance its definition past the bone transfer (which is much too tight)     ###DESIGN: Make area-type agnostic
+# #         oVertGroup_DetachPart = self.oBody.oSkinMeshGame.GetMesh().vertex_groups[nVertGrpIndex_DetachPart]
+# #         self.oBody.oSkinMeshGame.GetMesh().vertex_groups.active_index = oVertGroup_DetachPart.index
+# #         self.oBody.oSkinMeshGame.Open()
 # #         bpy.ops.object.vertex_group_select()    # Select only the verts that are to be separated from skinned body to form the new flexskin
 # # 
 # #         #=== Split and separate the flexskin from the composite mesh ===
@@ -128,10 +128,10 @@
 #         DeleteObject(sNameFlexSkin)
 #  
 #         #=== Obtain the to-be-detached vertex group of name 'self.sFlexSkinPart' from the combo mesh that originally came from the source body ===
-#         nVertGrpIndex_DetachPart = self.oBody.oMeshBody.GetMesh().vertex_groups.find(G.C_VertGrp_CSoftBody + self.sFlexSkinPart)  # vertex_group_transfer_weight() above added vertex groups for each bone.  Fetch the vertex group for this detach area so we can enhance its definition past the bone transfer (which is much too tight)     ###DESIGN: Make area-type agnostic
-#         oVertGroup_DetachPart = self.oBody.oMeshBody.GetMesh().vertex_groups[nVertGrpIndex_DetachPart]
-#         self.oBody.oMeshBody.GetMesh().vertex_groups.active_index = oVertGroup_DetachPart.index
-#         self.oBody.oMeshBody.Open()
+#         nVertGrpIndex_DetachPart = self.oBody.oSkinMeshGame.GetMesh().vertex_groups.find(G.C_VertGrp_CSoftBody + self.sFlexSkinPart)  # vertex_group_transfer_weight() above added vertex groups for each bone.  Fetch the vertex group for this detach area so we can enhance its definition past the bone transfer (which is much too tight)     ###DESIGN: Make area-type agnostic
+#         oVertGroup_DetachPart = self.oBody.oSkinMeshGame.GetMesh().vertex_groups[nVertGrpIndex_DetachPart]
+#         self.oBody.oSkinMeshGame.GetMesh().vertex_groups.active_index = oVertGroup_DetachPart.index
+#         self.oBody.oSkinMeshGame.Open()
 #         bpy.ops.object.vertex_group_select()    # Select only the verts that are to be separated from skinned body to form the new flexskin
 # 
 #         #=== Split and separate the flexskin from the composite mesh ===

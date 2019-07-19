@@ -60,8 +60,8 @@ class CBodyBase:
 
         self.oMeshSource = None                 # The 'source body'.  Never modified in any way
         self.oMeshMorph = None              # The 'assembled mesh'.  Fully assembled with proper genitals.  Basis of oMeshMorph                  
-        self.oMeshMorph = None                  # The 'morphing mesh'.   Orinally copied from oMeshMorph and morphed to the user's preference.  Basis of oMeshBody
-        self.oMeshMorphResult = None            # The 'baked' morphing mesh.   Baled version of the body mesh as adjusted by the user's morphing selection.  This is the (only) mesh serialized to Unity and updated every morphing change for WYSIWYG real-time updates.
+        self.oMeshMorph = None                  # The 'morphing mesh'.   Orinally copied from oMeshMorph and morphed to the user's preference.  Basis of oSkinMeshGame
+        self.oSkinMeshMorph = None            # The 'baked' morphing mesh.   Baled version of the body mesh as adjusted by the user's morphing selection.  This is the (only) mesh serialized to Unity and updated every morphing change for WYSIWYG real-time updates.
         
         self.oNodeRoot = None                   # The armature and root Blender node where we store all our meshes under.  Used to group & de-clutter Blender outline tree)
 
@@ -81,7 +81,7 @@ class CBodyBase:
         self.oMeshSource.DataLayer_Create_SimpleVertID(G.C_DataLayer_VertSrcBody)
         
         #=== Lock the DAZ-based bone vertex groups so they are not touched unless we deliberately unlock them ===
-        self.oMeshSource.VertGrp_LockUnlock(True, G.C_RexPattern_StandardBones)
+        self.oMeshSource.VertGrp_LockUnlock(True, G.C_RexPattern_BonesStandard)
 
         #=== Duplicate the armature node of the source body so this body gets its own bone instance ===
         self.oNodeRoot = CMesh.AttachFromDuplicate_ByName("Body" + chr(65 + self.nBodyID), "[" + self.sSex + "]")
@@ -94,22 +94,28 @@ class CBodyBase:
         Util_ConvertToTriangles()           ###CHECK: Anything else that runs super early?
 
         #=== Prepare the Unity-serialized mesh that is updated every time player adjusts a slider ===
-        self.oMeshMorphResult = CMesh.AttachFromDuplicate(self.sMeshPrefix + 'MorphResult', self.oMeshMorph)
-        self.oMeshMorphResult.oMeshSource = self.oMeshSource     # Push in what the source to this mesh is so Unity can extract valid normals
-        self.oMeshMorphResult.ShapeKeys_RemoveAll()       # Remove all the shape keys of the outgoing mesh.  We set its verts manually at every morph change.
-        self.oMeshMorphResult.Hide()
+        self.oSkinMeshMorph = CMesh.AttachFromDuplicate(self.sMeshPrefix + 'MorphResult', self.oMeshMorph)
+        self.oSkinMeshMorph.oMeshSource = self.oMeshSource     # Push in what the source to this mesh is so Unity can extract valid normals
+        self.oSkinMeshMorph.ShapeKeys_RemoveAll()       # Remove all the shape keys of the outgoing mesh.  We set its verts manually at every morph change.
+        if self.oSkinMeshMorph.Open(bDeselect = True):
+            self.oSkinMeshMorph.VertGrp_Remove(G.C_RexPattern_CodebaseAndArea)        # Remove all the codebase vertex groups so this doesn't interfere with weighting
+            self.oSkinMeshMorph.VertGrp_LimitAndNormalize(0)
+            self.oSkinMeshMorph.Close()
+        self.oSkinMeshMorph.SafetyCheck_CheckBoneWeighs()
+        self.oSkinMeshMorph.Hide()
 
         #=== Connect our Unity-editable collection of properties so Unity player can edit our body mesh ===
         self.oObjectMeshShapeKeys = CObject.CObjectMeshShapeKeys("Body Mesh Shape Keys", self.oMeshMorph.GetName())  # The Unity-visible CObject properties.  Enables Unity to manipulate morphing body's morphs
         # self.oObjectMeshShapeKeys.PropSet("Breasts-Implants", 1.0)
 
         #=== Form the collection of Flex collider verts Unity will use to form a Flex collider capable of repelling morph-time bodysuit ===
-        if self.oMeshMorphResult.Open():
-            self.oMeshMorphResult.VertGrp_SelectVerts("_StaticBodyCollider")
-            for oVert in self.oMeshMorphResult.bm.verts:
-                if oVert.select:
-                    self.aVertsFlexCollider.AddUShort(oVert.index)
-            self.oMeshMorphResult.Close()
+        ###DEV26
+#         if self.oSkinMeshMorph.Open():
+#             self.oSkinMeshMorph.VertGrp_SelectVerts("_StaticBodyCollider")
+#             for oVert in self.oSkinMeshMorph.bm.verts:
+#                 if oVert.select:
+#                     self.aVertsFlexCollider.AddUShort(oVert.index)
+#             self.oSkinMeshMorph.Close()
 
 
     def Unity_UpdateMorphResultMesh(self):  # 'Bake' the morphing mesh as per the player's morphing parameters into a 'MorphResult' mesh that can be serialized to Unity.  Matches Unity's CBodyBase.Unity_UpdateMorphResultMesh()
@@ -122,7 +128,7 @@ class CBodyBase:
     
         #=== Iterate through the verts, extract the 'baked' position of the just-created 'mix' shape key to set the position of the outgoing MorphResult mesh
         if self.oMeshMorph.Open():
-            aVertsMorphResults = self.oMeshMorphResult.GetMeshData().vertices
+            aVertsMorphResults = self.oSkinMeshMorph.GetMeshData().vertices
             for oVert in self.oMeshMorph.bm.verts:
                 vecVert = aVertsBakedKeys[oVert.index].co.copy()    # Get the final morphing position...
                 aVertsMorphResults[oVert.index].co = vecVert        # And apply it to outgoing mesh so Unity can get its refreshed vert positions
@@ -172,9 +178,9 @@ class CBodyBase:
         bmMorph.from_object(oMeshMorphO, bpy.context.scene)  ###DESIGN: Selection of body!
         
         #=== Obtain access to the 'morph result' mesh.  We need it to expand result set to duplicate morph deltas accross verts split by material seams ===
-        oMeshMorphResultO = self.oMeshMorphResult.GetMesh() 
+        oSkinMeshMorphO = self.oSkinMeshMorph.GetMesh() 
         bmMorphResult = bmesh.new()
-        bmMorphResult.from_object(oMeshMorphResultO, bpy.context.scene)
+        bmMorphResult.from_object(oSkinMeshMorphO, bpy.context.scene)
         oLaySplitVertID = bmMorphResult.verts.layers.int[G.C_DataLayer_SplitVertIDs]
         bmMorphResult.verts.ensure_lookup_table()
      
@@ -193,7 +199,7 @@ class CBodyBase:
                 oBA.AddVector(vecVertDelta)     ###NOTE: AddVector() will convert from Blender coordinate system to Unity.  (Unity can read straight up)
                 nSplitVertID = oVert_MorphResult[oLaySplitVertID]
                 if nSplitVertID >= G.C_OffsetVertIDs:
-                    aSplitVerts = self.oMeshMorphResult.aaSplitVerts[nSplitVertID]
+                    aSplitVerts = self.oSkinMeshMorph.aaSplitVerts[nSplitVertID]
                     for nVertSplit in aSplitVerts:
                         if nVertSplit != oVert_Morph.index:     # Don't add the vert already added above
                             oBA.AddFloat(nVertSplit)

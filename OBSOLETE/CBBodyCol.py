@@ -20,10 +20,10 @@
 #     sNameCharacter = sNameMesh[:nPosSuffix]                 ####SOON: Get rid of this naming SHIT!
 #     
 #     #=== Obtain source mesh and cleanup ===
-#     oMeshBodyColClothO = SelectObject(sNameCharacter + G.C_NameSuffix_BodyColCloth)
-#     VertGrp_RemoveNonBones(oMeshBodyColClothO, True)     # Also remove the non-bone extra vert groups so only vert groups meant for skinning remain (to avoid errors during serialization to client)
+#     oSkinMeshGameColClothO = SelectObject(sNameCharacter + G.C_NameSuffix_BodyColCloth)
+#     VertGrp_RemoveNonBones(oSkinMeshGameColClothO, True)     # Also remove the non-bone extra vert groups so only vert groups meant for skinning remain (to avoid errors during serialization to client)
 #     bpy.ops.object.mode_set(mode='EDIT')
-#     bm = bmesh.from_edit_mesh(oMeshBodyColClothO.data)
+#     bm = bmesh.from_edit_mesh(oSkinMeshGameColClothO.data)
 # 
 #     #=== Select the edges on the edge so the next loop sending them to Client will ignore them.  Having capsule colliders there provide little value and removing them allows more capsule colliders / eges to be created away from the body collider edge where they do more good ===
 #     bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
@@ -55,7 +55,7 @@
 # 
 #     #=== Construct the beginning of the outgoing bytearray that will be sent to client so it can receive our mesh ===
 #     bpy.ops.object.mode_set(mode='OBJECT')
-#     oBA = Client.Unity_GetMesh(oMeshBodyColClothO.name)
+#     oBA = Client.Unity_GetMesh(oSkinMeshGameColClothO.name)
 # 
 #     #=== Send the additional definition arrays we created above ===
 #     Stream_SerializeArray(oBA, aEdges.tobytes())
@@ -64,7 +64,7 @@
 #     #=== Add another 'end magic number' at the end of our stream to help catch deserialization errors ===
 #     oBA += Client.Stream_GetEndMagicNo()
 #     
-#     #print("\n+++ CBBodyColCloth_GetMesh OK: " + oMeshBodyColClothO.name)
+#     #print("\n+++ CBBodyColCloth_GetMesh OK: " + oSkinMeshGameColClothO.name)
 # 
 #     return oBA                  # Return carefully-constructed serialized stream of data that client will deserialize to construct its own structures from our info.
 # 
@@ -82,19 +82,19 @@
 #     #bOnlyCreateNearClothing = False         ###OBS: Totally remove as this is just for full body now??
 #     
 #     #===== Merge body and all clothing into one mesh to enable detection of body verts near clothing via Blender proportional editing =====
-#     oMeshBodyOrigO = bpy.data.objects[sNameSrcBody]
+#     oSkinMeshGameOrigO = bpy.data.objects[sNameSrcBody]
 #     #if bOnlyCreateNearClothing:
 #     #    oMeshClothO = DuplicateAsSingleton(sNameCharacter + G.C_NameSuffix_ClothFit, "TEMP_ClothForBodyCol", G.C_NodeFolder_Game, False)                    ###DESIGN!!! How to specify cloth from client??
-#     oMeshBodyColO = DuplicateAsSingleton(oMeshBodyOrigO.name, sNameSrcBody + G.C_NameSuffix_BodyCol, None, False)       ###REVIVE: G.C_NodeFolder_Temp
-#     oMeshBodyColO.show_wire = True
-#     ###CHECK? del(oMeshBodyColO[G.C_PropArray_MapSharedNormals])      # Source body mesh has shared mesh normals which would make serialization choke on BodyCol as that array is only good for source mesh body.
+#     oSkinMeshGameColO = DuplicateAsSingleton(oSkinMeshGameOrigO.name, sNameSrcBody + G.C_NameSuffix_BodyCol, None, False)       ###REVIVE: G.C_NodeFolder_Temp
+#     oSkinMeshGameColO.show_wire = True
+#     ###CHECK? del(oSkinMeshGameColO[G.C_PropArray_MapSharedNormals])      # Source body mesh has shared mesh normals which would make serialization choke on BodyCol as that array is only good for source mesh body.
 # 
 #     #=== Remove the body mesh's unneeded head, hands and feet from the body to speed up this function ===
-#     VertGrp_SelectVerts(oMeshBodyColO, G.C_Area_HeadHandFeet)        # Removes about 68% of the mesh so colliders are allocated where most needed.  (Also greatly speed up function!!)
+#     VertGrp_SelectVerts(oSkinMeshGameColO, G.C_Area_HeadHandFeet)        # Removes about 68% of the mesh so colliders are allocated where most needed.  (Also greatly speed up function!!)
 #     bpy.ops.mesh.delete(type='VERT')
-#     VertGrp_SelectVerts(oMeshBodyColO, G.C_VertGrp_CSoftBody + "Breasts")       # If breasts are on this mesh delete them... they are softbody simulated and require special in-PhysX colliders
+#     VertGrp_SelectVerts(oSkinMeshGameColO, G.C_VertGrp_CSoftBody + "Breasts")       # If breasts are on this mesh delete them... they are softbody simulated and require special in-PhysX colliders
 #     bpy.ops.mesh.delete(type='VERT')
-#     VertGrp_SelectVerts(oMeshBodyColO, G.C_VertGrp_CSoftBody + "Penis")         # If penis is on this mesh delete it... it gets its own sophisticated collider chain
+#     VertGrp_SelectVerts(oSkinMeshGameColO, G.C_VertGrp_CSoftBody + "Penis")         # If penis is on this mesh delete it... it gets its own sophisticated collider chain
 #     bpy.ops.mesh.delete(type='VERT')
 #     
 #     #=== Select all body verts so that we can tell them apart from all the cloth verts after the upcoming join ===    
@@ -112,15 +112,15 @@
 #     sNameTorsoMat = "Torso"
 #     if sNameSrcBody[0] != "W":       ###WEAK: Dumb search for different material name on man. 
 #         sNameTorsoMat += sNameSrcBody[0]
-#     ###############REV oMatBody = oMeshBodyColO.data.materials[sNameTorsoMat] # Before removing materials obtain reference to main body material so we can reinsert it in a few lines...
-#     while len(oMeshBodyColO.data.materials) > 0:    # Remove all the materials
+#     ###############REV oMatBody = oSkinMeshGameColO.data.materials[sNameTorsoMat] # Before removing materials obtain reference to main body material so we can reinsert it in a few lines...
+#     while len(oSkinMeshGameColO.data.materials) > 0:    # Remove all the materials
 #         bpy.ops.object.material_slot_remove()
 #     bpy.ops.object.material_slot_add()              # With all materials removed add a single one so all verts go to that one material (gBlender link to clients require at least one material)
-#     ###############REV  oMeshBodyColO.material_slots[0].material = oMatBody     # In the re-created slot re-assign the body material so it is the only material there.
-#     while len(oMeshBodyColO.modifiers) > 0:         # Remove all the modifiers
-#         oMeshBodyColO.modifiers.remove(oMeshBodyColO.modifiers[0])
+#     ###############REV  oSkinMeshGameColO.material_slots[0].material = oMatBody     # In the re-created slot re-assign the body material so it is the only material there.
+#     while len(oSkinMeshGameColO.modifiers) > 0:         # Remove all the modifiers
+#         oSkinMeshGameColO.modifiers.remove(oSkinMeshGameColO.modifiers[0])
 #     bpy.ops.object.mode_set(mode='EDIT')
-#     bm = bmesh.from_edit_mesh(oMeshBodyColO.data)
+#     bm = bmesh.from_edit_mesh(oSkinMeshGameColO.data)
 # 
 #     #if bOnlyCreateNearClothing:
 #     #    #=== Perform move operation in joined mesh with all clothing selected with proportional editing on (contant curve) ===
@@ -172,9 +172,9 @@
 # 
 #     #=== Decimate the half of the body with the desired number of edges ===
 #     bpy.ops.object.mode_set(mode='OBJECT')
-#     oModDecimate = oMeshBodyColO.modifiers.new('DECIMATE', 'DECIMATE')
+#     oModDecimate = oSkinMeshGameColO.modifiers.new('DECIMATE', 'DECIMATE')
 #     nNumDesiredFaces = (nNumDesiredCapsuleColliders / 2) * G.C_TypicalRatioTrisToEdges / G.C_RatioEstimatedReductionBodyCol
-#     nFacesNow = len(oMeshBodyColO.data.polygons)
+#     nFacesNow = len(oSkinMeshGameColO.data.polygons)
 #     nRatioFacesToDecimate = nNumDesiredFaces / nFacesNow 
 #     oModDecimate.ratio = nRatioFacesToDecimate
 #     oModDecimate.use_collapse_triangulate = True
@@ -195,7 +195,7 @@
 # 
 #     #=== Mirror the just-decimated mesh so we obtain a beautiful symmetrical decimation ===
 #     bpy.ops.object.mode_set(mode='OBJECT')
-#     oModMirrorX = Util_CreateMirrorModifierX(oMeshBodyColO)
+#     oModMirrorX = Util_CreateMirrorModifierX(oSkinMeshGameColO)
 #     AssertFinished(bpy.ops.object.modifier_apply(modifier=oModMirrorX.name))        
 # 
 #     #=== Run the amazing LoopTools relax on the borders to greatly smooth out the jagged border so decimate doesn't allocate too many precious verts to define jagged border ===
@@ -204,7 +204,7 @@
 # 
 #     #=== Iterate over the non-manifold verts to find those that are attached only to one triangle and delete them ===
 #     bpy.ops.object.mode_set(mode='EDIT')
-#     bm = bmesh.from_edit_mesh(oMeshBodyColO.data)
+#     bm = bmesh.from_edit_mesh(oSkinMeshGameColO.data)
 #     for nIteration in range(2):             ###TUNE
 #         bpy.ops.mesh.select_non_manifold(extend=False)
 #         for oVert in bm.verts:                                  
@@ -245,26 +245,26 @@
 #     bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
 #     bpy.ops.mesh.select_all(action='DESELECT')
 #     bpy.ops.object.mode_set(mode='OBJECT')
-#     oMeshBodyOrigO.hide = False            ###INFO: Mesh MUST be visible for weights to transfer!
-#     Util_TransferWeights(oMeshBodyColO, oMeshBodyOrigO)
-#     VertGrp_RemoveNonBones(oMeshBodyColO, True)     # Also remove the non-bone extra vert groups so only vert groups meant for skinning remain (to avoid errors during serialization to client)
+#     oSkinMeshGameOrigO.hide = False            ###INFO: Mesh MUST be visible for weights to transfer!
+#     Util_TransferWeights(oSkinMeshGameColO, oSkinMeshGameOrigO)
+#     VertGrp_RemoveNonBones(oSkinMeshGameColO, True)     # Also remove the non-bone extra vert groups so only vert groups meant for skinning remain (to avoid errors during serialization to client)
 #     
 #     #=== Print stats to see how close we got to the number of desired edges ===
-#     print("\n--- CBBodyCol_GetMesh() creates mesh with %d capsule colliders, %d verts, %d edges and %d faces ---" % (nNumCapsuleColliders, len(oMeshBodyColO.data.vertices), len(oMeshBodyColO.data.edges), len(oMeshBodyColO.data.polygons)))
+#     print("\n--- CBBodyCol_GetMesh() creates mesh with %d capsule colliders, %d verts, %d edges and %d faces ---" % (nNumCapsuleColliders, len(oSkinMeshGameColO.data.vertices), len(oSkinMeshGameColO.data.edges), len(oSkinMeshGameColO.data.polygons)))
 #     if (nNumCapsuleColliders > nNumDesiredCapsuleColliders):
 #         print("WARNING: Final capsule collider at %d is greater than number desired %d by %.1f%%" % (nNumCapsuleColliders, nNumDesiredCapsuleColliders, 100 * nNumCapsuleColliders / nNumDesiredCapsuleColliders))
 #     else:
 #         print("Final capsule collider count at %d is lesser than number desired %d by %.1f%%" % (nNumCapsuleColliders, nNumDesiredCapsuleColliders, 100 * nNumCapsuleColliders / nNumDesiredCapsuleColliders))
 # 
 #     #=== Store the calculated arrays.  They are now ready to be sent to client in CBBodyCol_GetMesh()
-#     oMeshBodyColO['aEdges']         = aEdges.tobytes()
-#     oMeshBodyColO['aVertToVerts']   = aVertToVerts.tobytes()
+#     oSkinMeshGameColO['aEdges']         = aEdges.tobytes()
+#     oSkinMeshGameColO['aVertToVerts']   = aVertToVerts.tobytes()
 # 
 #     #=== Create the aMapToBodyVerts and aMapToBodyVertsOffset arrays that enables us to update the verts of the BodyCol as the source body is morphed ===
 # #     aMapToBodyVerts = array.array('H')
 # #     aMapToBodyVertsOffset = array.array('f')
-# #     for oVert in oMeshBodyColO.data.vertices:
-# #         nVertClosest, nDistMin, vecVertClosest = Util_FindClosestVert(oMeshBodyOrigO, oVert.co, .02)       ###TUNE?
+# #     for oVert in oSkinMeshGameColO.data.vertices:
+# #         nVertClosest, nDistMin, vecVertClosest = Util_FindClosestVert(oSkinMeshGameOrigO, oVert.co, .02)       ###TUNE?
 # #         if nVertClosest != -1:
 # #             vecDiff = oVert.co - vecVertClosest
 # #             aMapToBodyVerts         .append(nVertClosest)    
@@ -278,14 +278,14 @@
 # 
 # def CBBodyCol_GetMesh(sNameMesh):       # Called by the client to send a  decimated body mesh generated by CBBodyCol_Generate() above
 # 
-#     oMeshBodyColO = bpy.data.objects[sNameMesh]
+#     oSkinMeshGameColO = bpy.data.objects[sNameMesh]
 # 
 #     #=== Construct the beginning of the outgoing bytearray that will be sent to client so it can receive our mesh ===
-#     oBA = Client.Unity_GetMesh(oMeshBodyColO.name)
+#     oBA = Client.Unity_GetMesh(oSkinMeshGameColO.name)
 # 
 #     #=== Send the additional definition arrays we created in Generate call ===
-#     Stream_SerializeArray(oBA, oMeshBodyColO['aEdges'])
-#     Stream_SerializeArray(oBA, oMeshBodyColO['aVertToVerts'])
+#     Stream_SerializeArray(oBA, oSkinMeshGameColO['aEdges'])
+#     Stream_SerializeArray(oBA, oSkinMeshGameColO['aVertToVerts'])
 #     
 #     #=== Add another 'end magic number' at the end of our stream to help catch deserialization errors ===
 #     oBA += Client.Stream_GetEndMagicNo()

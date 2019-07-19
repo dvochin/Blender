@@ -47,7 +47,7 @@ import CObject
 #     
 #     print("\n=== gBL_Body_Create() NameGameBody:'{}' NameSrcBody:'{}' Sex: '{}'  NameSrcGenitals:'{}'   Cloth:'{}' ===".format(sNameGameBody, sNameSrcBody, sSex, sNameSrcGenitals, aCloths))
 # 
-#     oMeshBodySrcO = bpy.data.objects[sNameSrcBody]
+#     oSkinMeshGameSrcO = bpy.data.objects[sNameSrcBody]
 # 
 #     #=== Test to see if the requested body definition matches the cached copy and if so return as we have nothing to do ===
 #     #sPropNameSrcBody = sNameGameBody + "-sNameSrcBody"                ####OBS?  Cache of any value??
@@ -58,7 +58,7 @@ import CObject
 #     #bpy.context.scene[sPropNameSrcGenitals] = sNameSrcGenitals
 # 
 #     #=== Duplicate the source body (kept in the most pristine condition possible) and delete unwanted parts of its mesh so that we may attach the user-specified compatible meshes in instead ===    
-#     oMeshBodyO = DuplicateAsSingleton(sNameSrcBody, sNameGameBody, G.C_NodeFolder_Game, False)  # Creates the top-level body object named like "BodyA", "BodyB", that will accept the various genitals we tack on to the source body.
+#     oSkinMeshGameO = DuplicateAsSingleton(sNameSrcBody, sNameGameBody, G.C_NodeFolder_Game, False)  # Creates the top-level body object named like "BodyA", "BodyB", that will accept the various genitals we tack on to the source body.
 #     sNameVertGroupToCutout = None
 #     if sNameSrcGenitals.startswith("Vagina"):  # Woman has vagina and breasts (includes clothing area)
 #         sNameVertGroupToCutout = "_Cutout_Vagina"
@@ -66,7 +66,7 @@ import CObject
 #         sNameVertGroupToCutout = "_Cutout_Penis"
 #     if sNameVertGroupToCutout is not None:
 #         bpy.ops.object.mode_set(mode='EDIT')
-#         VertGrp_SelectVerts(oMeshBodyO, sNameVertGroupToCutout)  # This vert group holds the verts that are to be soft-body simulated...
+#         VertGrp_SelectVerts(oSkinMeshGameO, sNameVertGroupToCutout)  # This vert group holds the verts that are to be soft-body simulated...
 #         bpy.ops.mesh.delete(type='FACE')  # ... and delete the mesh part we didn't want copied to output body
 #         bpy.ops.object.mode_set(mode='OBJECT')
 # 
@@ -78,32 +78,32 @@ import CObject
 #     bpy.ops.object.shade_smooth()  ###IMPROVE: Fix the diffuse_intensity to 100 and the specular_intensity to 0 so in Blender the genital texture blends in with all our other textures at these settings
 # 
 #     #=== Join the genitals  with the output main body mesh and weld vertices together to form a truly contiguous mesh that will be lated separated by later segments of code into various 'detachable parts' ===           
-#     oMeshBodyO.select = True
-#     bpy.context.scene.objects.active = oMeshBodyO
+#     oSkinMeshGameO.select = True
+#     bpy.context.scene.objects.active = oSkinMeshGameO
 #     bpy.ops.object.join()
-#     VertGrp_SelectVerts(oMeshBodyO, sNameVertGroupToCutout)  # Reselect the just-removed genitals area from the original body, as the faces have just been removed this will therefore only select the rim of vertices where the new genitals are inserted (so that we may remove_doubles to merge only it)
+#     VertGrp_SelectVerts(oSkinMeshGameO, sNameVertGroupToCutout)  # Reselect the just-removed genitals area from the original body, as the faces have just been removed this will therefore only select the rim of vertices where the new genitals are inserted (so that we may remove_doubles to merge only it)
 #     bpy.ops.mesh.remove_doubles(threshold=0.000001, use_unselected=True)  ###CHECK: We are no longer performing remove_doubles on whole body (Because of breast collider overlay)...  This ok??   ###INFO: use_unselected here is very valuable in merging verts we can easily find with neighboring ones we can't find easily! 
 #     bpy.ops.mesh.select_all(action='DESELECT')
 #     bpy.ops.object.mode_set(mode='OBJECT')
 # 
 #     #=== Temporarily rename some vertex groups that we need to preserve intact before they get clobbered by the upcoming call to transfer_weight() (If we didn't do that the quality suffers and several verts in the original don't transfer ===
-#     if "_Detach_Breasts" in oMeshBodyO.vertex_groups: 
-#         oMeshBodyO.vertex_groups["_Detach_Breasts"].name = "_Detach_Breasts_ORIGINAL"  ###IMPROVE: A bit of a hack workaround but I can't find any easier way to preserve this info...        
+#     if "_Detach_Breasts" in oSkinMeshGameO.vertex_groups: 
+#         oSkinMeshGameO.vertex_groups["_Detach_Breasts"].name = "_Detach_Breasts_ORIGINAL"  ###IMPROVE: A bit of a hack workaround but I can't find any easier way to preserve this info...        
 # 
 #     #=== Reskin the body from the original body mesh now that all body parts have been merged onto the same mesh... This is essential for our previous-unskinned combination mesh (that possibly had a sex change) to regain skinning info from base body so that it can in-turn skin clothing we need to add next.   (Re-skinning is a hugely important benefit that Blender brings us) ===
-#     oMeshBodySrcO.select = True
-#     oMeshBodySrcO.hide = False  ###INFO: Mesh MUST be visible for weights to transfer!
+#     oSkinMeshGameSrcO.select = True
+#     oSkinMeshGameSrcO.hide = False  ###INFO: Mesh MUST be visible for weights to transfer!
 #     bpy.ops.object.vertex_group_transfer_weight()  ###OPT!! Very expensive call!
 # 
 #     #=== Now that the expensive weight transfer is done, ditch the vertex groups that are of lesser quality and restore to the ones we saved ===
-#     if "_Detach_Breasts" in oMeshBodyO.vertex_groups: 
-#         oMeshBodyO.vertex_groups["_Detach_Breasts"].name = "_Detach_Breasts_TRANSFERED"        
-#         oMeshBodyO.vertex_groups["_Detach_Breasts_ORIGINAL"].name = "_Detach_Breasts"        
+#     if "_Detach_Breasts" in oSkinMeshGameO.vertex_groups: 
+#         oSkinMeshGameO.vertex_groups["_Detach_Breasts"].name = "_Detach_Breasts_TRANSFERED"        
+#         oSkinMeshGameO.vertex_groups["_Detach_Breasts_ORIGINAL"].name = "_Detach_Breasts"        
 # 
 #     #=== Prepare a ready-for-morphing client-side body. This one will be morphed by the user and be the basis for cloth fitting and play mode ===   
-#     oMeshMorphO = DuplicateAsSingleton(oMeshBodyO.name, sNameGameBody + G.C_NameSuffix_Morph, G.C_NodeFolder_Game, True)  ###DESIGN!!! ###SOON!!
+#     oMeshMorphO = DuplicateAsSingleton(oSkinMeshGameO.name, sNameGameBody + G.C_NameSuffix_Morph, G.C_NodeFolder_Game, True)  ###DESIGN!!! ###SOON!!
 #     Client_ConvertMeshForUnity(oMeshMorphO, True)  # Client requires a tri-based mesh and verts that only have one UV. (e.g. no polys accross different seams/materials sharing the same vert)
-#     oMeshBodySrcO.hide = True  # Hide back the source body as more realized bodies are now shown.
+#     oSkinMeshGameSrcO.hide = True  # Hide back the source body as more realized bodies are now shown.
 # 
 #     #return G.DumpStr("OK: gBL_Body_CreateMorphBody() NameBaseID:'{}'  NameSrcBody:'{}'  NameSrcGenitals:'{}'".format(sNameBaseID, sNameSrcBody, sNameSrcGenitals))
 #     ###DESIGN?? ###CHECK: Remove extra bones from morphing body???

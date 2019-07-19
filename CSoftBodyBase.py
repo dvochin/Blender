@@ -39,11 +39,11 @@ class CSoftBodyBase():          ###DESIGN19: Re-merge CSoftBody in here now that
         sNameSoftBodyRim = sNameSoftBody + G.C_NameSuffix_Rim                       # The name of the 'softbody rim' mesh (for pinning softbody to skinned body) 
      
         #=== Open the body's mesh (the one meant to be a source of softbody mesh removals) and create a temporary data layer for mapping of rim verts ===
-        bmBody = self.oBody.oMeshBody.Open()
+        bmBody = self.oBody.oSkinMeshGame.Open()
         oLayTwinID = bmBody.verts.layers.int.new(G.C_DataLayer_TwinID)  # Create a temp custom data layer to store IDs of rim verts so we remap easily when softbody is detached from main body.    ###INFO???: This call causes BMesh references to be lost, so do right after getting bmesh reference
         
         #=== Obtain the vertex group of name 'self.sSoftBodyPart' from the source body mesh so we can detach into our softbody mesh ===
-        VertGrp_SelectVerts(self.oBody.oMeshBody.GetMesh(), G.C_VertGrp_CSoftBody + self.sSoftBodyPart)
+        VertGrp_SelectVerts(self.oBody.oSkinMeshGame.GetMesh(), G.C_VertGrp_CSoftBody + self.sSoftBodyPart)
 
         #=== Find the edge verts of the softbody submesh so that we can determine the verts that will become edge verts between the two split meshes ===
         bpy.ops.mesh.region_to_loop()           # This will select only the edge verts at the boundary of the softbody vertex group selected above (find the edge verts)
@@ -58,24 +58,24 @@ class CSoftBodyBase():          ###DESIGN19: Re-merge CSoftBody in here now that
         #===== A. SOFTBODY SKINNED RIM CREATION =====
         #=== Create the 'rim' skinned mesh that Unity will 'bake' at every frame so verts & normals are moved at every frame for a seamless connection to main skinned body.  (for a short while it also contains the softbody mesh (detached in section below) === 
         #=== Split and separate the rim + softbody mesh from the body mesh.  (Body gets that geometry removed and is what is rendered in game) ===
-        VertGrp_SelectVerts(self.oBody.oMeshBody.GetMesh(), G.C_VertGrp_CSoftBody + self.sSoftBodyPart)      # Select from the skinned mesh game body the softbody part to remove from it...
+        VertGrp_SelectVerts(self.oBody.oSkinMeshGame.GetMesh(), G.C_VertGrp_CSoftBody + self.sSoftBodyPart)      # Select from the skinned mesh game body the softbody part to remove from it...
         bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='FACE')           # We perform the split by faces so edge verts remain in both meshes (to have a seamless bridge)
         bpy.ops.mesh.select_more()              # Select one more ring of faces.  This extra ring will form our 'rim' responsible to 'pin' the edges of the softbody to the skinned body.
         bpy.ops.mesh.duplicate()                # Duplicate the rim + softbody geometry for separation below.  Note that body geometry not modified yet.  Its verts will be removed in group below when we can select only softbody part (e.g. rim stays in body!)
         bpy.ops.mesh.separate()                 # 'Separate' the selected polygon into its own mesh.  It will become our 'rim + softbody mesh' and eventually just the rim mesh.  Rest of main body simulates as usual while what will be separated requires extra runtime processing for softbodies, soft skins, etc ===
 
         #=== Delete from the main skinned body the softbody mesh only (e.g. without rim!) ===
-        VertGrp_SelectVerts(self.oBody.oMeshBody.GetMesh(), G.C_VertGrp_CSoftBody + self.sSoftBodyPart)      # Re-select the softbody verts but this time don't expand selection by one for rim
+        VertGrp_SelectVerts(self.oBody.oSkinMeshGame.GetMesh(), G.C_VertGrp_CSoftBody + self.sSoftBodyPart)      # Re-select the softbody verts but this time don't expand selection by one for rim
         bpy.ops.mesh.delete(type='FACE')        # Delete the softbody faces.  Edge verts are still there and will form the bridge to the just-separated softbody mesh
-        self.oBody.oMeshBody.Close()            # We're done modifying main skinned body.             
+        self.oBody.oSkinMeshGame.Close()            # We're done modifying main skinned body.             
 
         #=== Process and rename the just-separated rim + softbody mesh ===
         bpy.context.object.select = False                                       ###INFO: Unselect the active object so the one remaining selected object is the newly-created mesh by separate above
         bpy.context.scene.objects.active = bpy.context.selected_objects[0]      # Set the '2nd object' as the active one (the 'separated one')        
         self.oMeshSoftBodyRim = CMesh(sNameSoftBodyRim, bpy.context.scene.objects.active, None)     # Obtain CMesh reference to our softbody mesh. 
         self.oMeshSoftBodyRim.GetMesh().modifiers.clear()                       # Remove the modifiers to save memory (e.g. armature) ###INFO: How to remove all modifiers
-        self.oMeshSoftBodyRim.SetParent(self.oBody.oMeshBody.GetName())
-        self.oBody.oMeshBody.Close()
+        self.oMeshSoftBodyRim.SetParent(self.oBody.oSkinMeshGame.GetName())
+        self.oBody.oSkinMeshGame.Close()
 
         #=== Separate the softbody out of the rim + softbody (leaving only the rim) ===  
         self.oMeshSoftBodyRim.Open()                # Open the rim + softbody mesh so we can further process it.
@@ -92,7 +92,7 @@ class CSoftBodyBase():          ###DESIGN19: Re-merge CSoftBody in here now that
         bpy.context.scene.objects.active = bpy.context.selected_objects[0]              # Set the '2nd object' as the active one (the 'separated one')        
         self.oMeshSoftBody = CMesh(sNameSoftBody, bpy.context.scene.objects.active)     # Obtain CMesh reference to our rim mesh
         bpy.ops.object.vertex_group_remove(all=True)                                    # Remove all vertex groups from detached softbody to save Blender memory
-        self.oMeshSoftBody.SetParent(self.oBody.oMeshBody.GetName())
+        self.oMeshSoftBody.SetParent(self.oBody.oSkinMeshGame.GetName())
 
         #=== Cleanup the rim mesh by removing all materials and non-bones vertex groups ===
         SelectObject(self.oMeshSoftBodyRim.GetName())
@@ -136,7 +136,7 @@ class CSoftBodyBase():          ###DESIGN19: Re-merge CSoftBody in here now that
                 #raise Exception("###EXCEPTION: CSoftBody.SeparateSoftBodyPart() finding nTwinID {} in aMapTwinId2VertRim".format(nTwinID))
                 ###CHECK13:?: Why do softbody splits not have all mapping?  Because of material split?  (Can we survive this?  Do we need to not split morph body instead?)
 
-        DataLayer_RemoveLayerInt(self.oBody.oMeshBody.GetName(), G.C_DataLayer_TwinID)          # Remove the data layer we used for separation so next softbody can work correctly.
+        DataLayer_RemoveLayerInt(self.oBody.oSkinMeshGame.GetName(), G.C_DataLayer_TwinID)          # Remove the data layer we used for separation so next softbody can work correctly.
 
 
 

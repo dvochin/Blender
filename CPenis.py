@@ -54,7 +54,7 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
     def __init__(self, sNameBodySource, sNameBodyDestination):
         self.sNameBodySource        = sNameBodySource       # The name of our source body.  Either "Woman" or "ManRawImport".  Must exist and be properly imported by our body importer
         self.sNameBodyDestination   = sNameBodyDestination  # The name we give the body we create.  Either "Shemale" or "Man"
-        self.oMeshBody              = CMesh.AttachFromDuplicate_ByName(sNameBodyDestination + "-Source", sNameBodySource + "-Source")
+        self.oSkinMeshGame              = CMesh.AttachFromDuplicate_ByName(sNameBodyDestination + "-Source", sNameBodySource + "-Source")
         self.oMeshPenis             = None                      # The fitted penis.  A modified version of source penis adapted to 'mount' on a given game-time CBody instance.  Must be re-generated everytime source body morphs to ensure a proper mount
         
 
@@ -71,8 +71,8 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
         
 
         #=== Create extra geometry near where the penis will be mounted (the 'mounting hole') ===
-        if self.oMeshBody.Open():
-            oVertGrp_PenisExtraGeometry = self.oMeshBody.VertGrp_SelectVerts("_CPenisFit_ExtraGeometry")     # Obtain the area of the body's mesh that we are to replace with a fitted penis
+        if self.oSkinMeshGame.Open():
+            oVertGrp_PenisExtraGeometry = self.oSkinMeshGame.VertGrp_SelectVerts("_CPenisFit_ExtraGeometry")     # Obtain the area of the body's mesh that we are to replace with a fitted penis
             bpy.ops.mesh.select_more()                  # Select one more ring so the rim gets enough geometry to properly connect to fine-geometry penis
             bpy.ops.mesh.subdivide(quadtri=True)
             bpy.ops.mesh.select_less()                  # Fix the extra geometry group by selected twice less and re-assigning
@@ -80,7 +80,7 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
             bpy.ops.object.vertex_group_assign()
     
             #=== The above subdivide messed up our vertex group for the mounting hole rim.  Fix it now ===  (Only half the verts are now in group, new ones not)
-            oVertGrp_PenisMountingHole = self.oMeshBody.VertGrp_SelectVerts("_CPenisFit_MountingHole", bClearSelection = False)     # Obtain the area of the body's mesh that we are to replace with a fitted penis
+            oVertGrp_PenisMountingHole = self.oSkinMeshGame.VertGrp_SelectVerts("_CPenisFit_MountingHole", bClearSelection = False)     # Obtain the area of the body's mesh that we are to replace with a fitted penis
             bpy.ops.mesh.select_more()                  ###INFO: Trick when half the verts in a ring are selected is to select more and then less = selects all in that ring!        ###CHECK: Is that really true??
             bpy.ops.mesh.select_less()                  # Fix the important mounting hole vert group by adding to fixed extra geometry group above, selecting more then less.
             bpy.ops.object.vertex_group_assign()
@@ -89,8 +89,8 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
             
             #=== Obtain reference to the rim verts ===
             bpy.ops.mesh.region_to_loop()               # Obtain the rim from the mesh (still containing inner part of hole) with region_to_loop()
-            self.oMeshBody.bm.verts.ensure_lookup_table()
-            aVertsBodyRim = [oVert.index for oVert in self.oMeshBody.bm.verts if oVert.select]      # Obtain list of all body rim hole verts.  Needed for many iterations
+            self.oSkinMeshGame.bm.verts.ensure_lookup_table()
+            aVertsBodyRim = [oVert.index for oVert in self.oSkinMeshGame.bm.verts if oVert.select]      # Obtain list of all body rim hole verts.  Needed for many iterations
             
             #=== Find the key verts of the rim hole opening.  We need these in 'modify base vert' section below to morph the penis base closer to the rim ===
             vecPenisRimCenter = Vector()
@@ -98,7 +98,7 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
             nVertRimRightmostX_Max = sys.float_info.min                # The X coordinates of the rightmost rim vert.  Used to find 'oVertRimRightmost'
             aVertsAtZeroX = []
             for nVertRim in aVertsBodyRim:                  # Iterate through the rim verts to find the verts at X=0.  There should be exactly two: One for top of hole the other for bottom of hole
-                oVertRim = self.oMeshBody.bm.verts[nVertRim]
+                oVertRim = self.oSkinMeshGame.bm.verts[nVertRim]
                 oVertRim.tag = False                        # Make sure each rim vert is untagged (next loop depends on this)
                 vecPenisRimCenter += oVertRim.co
                 if abs(oVertRim.co.x) < 0.0001:             ###WEAK: Rim verts at rim centers not exactly zero?  WTF happened to body mesh??
@@ -126,12 +126,12 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
     
     
             print("\n===== B. CREATE CHAIN OF RIM VERTS IN OUR STRUCTURES =====")
-            oLayUV_Body  = self.oMeshBody.bm.loops.layers.uv.active                    # Obtain access to the body's UV layer (so we can extract rim vert UVs and set them into penis rim verts)
+            oLayUV_Body  = self.oSkinMeshGame.bm.loops.layers.uv.active                    # Obtain access to the body's UV layer (so we can extract rim vert UVs and set them into penis rim verts)
             oRimVertBodyRoot = CRimVertBody(self, None, oVertRimTop, oVertRimTop.link_loops[0][oLayUV_Body].uv.copy())        # The string starts at the master rim vert (topmost at X=0)
             oRimVertBodyNow = oRimVertBodyRoot                              # Before we iterate set the 'next' as the root because it is the iteration's starting point
             
             while True:                             # Iterate through circular loop until we reach the node flagged as the last one
-                oVertBodyRimNow = self.oMeshBody.bm.verts[oRimVertBodyNow.nVertBody]
+                oVertBodyRimNow = self.oSkinMeshGame.bm.verts[oRimVertBodyNow.nVertBody]
                 print(oRimVertBodyNow)
     
                 for oEdgeToChild in oVertBodyRimNow.link_edges:
@@ -149,7 +149,7 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
                         break                                                           # We have committed to this edge.  Stop iterating through other edges (exit for loop and back into infinite while loop)
                 if oRimVertBodyNow.bLastInLoop:
                     break
-            self.oMeshBody.Close(bHide = True)
+            self.oSkinMeshGame.Close(bHide = True)
 
 
         
@@ -158,20 +158,20 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
         print("\n===== C. MODIFY THE PENIS BASE VERTS TO BE CLOSER TO BODY'S RIM OPENING =====")
         #=== Move all penis verts so the designated penis master vert coincides with the body's rim master vert (located at X=0 at penis top) ===
         self.oMeshPenisSource = CMesh.Attach("Penis")                   ###IMPROVE: From argument?  Ok to assume this name?
-        self.oMeshPenis = CMesh.AttachFromDuplicate(self.oMeshBody.GetName() + "-Penis-Fitted", self.oMeshPenisSource)
+        self.oMeshPenis = CMesh.AttachFromDuplicate(self.oSkinMeshGame.GetName() + "-Penis-Fitted", self.oMeshPenisSource)
         Cleanup_RemoveDoublesAndConvertToTris(0.000001)                             # Convert the penis to tris right away                                                              
-        self.oMeshPenis.SetParent(self.oMeshBody.GetMesh().parent.name)
+        self.oMeshPenis.SetParent(self.oSkinMeshGame.GetMesh().parent.name)
 
         #=== Link to our custom armature and set all our meshes to this just-created armature object ===        #?
         bpy.ops.object.modifier_add(type='ARMATURE')
         self.oMeshPenis.  GetMesh().modifiers["Armature"].object = oArmNode       # Set both body and penis to the new armature
-        self.oMeshBody.         GetMesh().modifiers["Armature"].object = oArmNode
-        self.oMeshBody.         SetParent(oArmNode.name)                                # Set both body and penis as parent of armature Blender node
+        self.oSkinMeshGame.         GetMesh().modifiers["Armature"].object = oArmNode
+        self.oSkinMeshGame.         SetParent(oArmNode.name)                                # Set both body and penis as parent of armature Blender node
         self.oMeshPenis.  SetParent(oArmNode.name)
 
 
         if self.sNameBodySource != "Woman" and self.sNameBodySource != "ManRawImport": 
-            raise Exception("###EXCEPTION: Manual morphing procedure not created to modify penis base for a body mesh of type '{}'".format(self.oMeshBody.GetName()))       ###TODO21:!! Man mesh
+            raise Exception("###EXCEPTION: Manual morphing procedure not created to modify penis base for a body mesh of type '{}'".format(self.oSkinMeshGame.GetName()))       ###TODO21:!! Man mesh
 
         
         if self.oMeshPenis.Open():
@@ -340,7 +340,7 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
     
             #=== Remove all vertex groups and create a new one for CSoftBody implementation to use to create soft body from penis ===
             self.oMeshPenis.VertGrp_Remove(r"_CPenisFit_")        #?
-            oVertGrp_Penis = self.oMeshPenis.GetMesh().vertex_groups.new("_CSoftBody_Penis")
+            oVertGrp_Penis = self.oMeshPenis.GetMesh().vertex_groups.new(G.C_VertGrp_CSoftBody + "Penis")
             bpy.ops.mesh.select_all(action='SELECT')
             bpy.data.scenes[0].tool_settings.vertex_group_weight = 0        ###CHECK: Make sure this works!
             bpy.ops.object.vertex_group_assign()
@@ -357,7 +357,7 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
         print("\n===== J. SKINNING PENIS FROM ORIGINAL BODY =====")
         #=== Transfer skinning info from body to unskinned penis.  This is essential so penis base moves with the body! ===
         ###OPT ###IMPROVE: We only need skinning info to transfer to the base not the entire shaft!  Can be sped up?
-#         self.oMeshPenis.Util_TransferWeights(self.oMeshBody, False)
+#         self.oMeshPenis.Util_TransferWeights(self.oSkinMeshGame, False)
 #         if self.oMeshPenis.Open():
 #             self.oMeshPenis.VertGrp_Remove(re.compile(oVertGrp_PenisMountingHole.name), bSelectVerts = True)      # Weight transfer above also transferred the mounting hole vert group which we don't want
 #             self.oMeshPenis.Close()
@@ -375,19 +375,19 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
         #self.oMeshPenis.GetMesh().material_slots[0].material = oMatPenisMainMaterial     # In the re-created slot re-assign the body material so it is the only material there.
         
         #=== Refresh the BMVerts we need to dissolve after the next vert delete for mounting hole ===
-        if self.oMeshBody.Open(bDeselect = True):
-            self.oMeshBody.bm.verts.ensure_lookup_table()
+        if self.oSkinMeshGame.Open(bDeselect = True):
+            self.oSkinMeshGame.bm.verts.ensure_lookup_table()
             for oRimVertBodyNow in aRimVertBodyToDissolve:
-                oRimVertBodyNow.oVertBody = self.oMeshBody.bm.verts[oRimVertBodyNow.nVertBody]     # Update the BMVert from the index all indices are about to become invalid after vert delete below
+                oRimVertBodyNow.oVertBody = self.oSkinMeshGame.bm.verts[oRimVertBodyNow.nVertBody]     # Update the BMVert from the index all indices are about to become invalid after vert delete below
 
             #=== Remove the verts inside the penis mounting hole (e.g. finally create the 'hole' needed for penis to weld in) ===
-            self.oMeshBody.GetMesh().vertex_groups.active_index = oVertGrp_PenisMountingHole.index
+            self.oSkinMeshGame.GetMesh().vertex_groups.active_index = oVertGrp_PenisMountingHole.index
             bpy.ops.object.vertex_group_select()
             bpy.ops.mesh.select_less()                  # Vertex group contains the rim verts which we want to keep.  Select one vert ring less to select only the inner verts we must delete
             bpy.ops.mesh.delete(type='VERT')            # Delete the mounting area's inner hole.  Penis can now be merged right in place by welding close verts
             
             #=== Dissolve the unused geometry of the body's penis rim.  Leaving them would create holes after join! ===
-            self.oMeshBody.bm.verts.ensure_lookup_table()
+            self.oSkinMeshGame.bm.verts.ensure_lookup_table()
             for oRimVertBodyNow in aRimVertBodyToDissolve:
                 if oRimVertBodyNow.oVertBody.is_valid:
                     oRimVertBodyNow.oVertBody.select_set(True)
@@ -400,7 +400,7 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
             bpy.ops.object.vertex_group_select()
             bpy.ops.mesh.select_more()
             bpy.ops.mesh.quads_convert_to_tris()
-            self.oMeshBody.Close()
+            self.oSkinMeshGame.Close()
 
 
         print("\n===== Z. FINISHED! =====")
@@ -413,46 +413,46 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
 
         #=== Join fitted and rigged penis with body ===
         self.oMeshPenisWork = CMesh.AttachFromDuplicate(self.oMeshPenis.GetName() + "-TEMPFORJOIN", self.oMeshPenis)
-        self.oMeshBody.GetMesh().select = True
-        bpy.context.scene.objects.active = self.oMeshBody.GetMesh()
+        self.oSkinMeshGame.GetMesh().select = True
+        bpy.context.scene.objects.active = self.oSkinMeshGame.GetMesh()
         bpy.ops.object.join()
         self.oMeshPenisWork = None                                                           # Penis mesh just got destroyed by join() above so we clear our reference
         
         #=== Leave only the non-manifold edges selected so bridge_edge_loop() can merge run === 
         print("\n=== Join the fitted-penis to the fitted body mesh together ===") 
-        if self.oMeshBody.Open():
+        if self.oSkinMeshGame.Open():
             bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='EDGE')
-            self.oMeshBody.VertGrp_SelectVerts("_CPenis_Uretra")                                  # Select a vertex group we know exists on the penis side...
+            self.oSkinMeshGame.VertGrp_SelectVerts("_CPenis_Uretra")                                  # Select a vertex group we know exists on the penis side...
             bpy.ops.mesh.select_linked()                                                        #... then select all linked verts so we have all penis verts...
-            #oVertGrp_Penis = self.oMeshBody.GetMesh().vertex_groups.new("_CSoftBody_Penis")       #... but remember the penis verts first        ###IMPROVE: Make call to create vert groups!
+            #oVertGrp_Penis = self.oSkinMeshGame.GetMesh().vertex_groups.new(G.C_VertGrp_CSoftBody + "Penis")       #... but remember the penis verts first        ###IMPROVE: Make call to create vert groups!
             #bpy.ops.object.vertex_group_assign()                                                #... by assigning to a new vert group 
             bpy.ops.mesh.region_to_loop()                                                       #... then ask for the boundaries of all penis verts to leave only the penis-side rim verts
-            self.oMeshBody.VertGrp_SelectVerts("_CPenisFit_MountingHole", bClearSelection = False)#... and add to the selection the body-side rim verts.  At this point we have the matching edge rings both selected for bridge_edge_loop() below
-            for oEdge in self.oMeshBody.bm.edges:
+            self.oSkinMeshGame.VertGrp_SelectVerts("_CPenisFit_MountingHole", bClearSelection = False)#... and add to the selection the body-side rim verts.  At this point we have the matching edge rings both selected for bridge_edge_loop() below
+            for oEdge in self.oSkinMeshGame.bm.edges:
                 if oEdge.select:
                     if oEdge.is_manifold == True:                                   # Only leave the non-manifold edges selected for the bridge_edge_loop() call below.  It *must* have equal # of edges on each side and Blender includes in selection any edges that have both verts selected (e.g. small corner triangles)
                         oEdge.select_set(False)
             bpy.ops.mesh.bridge_edge_loops(type='PAIRS', use_merge=True, merge_factor=0)        ###INFO: An incredibly useful way to connect two meshes.  All other attempts to do via BMesh what this call does miraculously have been disasters!  (e.g. trashes one vert or the other or insanely slow!)
             bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='VERT')
-            self.oMeshBody.Close()        # We must close and re-open the same mesh for the shape key data to fully update itself (needed for next loop)
+            self.oSkinMeshGame.Close()        # We must close and re-open the same mesh for the shape key data to fully update itself (needed for next loop)
 
             
         #=== Iterate throughh all our shape keys / morphs to move the entire penis by the same delta as the difference between the 'master mounting vert' between the 'basis' mesh and each shape key.  This greatly enhances the look of the mesh on morphs that affect the genitals area such as 'Voluptuous' or 'Thin' ===
         print("\n=== Moving penis to fit each shape key ===") 
-        if self.oMeshBody.Open():
-            oVert_MasterMountingVert_Basis = self.oMeshBody.VertGrp_FindFirstVertInGroup("_CPenisFit_MasterMountingVert")
+        if self.oSkinMeshGame.Open():
+            oVert_MasterMountingVert_Basis = self.oSkinMeshGame.VertGrp_FindFirstVertInGroup("_CPenisFit_MasterMountingVert")
             nVert_MasterMountingVert = oVert_MasterMountingVert_Basis.index
             vecVert_MasterMountingVert_Basis = oVert_MasterMountingVert_Basis.co.copy() 
             print("Penis master mounting vert {} at {}".format(oVert_MasterMountingVert_Basis, vecVert_MasterMountingVert_Basis))
             
             #=== Select the entire penis (minus the rim).  We will move it for any shape keys that detect a movement on the 'master mounting vert' between basis to each shape key ===
-            self.oMeshBody.VertGrp_SelectVerts("_CSoftBody_Penis")
+            self.oSkinMeshGame.VertGrp_SelectVerts(G.C_VertGrp_CSoftBody + "Penis")
             
             #=== Iterate through all shape keys to move the penis by the necessary amount ===
-            aShapeKeys =  self.oMeshBody.GetMeshData().shape_keys.key_blocks
+            aShapeKeys =  self.oSkinMeshGame.GetMeshData().shape_keys.key_blocks
             nShapeKeys = len(aShapeKeys)
             for nShapeKey in range(nShapeKeys):
-                self.oMeshBody.GetMesh().active_shape_key_index = nShapeKey
+                self.oSkinMeshGame.GetMesh().active_shape_key_index = nShapeKey
                 oShapeKey = aShapeKeys[nShapeKey]
                 aVerts_ShapeKeys = oShapeKey.data
                 oVert_MasterMountingVert_ShapeKey = aVerts_ShapeKeys[nVert_MasterMountingVert]
@@ -463,17 +463,17 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
                     print("- Moving penis by {} for shape key '{}'".format(vecDelta_MasterMountingVert_BasisToShapeKey, oShapeKey.name))
                 else:
                     print("- No penis movement necessary for shape key '{}'".format(oShapeKey.name))
-            self.oMeshBody.GetMesh().active_shape_key_index = 0
+            self.oSkinMeshGame.GetMesh().active_shape_key_index = 0
 
             #=== Select the penis rim area and Iterate through all shape keys to smooth the area between the penis and its body mounting area ===
             print("\n=== Smoothing area between penis and body for each shape key ===") 
-            self.oMeshBody.VertGrp_SelectVerts("_CSoftBody_Penis")
+            self.oSkinMeshGame.VertGrp_SelectVerts(G.C_VertGrp_CSoftBody + "Penis")
             bpy.ops.mesh.region_to_loop()           ###IMPROVE: Use functional rim selection instead?
             for n in range(3):
                 bpy.ops.mesh.select_more()
             
             for nShapeKey in range(nShapeKeys):
-                self.oMeshBody.GetMesh().active_shape_key_index = nShapeKey
+                self.oSkinMeshGame.GetMesh().active_shape_key_index = nShapeKey
                 oShapeKey = aShapeKeys[nShapeKey]
                 sNameShapeKey = oShapeKey.name
                 aVerts_ShapeKeys = oShapeKey.data
@@ -482,8 +482,8 @@ class CPenisFit():        # CPenisFit: Performs design-time fitting of penis to 
                     bpy.ops.mesh.vertices_smooth(factor=1, repeat=5)                    ###INFO: We avoid smoothing shape keys that do not move the penis mounting area as we already smooth 'Basis' and smoothing shape keys that don't move make them 'add up' the adjustment and the sum of several looks bad
                 else:
                     print("- Skipping penis base area smoothing for shape key '{}'".format(sNameShapeKey))
-            self.oMeshBody.GetMesh().active_shape_key_index = 0           ###IMPROVE: Add this to CMesh.Close()?
-            self.oMeshBody.Close(bDeselect = True)
+            self.oSkinMeshGame.GetMesh().active_shape_key_index = 0           ###IMPROVE: Add this to CMesh.Close()?
+            self.oSkinMeshGame.Close(bDeselect = True)
 
         print("--- Done merging penis to body mesh! ---\n\n") 
 
@@ -583,9 +583,9 @@ class CRimVertPenis():              # CRimVertPenis: Helper class to store all i
 
 
 
-            #aVertsJoinedRim = [oVert.index for oVert in self.oMeshBody.bm.verts if oVert.select]      # Obtain list of just-joined rim verts to survive the trashing our vert groups are going to suffer in blending below  ###IMPROVE: Need to store this in vert group for anything?
+            #aVertsJoinedRim = [oVert.index for oVert in self.oSkinMeshGame.bm.verts if oVert.select]      # Obtain list of just-joined rim verts to survive the trashing our vert groups are going to suffer in blending below  ###IMPROVE: Need to store this in vert group for anything?
             #=== Blend body base bones into penis verts so penis bones blend with body bones ===
-#             self.oMeshBody.VertGrp_SelectVerts(oVertGrp_Penis.name)
+#             self.oSkinMeshGame.VertGrp_SelectVerts(oVertGrp_Penis.name)
 #             bpy.ops.object.vertex_group_smooth(group_select_mode='ALL', factor=1.0, repeat=8)       ###TUNE:!!!   
 #             bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)   # Limit to the four bones Unity can do at runtime.
 #             bpy.ops.object.vertex_group_normalize_all(lock_active=False)                ###DESIGN24:! Keep here?  Do at very end?
@@ -597,5 +597,5 @@ class CRimVertPenis():              # CRimVertPenis: Helper class to store all i
 #             bpy.ops.mesh.select_more()
 #             bpy.ops.mesh.vertices_smooth(20)            ###TUNE:!            
 
-        #aVertsJoinedRim = [oVert.index for oVert in self.oMeshBody.bm.verts if oVert.select]      # Obtain list of just-joined rim verts to survive the trashing our vert groups are going to suffer in blending below
+        #aVertsJoinedRim = [oVert.index for oVert in self.oSkinMeshGame.bm.verts if oVert.select]      # Obtain list of just-joined rim verts to survive the trashing our vert groups are going to suffer in blending below
         ###IMPROVE: have lost the definition of what verts inside penis but can recover with bpy.ops.object.material_slot_select()  (Or store in array before blend weights above?)

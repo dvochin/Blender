@@ -467,8 +467,8 @@
 #     bl_options = {'REGISTER', 'UNDO'}
 #     def invoke(self, context, event):
 #         self.report({"INFO"}, "GBOP: " + self.bl_label)
-#         ###oMeshBodyO = SelectObject(G.C_NameBaseCharacter + G.C_NameSuffix_Morph)        ###IMPROVE?
-#         ###Breasts.BodyInit_CreateCutoffBreastFromSourceBody(oMeshBodyO)
+#         ###oSkinMeshGameO = SelectObject(G.C_NameBaseCharacter + G.C_NameSuffix_Morph)        ###IMPROVE?
+#         ###Breasts.BodyInit_CreateCutoffBreastFromSourceBody(oSkinMeshGameO)
 #         return {"FINISHED"}
 # 
 # class gBL_perform_breast_op(bpy.types.Operator):
@@ -488,8 +488,8 @@
 #     bl_options = {'REGISTER', 'UNDO'}
 #     def invoke(self, context, event):
 #         self.report({"INFO"}, "GBOP: " + self.bl_label)
-#         ###oMeshBodyO = bpy.data.objects[G.C_NameBaseCharacter + G.C_NameSuffix_Morph]
-#         ###Breasts.Breast_ApplyOntoBody(oMeshBodyO)
+#         ###oSkinMeshGameO = bpy.data.objects[G.C_NameBaseCharacter + G.C_NameSuffix_Morph]
+#         ###Breasts.Breast_ApplyOntoBody(oSkinMeshGameO)
 #         return {"FINISHED"}
 #===============================================================================
 
@@ -509,8 +509,8 @@
 
         #Penis.gBL_Penis_CalcColliders("PenisM-EroticVR-A-Big")
         #Client.CBMeshMorph_GetMorphVerts('Face', 'Face-MouthOpen')
-        #oMeshBodyO = SelectObject("BodyA_Detach_Breasts")
-        #oMeshBodyO = SelectObject("Woman")
+        #oSkinMeshGameO = SelectObject("BodyA_Detach_Breasts")
+        #oSkinMeshGameO = SelectObject("Woman")
         #oBody = CBody(0, 'Woman', 'Shemale', 'PenisW-EroticVR-A-Big')
         #oBody = CBody(0, 'Woman', 'Woman', 'Vagina-EroticVR-A', 5000)
 
@@ -1371,15 +1371,15 @@
 
 
 #         #=== Fix the penis vertex groups after vertex weld ===
-#         oVertGrp_Penis = VertGrp_SelectVerts(self.oBody.oMeshBody.GetMesh(), oVertGrp_Penis.name)
-#         self.oBody.oMeshBody.GetMesh().vertex_groups.active_index = oVertGrp_PenisMountingHole.index
+#         oVertGrp_Penis = VertGrp_SelectVerts(self.oBody.oSkinMeshGame.GetMesh(), oVertGrp_Penis.name)
+#         self.oBody.oSkinMeshGame.GetMesh().vertex_groups.active_index = oVertGrp_PenisMountingHole.index
 #         bpy.ops.object.vertex_group_select()
-#         self.oBody.oMeshBody.GetMesh().vertex_groups.active_index = oVertGrp_Penis.index
+#         self.oBody.oSkinMeshGame.GetMesh().vertex_groups.active_index = oVertGrp_Penis.index
 #         bpy.ops.object.vertex_group_assign()            # Append rim to penis vertex group so now it is complete
 # 
 #         #=== Fix the penis rim vertex groups after vertex weld ===
 #         bpy.ops.mesh.region_to_loop()                   # With entire penis selected this call returns only the rim
-#         self.oBody.oMeshBody.GetMesh().vertex_groups.active_index = oVertGrp_PenisMountingHole.index
+#         self.oBody.oSkinMeshGame.GetMesh().vertex_groups.active_index = oVertGrp_PenisMountingHole.index
 #         bpy.ops.object.vertex_group_assign()
 
 
@@ -1465,8 +1465,8 @@
 
 
 
-#         oVertGrp = oMeshBody.GetMesh().vertex_groups["_CSoftBody_BreastL"]
-#         oMeshBody.GetMesh().vertex_groups.active_index = oVertGrp.index                  ###INFO: How to activate a vertex group by name
+#         oVertGrp = oSkinMeshGame.GetMesh().vertex_groups["_CSoftBody_BreastL"]
+#         oSkinMeshGame.GetMesh().vertex_groups.active_index = oVertGrp.index                  ###INFO: How to activate a vertex group by name
 #         bpy.ops.object.vertex_group_select()        
 
 
@@ -1476,7 +1476,7 @@
 #         bpy.ops.object.vertex_group_smooth(repeat=1, factor=0.5)
 # 
 #         #=== Perform global normalization and limiting on ALL bones ===
-#         VertGrp_LockUnlock(oMeshBody.GetMesh(), False)              # Unlock our vertex groups so we can fully normalize and limit weights
+#         VertGrp_LockUnlock(oSkinMeshGame.GetMesh(), False)              # Unlock our vertex groups so we can fully normalize and limit weights
 #         bpy.ops.object.vertex_group_normalize_all(lock_active=False)
 #         bpy.ops.object.vertex_group_limit_total(group_select_mode='ALL', limit=4)   # Limit to the four bones Unity can do at runtime.
 
@@ -1486,34 +1486,34 @@
 
 
 
-        #VertGrp_Remove(oMeshBody.GetMesh(), sNameBoneParent)            # Completely remove the vertex group this softbody is supposed to take over (This leaves more verts that can have our 4-bone maximum at full intensity during gameplay for smoothest possible skinning)
+        #VertGrp_Remove(oSkinMeshGame.GetMesh(), sNameBoneParent)            # Completely remove the vertex group this softbody is supposed to take over (This leaves more verts that can have our 4-bone maximum at full intensity during gameplay for smoothest possible skinning)
         #=== Clear softbody from DAZ groups.  We need entire bandwidth for four well-defined bones.  Blending to these is done is Finalize ===
-#        bmBody = oMeshBody.Open()           ###########KEEP HERE?  In finalize?
-#        VertGrp_SelectVerts(oMeshBody.GetMesh(), sNameSoftBodyVertGroup)
-#         VertGrp_RemoveVertsFromGroup(oMeshBody.GetMesh(), "chestLower")
-#         VertGrp_RemoveVertsFromGroup(oMeshBody.GetMesh(), "chestUpper")
-#         VertGrp_RemoveVertsFromGroup(oMeshBody.GetMesh(), "lCollar")
-#         VertGrp_RemoveVertsFromGroup(oMeshBody.GetMesh(), "rCollar")
-#         VertGrp_RemoveVertsFromGroup(oMeshBody.GetMesh(), "_CSoftBody_BreastL")      ########WTF red??
-#         VertGrp_RemoveVertsFromGroup(oMeshBody.GetMesh(), "_CSoftBody_BreastR")
-#         VertGrp_RemoveVertsFromGroup(oMeshBody.GetMesh(), "_CSoftBody_Penis")
-#        bmBody = oMeshBody.Close()
+#        bmBody = oSkinMeshGame.Open()           ###########KEEP HERE?  In finalize?
+#        VertGrp_SelectVerts(oSkinMeshGame.GetMesh(), sNameSoftBodyVertGroup)
+#         VertGrp_RemoveVertsFromGroup(oSkinMeshGame.GetMesh(), "chestLower")
+#         VertGrp_RemoveVertsFromGroup(oSkinMeshGame.GetMesh(), "chestUpper")
+#         VertGrp_RemoveVertsFromGroup(oSkinMeshGame.GetMesh(), "lCollar")
+#         VertGrp_RemoveVertsFromGroup(oSkinMeshGame.GetMesh(), "rCollar")
+#         VertGrp_RemoveVertsFromGroup(oSkinMeshGame.GetMesh(), "_CSoftBody_BreastL")      ########WTF red??
+#         VertGrp_RemoveVertsFromGroup(oSkinMeshGame.GetMesh(), "_CSoftBody_BreastR")
+#         VertGrp_RemoveVertsFromGroup(oSkinMeshGame.GetMesh(), "_CSoftBody_Penis")
+#        bmBody = oSkinMeshGame.Close()
 
 
 #         #=== Expand the vertex groups that were damaged into our softbody verts.  This will make it possible for normalize below to smooth things over properly ===
 #         for sBoneNeedingSmoothing in self.setBonesNeedingSmoothing:
 #             print("- Finalize() smoothing '{}'".format(sBoneNeedingSmoothing))
-#             oVertGrp = oMeshBody.GetMesh().vertex_groups[sBoneNeedingSmoothing]
-#             oMeshBody.GetMesh().vertex_groups.active_index = oVertGrp.index                 ###INFO: How to activate a vertex group by name
+#             oVertGrp = oSkinMeshGame.GetMesh().vertex_groups[sBoneNeedingSmoothing]
+#             oSkinMeshGame.GetMesh().vertex_groups.active_index = oVertGrp.index                 ###INFO: How to activate a vertex group by name
 #             bpy.ops.object.vertex_group_smooth(factor=0.5, repeat=2, expand=1)              ###TUNE ###INFO: repeat=1 doesn't appear to do anything!
 
 
 
 #         #=== Ensure that all vertices in presentation mesh are skinned ===
-#         bmBody = oMeshBody.Open()
+#         bmBody = oSkinMeshGame.Open()
 #         bpy.ops.mesh.select_ungrouped()
 #         SafetyCheck_ThrowExceptionIfVertsSelected(bmBody, "Mesh has verts that are not into any vertex groups (ie. unskinned)")
-#         bmBody = oMeshBody.Close()
+#         bmBody = oSkinMeshGame.Close()
 
 
 #         #=== Limit than normalize the rig weights ===        
@@ -1525,7 +1525,7 @@
 
 
 
-        #VertGrp_SelectVerts(self.oMeshBodySimplified_TEMP.GetMesh(), "#HACK_Keep")        ###DESIGN24: Value in this approach to trimming source mesh?
+        #VertGrp_SelectVerts(self.oSkinMeshGameSimplified_TEMP.GetMesh(), "#HACK_Keep")        ###DESIGN24: Value in this approach to trimming source mesh?
         #bpy.ops.mesh.select_all(action='INVERT')
         #bpy.ops.mesh.delete(type='VERT')
 
@@ -1547,7 +1547,7 @@
         #=== It is created from the just-finished Flex Fluid collider with the softbody verts removed ===    
 #         self.oMeshFlexTriCol_BodyMain = CMesh.CreateFromDuplicate(self.oBody.oBodyBase.sMeshPrefix + "CFlexRig-FlexTriCol_Body_Main2", self.oMeshFlexTriCol_BodyFluid)
 #         bmFlexTriCol_Body_Main = self.oMeshFlexTriCol_BodyMain.Open()
-#         VertGrp_RemoveAndSelect_RegEx(self.oMeshFlexTriCol_BodyMain.GetMesh(), G.C_RexPattern_DynamicBones)
+#         VertGrp_RemoveAndSelect_RegEx(self.oMeshFlexTriCol_BodyMain.GetMesh(), G.C_RexPattern_BonesDynamic)
 #         bpy.ops.mesh.select_more()
 #         bpy.ops.mesh.delete(type='FACE')
 #         bpy.ops.mesh.select_all(action='SELECT')
@@ -1589,7 +1589,7 @@
 
 
 
-        #=== Separate the 'Flex Triangle Collider' representing this body's shape in Flex.  This is what repels softbodies, cloth, fluids from non-softbody areas === #@        
+        #=== Separate the 'Flex Triangle Collider' representing this body's shape in Flex.  This is what repels softbodies, cloth, fluids from non-softbody areas ===
 #         if self.oMeshRig_Softbodies.Open():
 #             oLayFlexParticleInfo = self.oMeshRig_Softbodies.bm.verts.layers.int[G.C_DataLayer_FlexParticleInfo]
 #             DataLayer_SelectMatchingVerts(self.oMeshRig_Softbodies.bm, oLayFlexParticleInfo, CFlexRig.C_ParticleType_Skinned, CFlexRig.C_ParticleInfo_Mask_Type)
@@ -1604,7 +1604,7 @@
 #         self.oMeshFlexTriCol_BodyMain = CMesh(self.oBody.oBodyBase.sMeshPrefix + "CFlexRig-BodyMain", bpy.context.scene.objects.active, None)
 
         #=== Perform post-processing exception on vagina hole rig.  (It requires 100% bone weight on single bones) ===        ###DESIGN24: Invoke this in a callback to a derived class instead?
-#         if self.oBody.oBodyBase.sSex == "Woman":        #@        ###IMPROVE: Should ask for test 'HasVagina()' from CBodyBase instead
+#         if self.oBody.oBodyBase.sSex == "Woman":               ###IMPROVE: Should ask for test 'HasVagina()' from CBodyBase instead
 #             if self.oMeshFlexTriCol_BodyMain.Open():
 #                 self.oMeshFlexTriCol_BodyMain.VertGrp_LockUnlock(False, G.C_RexPattern_EVERYTHING)
 #                 aVertGroupsWithOnlyOneBone = [CFlexRig.C_Prefix_DynBone_VaginaHole + "Upper", CFlexRig.C_Prefix_DynBone_VaginaHole + "Lower"]
@@ -1620,15 +1620,15 @@
 
             ###OBS:?? No longer replace penis cap particles??
 #         #=== Get uretra vertex.  It will locate penis center along its long axis (x, z) and the tip location along y ===
-#         oMeshBody = self.oFlexRig.oBody.oMeshBody
-#         if self.oFlexRig.oBody.oMeshBody.Open():
-#             oMeshBody.VertGrp_SelectVerts("_CPenis_Uretra")
-#             for oVert in self.oFlexRig.oBody.oMeshBody.bm.verts:             ###OPT:! Sucks we have to iterate through all verts to find one!    ###IMPROVE: Maybe we can implement a 'marking system' in BodyPrep for these special verts so we can find them much more quickly?
+#         oSkinMeshGame = self.oFlexRig.oBody.oSkinMeshGame
+#         if self.oFlexRig.oBody.oSkinMeshGame.Open():
+#             oSkinMeshGame.VertGrp_SelectVerts("_CPenis_Uretra")
+#             for oVert in self.oFlexRig.oBody.oSkinMeshGame.bm.verts:             ###OPT:! Sucks we have to iterate through all verts to find one!    ###IMPROVE: Maybe we can implement a 'marking system' in BodyPrep for these special verts so we can find them much more quickly?
 #                 if oVert.select:
 #                     oVertUretra = oVert
 #             self.vecVertUretra = oVertUretra.co.copy()
 #             self.vecVertUretra.x = 0                     # Make sure we're centered
-#             self.oFlexRig.oBody.oMeshBody.Close()
+#             self.oFlexRig.oBody.oSkinMeshGame.Close()
 # 
 #         #=== Erase all penis Flex rig verts that are too close to uretra particle ===
 #         if oMeshSoftBody.Open(bDeselect = True):
@@ -1698,11 +1698,11 @@
    
    
 #     def CreateFlexRig(self, nDistFlexColliderShrinkMult):
-#         "Called by Unity when all soft body parts have been removed from self.oMeshBody.  Creates the gametime Flex collider."
+#         "Called by Unity when all soft body parts have been removed from self.oSkinMeshGame.  Creates the gametime Flex collider."
 #         
 #         print("=== CBody.CreateFlexRig()  on '{}' ===".format(self.oBodyBase.sMeshPrefix))
-#         #=== Start the Flex collider from the current self.oMeshBody.  (It just had all softbody bits removed) ===
-#         self.oMeshFlexCollider = CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + 'FlexCollider' , self.oMeshBody)
+#         #=== Start the Flex collider from the current self.oSkinMeshGame.  (It just had all softbody bits removed) ===
+#         self.oMeshFlexCollider = CMesh.CreateFromDuplicate(self.oBodyBase.sMeshPrefix + 'FlexCollider' , self.oSkinMeshGame)
 #         oMeshFlexCollider = self.oMeshFlexCollider.GetMesh()
 #         
 #         #=== Simplify the mesh so remesh + shrink below work better (e.g. remove teeth, eyes, inside of ears & nostrils, etc) ===
@@ -1723,7 +1723,7 @@
 #         AssertFinished(bpy.ops.object.modifier_apply(modifier=oModRemesh.name))     # This call destroys skinning info / vertex groups
 # 
 #         #=== Transfer the skinning information from the body back to the just remeshed flex collider mesh ===
-#         Util_TransferWeights(oMeshFlexCollider, self.oMeshBody.GetMesh())
+#         Util_TransferWeights(oMeshFlexCollider, self.oSkinMeshGame.GetMesh())
 #         
 #         #=== Now that we have re-skinned we can 'shrink' the collision mesh to compensate for the Flex inter-particle distance ===
 #         self.oMeshFlexCollider.Open()
@@ -2514,16 +2514,16 @@
 
 
 #         bAllVertsInCollider = True          ###NOTE: Bit of a hack to avoid having to define this damn group at every mesh rebuild... should be defined for final game tho!
-#         if VertGrp_FindByName(self.oMeshMorphResult.GetMesh(), "_CFlexCollider", False):
-#             VertGrp_SelectVerts(self.oMeshMorphResult.GetMesh(), "_CFlexCollider")
+#         if VertGrp_FindByName(self.oSkinMeshMorph.GetMesh(), "_CFlexCollider", False):
+#             VertGrp_SelectVerts(self.oSkinMeshMorph.GetMesh(), "_CFlexCollider")
 #             bAllVertsInCollider = False
 #         else:
 #             print("\n###WARNING: _CFlexCollider vertex group not found = Inneficient collisions!")
-#         bmMorphResult = self.oMeshMorphResult.Open()
+#         bmMorphResult = self.oSkinMeshMorph.Open()
 #         for oVert in bmMorphResult.verts:
 #             if (oVert.select or bAllVertsInCollider):
 #                 self.aVertsFlexCollider.AddUShort(oVert.index)
-#         self.oMeshMorphResult.Close()
+#         self.oSkinMeshMorph.Close()
 
 
 
@@ -2708,11 +2708,11 @@
 
     #---------------------------------------------------------------------------    LEFT / RIGHT SYMMETRY
     
-#    def FirstImport_VerifyBoneSymmetry(self, oMeshBodyO):           ###OBS??    
+#    def FirstImport_VerifyBoneSymmetry(self, oSkinMeshGameO):           ###OBS??    
 #        #=== Iterate through all left bones to see if their associated right bone is positioned properly ===
 #        print("\n\n=== FirstImport_VerifyBoneSymmetry() ===")
-#         self.oArm = oMeshBodyO.modifiers["Armature"].object.data
-#         SelectObject(oMeshBodyO.parent.name, True)            ###INFO: Armature editing is done through the mesh's parent object
+#         self.oArm = oSkinMeshGameO.modifiers["Armature"].object.data
+#         SelectObject(oSkinMeshGameO.parent.name, True)            ###INFO: Armature editing is done through the mesh's parent object
 #         self.oArmBones = self.oArm.edit_bones    
 #         nAdjustments = 0
 #         bpy.ops.object.mode_set(mode='EDIT')                                        ###INFO: Modifying armature bones is done by simply editing root node containing armature.
@@ -2882,7 +2882,7 @@
     #- UV re-projection shows around rim verts an odd 'clockwise' rotation of rim verts... what causes this distortion??
 
         #=== Determine the UV re-interpolation parameters that can convert between penis X,Z 3D coordinates and a UV X,Y ===  (PLACE BEFORE 'CREATE CHAIN OF RIM VERTS IN OUR STRUCTURES')
-        #oLayUV_Body  = self.oMeshBody.bm.loops.layers.uv.active                    # Obtain access to the body's UV layer (so we can extract rim vert UVs and set them into penis rim verts)
+        #oLayUV_Body  = self.oSkinMeshGame.bm.loops.layers.uv.active                    # Obtain access to the body's UV layer (so we can extract rim vert UVs and set them into penis rim verts)
         ###OBS? Turns out the creation of new UV layer is not really needed given texture Blend can be so easily done with Blender's tools...
         #vec2D_Point0 = Vector((oVertRimBottom.co.   x, oVertRimBottom.co.   z))     # Point 0 = bottom center of rim.  (We use the x and z 3D coordinates to 'flatten' them into a 'lookalike UV' projected about Y = 0 plane
         #vec2D_Point1 = Vector((oVertRimRightmost.co.x, oVertRimRightmost.co.z))     # Point 1 = top right of rim.
@@ -2917,7 +2917,7 @@
 #         #=== Set the UV coordinates of the penis rim verts to the exact UV position of the body rim.  (This greatly facilitates creating a 'texture transfer UV' to blend in textures at the seam) ===
 #         for nRimVertPenis in dictRimVertPenis:
 #             oRimVertPenis = dictRimVertPenis[nRimVertPenis]
-#             vecUV_Body = oRimVertPenis.oRimVertBody.vecUV_Body              # Fetch the previously-obtained UV coordinates for the body-side rim vert (obtained in earlier loop while self.oMeshBody.bm was open)
+#             vecUV_Body = oRimVertPenis.oRimVertBody.vecUV_Body              # Fetch the previously-obtained UV coordinates for the body-side rim vert (obtained in earlier loop while self.oSkinMeshGame.bm was open)
 #             for oLoop in oRimVertPenis.oVertPenis.link_loops:               # Store body's rim vert UV into penis rim-vert UV.
 #                 oLoop[oLayUV_Penis].uv = vecUV_Body
 
@@ -2931,26 +2931,26 @@
 #         if 0:       ###DEV24:!!! Need to break this up and have game glue an already-fitted penis!
 #             print("\n===== L. ATTACH FITTED PENIS TO BODY =====")
 #             #=== Weld the fitted penis to the prepared body ===
-#             SelectObject(self.oMeshBody.GetName())
+#             SelectObject(self.oSkinMeshGame.GetName())
 #             self.oMeshPenisTempForJoin = CMesh.CreateFromDuplicate(self.oMeshPenis.GetName() + "-TempForJoin", self.oMeshPenis)
 #             self.oMeshPenisTempForJoin.GetMesh().select = True
-#             self.oMeshBody.GetMesh().select = True
-#             bpy.context.scene.objects.active = self.oMeshBody.GetMesh() 
+#             self.oSkinMeshGame.GetMesh().select = True
+#             bpy.context.scene.objects.active = self.oSkinMeshGame.GetMesh() 
 #     
 #             #=== Join the two meshes and weld the rim verts ===
 #             bpy.ops.object.join()                       ###INFO: This will MESS UP all the vertex ID in the body (penis vert IDs will be fine and appear in the order they were in penis)  After this we have to re-obtain our BMVerts by 3D coordinates as even our stored vertex IDs become meaningless
 #             
 #             #=== Open body and re-obtain access to the body-side rim verts (previous indices & BMVerts rendered invalid after join above) ===        
-#             self.oMeshBody.bm = self.oMeshBody.Open()        ###INFO: We do it this way instead of 'remove_doubles()' as that call will replace about half the body's rim verts with penis rim verts (thereby destroying precious UV & skinning info)
-#             self.oMeshBody.GetMesh().vertex_groups.active_index = oVertGrp_PenisMountingHole.index
+#             self.oSkinMeshGame.bm = self.oSkinMeshGame.Open()        ###INFO: We do it this way instead of 'remove_doubles()' as that call will replace about half the body's rim verts with penis rim verts (thereby destroying precious UV & skinning info)
+#             self.oSkinMeshGame.GetMesh().vertex_groups.active_index = oVertGrp_PenisMountingHole.index
 #             bpy.ops.object.vertex_group_select()
-#             aVertsBodyRim = [oVert for oVert in self.oMeshBody.bm.verts if oVert.select]
+#             aVertsBodyRim = [oVert for oVert in self.oSkinMeshGame.bm.verts if oVert.select]
 #             bpy.ops.mesh.select_all(action='DESELECT')
 #     
 #             #=== Re-link the penis-side rim verts with their associated body-side rim verts.  (We need to merge them in a controlled manner) ===
 #             oRimVertBodyNow = oRimVertBodyRoot
 #             while True:
-#                 oRimVertBodyNow.oRimVertPenis.oVertPenis = self.oMeshBody.bm.verts[oRimVertBodyNow.oRimVertPenis.nVertPenis]       # Update BMVert reference (old one destroyed by join above)
+#                 oRimVertBodyNow.oRimVertPenis.oVertPenis = self.oSkinMeshGame.bm.verts[oRimVertBodyNow.oRimVertPenis.nVertPenis]       # Update BMVert reference (old one destroyed by join above)
 #                 oRimVertBodyNow.oRimVertPenis.vecVertPenis = oRimVertBodyNow.oRimVertPenis.oVertPenis.co                # Update Penis rim vert location (moved to body rim vert above)
 #                 oRimVertBodyNow.oVertBody = None 
 #                 for oVertBodyRim in aVertsBodyRim:                          # Perform a brute-force search through all body-side rim verts to find the one at the 3D location of the known-good penis-side rim vert
@@ -2967,11 +2967,11 @@
 #             #=== Create new faces between the two rims.  This will protect both side's information (bones and UVs) ===
 #             oRimVertBodyNow = oRimVertBodyRoot          ###DESIGN21:!!! Some uncertainty as how to leave the merged meshes...  Keep the faces in gametime body?  Modify softobdy (which version? now or future??)
 #             while True:
-#                 oFaceBridgeAcrossRims = self.oMeshBody.bm.faces.new([oRimVertBodyNow.oVertBody, oRimVertBodyNow.oRimVertPenis.oVertPenis, oRimVertBodyNow.oRimVertBodyPrev.oRimVertPenis.oVertPenis, oRimVertBodyNow.oRimVertBodyPrev.oVertBody])
+#                 oFaceBridgeAcrossRims = self.oSkinMeshGame.bm.faces.new([oRimVertBodyNow.oVertBody, oRimVertBodyNow.oRimVertPenis.oVertPenis, oRimVertBodyNow.oRimVertBodyPrev.oRimVertPenis.oVertPenis, oRimVertBodyNow.oRimVertBodyPrev.oVertBody])
 #                 if oRimVertBodyNow.bLastInLoop:
 #                     break
 #                 oRimVertBodyNow = oRimVertBodyNow.oRimVertBodyNext
-#             self.oMeshBody.bm  = self.oMeshBody.Close()
+#             self.oSkinMeshGame.bm  = self.oSkinMeshGame.Close()
 
 
 
@@ -2986,7 +2986,7 @@
 #            
 #             print("\n===== N. DECIMATE PENIS GEOMETRY =====")
 #             #=== Decimate the just-attached penis to reduce its vert count to more reasonable levels ===
-#             VertGrp_SelectVerts(self.oMeshBody.GetMesh(), oVertGrp_Penis.name)
+#             VertGrp_SelectVerts(self.oSkinMeshGame.GetMesh(), oVertGrp_Penis.name)
 #             bpy.ops.mesh.decimate(ratio=0.17)                               ###TUNE: Decimation ratio!
 
 
@@ -3222,45 +3222,45 @@
         ###DEV24:2????? Cleanup_RemoveDoublesAndConvertToTris(0.001)     ###TUNE:!!! Useful to remove stuff user can't really see?                                                              
 
         #=== Create a data layer that will store source body verts for possible vert domain traversal (e.g. soft body skin) ===
-        #self.oMeshBody.DataLayer_Create_SimpleVertID(G.C_DataLayer_VertSrcBody)
+        #self.oSkinMeshGame.DataLayer_Create_SimpleVertID(G.C_DataLayer_VertSrcBody)
         
         
         
         
         #=== Fix our copy of the morphing body.  It went to Unity and multi-material verts had to be split ===
-#         if self.oMeshBody.Open(bSelect = True):
-#             self.oMeshBody.Util_SafeRemoveDouble(0)
-#             self.oMeshBody.Close(bDeselect = True)
+#         if self.oSkinMeshGame.Open(bSelect = True):
+#             self.oSkinMeshGame.Util_SafeRemoveDouble(0)
+#             self.oSkinMeshGame.Close(bDeselect = True)
         
         
         
         
-#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Eyelashes")       # Remove materials AND their associated verts to remove unneeded geometry like teeth, eyes, ears, etc.
-#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Fingernails")
-#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Toenails")
-#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Cornea")
-#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Pupils")
-#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Teeth")
-#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Sclera")
-#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Ears")
-#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Irises")
-#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "EyeSocket")
-#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "EyeMoisture")
-#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Mouth")
-#         self.oMeshBodySimplified.Material_Remove(sPrefixMat + "Vagina&Rectum")
+#         self.oSkinMeshGameSimplified.Material_Remove(sPrefixMat + "Eyelashes")       # Remove materials AND their associated verts to remove unneeded geometry like teeth, eyes, ears, etc.
+#         self.oSkinMeshGameSimplified.Material_Remove(sPrefixMat + "Fingernails")
+#         self.oSkinMeshGameSimplified.Material_Remove(sPrefixMat + "Toenails")
+#         self.oSkinMeshGameSimplified.Material_Remove(sPrefixMat + "Cornea")
+#         self.oSkinMeshGameSimplified.Material_Remove(sPrefixMat + "Pupils")
+#         self.oSkinMeshGameSimplified.Material_Remove(sPrefixMat + "Teeth")
+#         self.oSkinMeshGameSimplified.Material_Remove(sPrefixMat + "Sclera")
+#         self.oSkinMeshGameSimplified.Material_Remove(sPrefixMat + "Ears")
+#         self.oSkinMeshGameSimplified.Material_Remove(sPrefixMat + "Irises")
+#         self.oSkinMeshGameSimplified.Material_Remove(sPrefixMat + "EyeSocket")
+#         self.oSkinMeshGameSimplified.Material_Remove(sPrefixMat + "EyeMoisture")
+#         self.oSkinMeshGameSimplified.Material_Remove(sPrefixMat + "Mouth")
+#         self.oSkinMeshGameSimplified.Material_Remove(sPrefixMat + "Vagina&Rectum")
 
 
-#             self.oMeshBodySimplified.VertGrps_SelectVerts(r"Index[2-3]")    ###IMPROVE: ###OPT:!! Remove vertex group too?
-#             self.oMeshBodySimplified.VertGrps_SelectVerts(r"Mid[2-3]",   bClearSelection = False)      ###TODO24: weld toes / fingers together instead of clipping them!
-#             self.oMeshBodySimplified.VertGrps_SelectVerts(r"Ring[2-3]",  bClearSelection = False)      ###OPT:!! Could do most of this in CBodyImporter?
-#             self.oMeshBodySimplified.VertGrps_SelectVerts(r"Pinky[2-3]", bClearSelection = False)
+#             self.oSkinMeshGameSimplified.VertGrps_SelectVerts(r"Index[2-3]")    ###IMPROVE: ###OPT:!! Remove vertex group too?
+#             self.oSkinMeshGameSimplified.VertGrps_SelectVerts(r"Mid[2-3]",   bClearSelection = False)      ###TODO24: weld toes / fingers together instead of clipping them!
+#             self.oSkinMeshGameSimplified.VertGrps_SelectVerts(r"Ring[2-3]",  bClearSelection = False)      ###OPT:!! Could do most of this in CBodyImporter?
+#             self.oSkinMeshGameSimplified.VertGrps_SelectVerts(r"Pinky[2-3]", bClearSelection = False)
 #             for nRepeat in range(3):
 #                 bpy.ops.mesh.select_more()
 #             bpy.ops.mesh.delete(type='FACE')
-#             self.oMeshBodySimplified.VertGrps_SelectVerts(r"Toe[1-4]_2")
-#             self.oMeshBodySimplified.VertGrps_SelectVerts(r"BigToe_2", bClearSelection = False)
+#             self.oSkinMeshGameSimplified.VertGrps_SelectVerts(r"Toe[1-4]_2")
+#             self.oSkinMeshGameSimplified.VertGrps_SelectVerts(r"BigToe_2", bClearSelection = False)
 #             for nRepeat in range(3):
 #                 bpy.ops.mesh.select_more()
 #             bpy.ops.mesh.delete(type='FACE')
-#             self.oMeshBodySimplified.VertGrps_SelectVerts(r"Thumb[2-3]")
+#             self.oSkinMeshGameSimplified.VertGrps_SelectVerts(r"Thumb[2-3]")
         

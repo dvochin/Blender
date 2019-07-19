@@ -1619,7 +1619,7 @@ class CBodyImporter_Penis():
         self.Util_CreateShapeKeyFromCurrentArmatureShape("Penis_Shaft_Length_0", -0.3, 1.0)
 
         #=== Remove the DAZ vertex groups.  They are useless now that we 'baked' all bone modifications into shape keys.  (They would interfere with gametime skinning) ===
-        self.oMesh.VertGrp_Remove(G.C_RexPattern_StandardBones)     ###TODO: This makes armature & bones useless.  Remove them too?
+        self.oMesh.VertGrp_Remove(G.C_RexPattern_BonesStandard)     ###TODO: This makes armature & bones useless.  Remove them too?
         #self.oMeshO.modifiers.remove()
 
         #=== Return mesh and scene to defaults ===

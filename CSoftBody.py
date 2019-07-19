@@ -144,7 +144,7 @@ class CSoftBody(CSoftBodyBase):
         self.oMeshPinnedParticles.Close()
 
         #=== Skin the pinned particle mesh from original rim mesh.  (So particles are skinned too)
-        Util_TransferWeights(self.oMeshPinnedParticles.GetMesh(), self.oBody.oBodyBase.oMeshMorphResult.GetMesh())   ###CHECK: Proper source mesh? ###OPT?
+        Util_TransferWeights(self.oMeshPinnedParticles.GetMesh(), self.oBody.oBodyBase.oSkinMeshMorph.GetMesh())   ###CHECK: Proper source mesh? ###OPT?
         VertGrp_RemoveNonBones(self.oMeshPinnedParticles.GetMesh(), True)
 
         return "OK"
